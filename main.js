@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 
 const KEYS = {};
@@ -23,6 +24,7 @@ async function loadPlayer(scene) {
 
   const loader = new FBXLoader(LOADING_MANAGER);
   const model = await loader.loadAsync("/assets/models/archer/archer.fbx");
+
   model.scale.setScalar(0.1);
   model.traverse(function (child) {
     if (child instanceof THREE.Mesh) {
@@ -32,7 +34,6 @@ async function loadPlayer(scene) {
   });
 
   scene.add(model);
-
   const mixer = new THREE.AnimationMixer(model);
 
   const animationsLoader = new FBXLoader(LOADING_MANAGER);
@@ -113,8 +114,8 @@ async function init() {
 
   CAMERA.orbitControls = new OrbitControls(CAMERA.camera, renderer.domElement);
   CAMERA.orbitControls.enableDamping = true;
-  CAMERA.orbitControls.minDistance = 5;
-  CAMERA.orbitControls.maxDistance = 15;
+  // CAMERA.orbitControls.minDistance = 5;
+  // CAMERA.orbitControls.maxDistance = 15;
 
   // Load player
   const {
@@ -249,7 +250,7 @@ const PLAYER = {
       // rotate model
       this.rotateQuaternion.setFromAxisAngle(
         this.rotateAngle,
-        angleYCameraDirection + directionOffset
+        angleYCameraDirection + directionOffset + Math.PI
       );
       this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.2);
 
