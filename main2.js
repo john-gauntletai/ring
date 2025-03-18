@@ -75,7 +75,7 @@ camera.position.set(0, 5, 10); // Initial camera position
 const clock = new THREE.Clock();
 
 function animate() {
-  requestAnimationFrame(animate);
+  // requestAnimationFrame(animate);
   updatePlayer();
 
   if (mixer) {
