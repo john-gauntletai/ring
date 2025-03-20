@@ -1,13 +1,13 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-import PLAYER from "./entities/Player.js";
-import AUSTEN from "./entities/Austen.js";
-import DRAGON from "./entities/Dragon.js";
-import CAMERA from "./entities/Camera.js";
+import { loadModel, addResizeEventListeners } from "./_lib/helpers.js";
+import PlayerEntity from "./entities/PlayerEntity.js";
+import Camera from "./entities/Camera.js";
 import KEYS from "./_lib/keys";
+
+window.GAME_STARTED = true;
 
 const LOADING_MANAGER = new THREE.LoadingManager();
 
@@ -89,67 +89,14 @@ function generateLight(scene) {
   scene.add(fillLight);
 }
 
+function generateGrid(scene) {
+  const grid = new THREE.GridHelper(100, 100);
+  scene.add(grid);
+}
+
 function wrapAndRepeatTexture(map) {
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.x = map.repeat.y = 10;
-}
-
-async function loadModel(filePath, scene) {
-  const animations = {};
-
-  const loader = new GLTFLoader(LOADING_MANAGER);
-  const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath("three/examples/jsm/libs/draco/");
-  dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
-  loader.setDRACOLoader(dracoLoader);
-  const gltfData = await loader.loadAsync(filePath);
-
-  const model = gltfData.scene;
-  model.traverse(function (child) {
-    if (child instanceof THREE.Mesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
-  });
-  const box = new THREE.Box3().setFromObject(model);
-  const modelHeight = box.max.y - box.min.y;
-  console.log(filePath, "height:", modelHeight);
-
-  scene.add(model);
-
-  const mixer = new THREE.AnimationMixer(model);
-
-  gltfData.animations.forEach((animation) => {
-    const action = mixer.clipAction(animation);
-    if (
-      animation.name.includes("attack") ||
-      animation.name.includes("spin") ||
-      animation.name.includes("slash") ||
-      animation.name.includes("roar") ||
-      animation.name.includes("death") ||
-      animation.name.includes("impact") ||
-      animation.name.includes("kick")
-    ) {
-      action.loop = THREE.LoopOnce;
-      action.clampWhenFinished = true;
-
-      action.getMixer().addEventListener('finished', (event) => {
-        console.log("Animation finished!", event);
-        const finishedAction = event.action;
-        console.log("Finished action:", finishedAction.getClip().name);
-      });
-    }
-    animations[animation.name] = {
-      action,
-      clip: animation,
-    };
-  });
-
-  return {
-    model,
-    animations,
-    mixer,
-  };
 }
 
 async function loadEnvironment(scene) {
@@ -159,8 +106,8 @@ async function loadEnvironment(scene) {
   dracoLoader.setDecoderConfig({ type: "js" });
   dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
   loader.setDRACOLoader(dracoLoader);
-  const model = await loader.loadAsync("/assets/models/kingdom.glb");
-  scene.add(model.scene);
+  // const model = await loader.loadAsync("/assets/models/kingdom.glb");
+  // scene.add(model.scene);
 }
 
 async function init() {
@@ -181,18 +128,9 @@ async function init() {
   // scene.background = new THREE.Color(0xa8def0);
   // scene.fog = new THREE.Fog(0xa0a0a0, 10, 50);
 
-  // Create camera
-  CAMERA.camera = new THREE.PerspectiveCamera(
-    70,
-    window.innerWidth / window.innerHeight,
-    1,
-    10000
-  );
-  CAMERA.camera.position.set(0, 25, 25);
-  scene.add(CAMERA.camera);
-
   generateLight(scene);
   generateFloor(scene);
+  generateGrid(scene);
 
   // Add axes helper
   const axesHelper = new THREE.AxesHelper(15); // The parameter defines the length of the axes
@@ -221,34 +159,31 @@ async function init() {
 
   document.body.appendChild(renderer.domElement);
 
-  CAMERA.orbitControls = new OrbitControls(CAMERA.camera, renderer.domElement);
-  CAMERA.orbitControls.enableDamping = true;
-  CAMERA.orbitControls.maxPolarAngle = Math.PI / 2;
-  CAMERA.orbitControls.update();
-  // CAMERA.orbitControls.minDistance = 5;
-  // CAMERA.orbitControls.maxDistance = 15;
-
   // Load models
-  await Promise.all([
-    loadModel("/assets/models/archer-out.glb", scene),
-    loadModel("/assets/models/austen-out.glb", scene),
+  const [player, austen, dragon] = await Promise.all([
+    loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
+    // loadModel("/assets/models/golden-knight-out.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
-  ]).then(([player, austen, dragon]) => {
-    PLAYER.model = player.model;
-    PLAYER.animations = player.animations;
-    PLAYER.mixer = player.mixer;
-    console.log("player", PLAYER.animations);
+  ]);
 
-    AUSTEN.model = austen.model;
-    AUSTEN.animations = austen.animations;
-    AUSTEN.mixer = austen.mixer;
-    console.log("austen", AUSTEN.animations);
+  const PLAYER = new PlayerEntity(
+    player.model,
+    player.animations,
+    player.mixer
+  );
 
-    // DRAGON.model = dragon.model;
-    // DRAGON.animations = dragon.animations;
-    // DRAGON.mixer = dragon.mixer;
-    // console.log('dragon', DRAGON.animations);
-  });
+  // Create camera
+  window.CAMERA = new Camera(player, renderer);
+  scene.add(CAMERA.camera);
+  // AUSTEN.model = austen.model;
+  // AUSTEN.animations = austen.animations;
+  // AUSTEN.mixer = austen.mixer;
+  // console.log("austen", AUSTEN.animations);
+
+  // DRAGON.model = dragon.model;
+  // DRAGON.animations = dragon.animations;
+  // DRAGON.mixer = dragon.mixer;
+  // console.log('dragon', DRAGON.animations);
 
   // Load environment
   await loadEnvironment(scene);
@@ -271,15 +206,17 @@ async function init() {
     KEYS[key] = false;
   });
 
+  addResizeEventListeners(CAMERA.camera, renderer);
+
   let clock = new THREE.Clock();
 
   function animate() {
     stats.begin();
 
     const delta = clock.getDelta();
+
     PLAYER.update(delta);
-    CAMERA.orbitControls.update();
-    // Update all mixers with the same delta time
+    CAMERA.update(delta, PLAYER);
     renderer.render(scene, CAMERA.camera);
 
     stats.end();
