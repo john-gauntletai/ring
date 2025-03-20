@@ -1,0 +1,291 @@
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import Stats from "three/examples/jsm/libs/stats.module.js";
+import PLAYER from "./entities/Player.js";
+import AUSTEN from "./entities/Austen.js";
+import DRAGON from "./entities/Dragon.js";
+import CAMERA from "./entities/Camera.js";
+import KEYS from "./_lib/keys";
+
+const LOADING_MANAGER = new THREE.LoadingManager();
+
+LOADING_MANAGER.onProgress = (url, itemsLoaded, itemsTotal) => {
+  // console.log(url, itemsLoaded, itemsTotal);
+};
+
+LOADING_MANAGER.onLoad = () => {
+  console.log("Loaded");
+};
+
+LOADING_MANAGER.onError = (url) => {
+  console.error(url);
+};
+
+function generateFloor(scene) {
+  // TEXTURES
+  const textureLoader = new THREE.TextureLoader();
+  const sandBaseColor = textureLoader.load(
+    "./assets/textures/sand/Sand 002_COLOR.jpg"
+  );
+  const sandNormalMap = textureLoader.load(
+    "./assets/textures/sand/Sand 002_NRM.jpg"
+  );
+  const sandHeightMap = textureLoader.load(
+    "./assets/textures/sand/Sand 002_DISP.jpg"
+  );
+  const sandAmbientOcclusion = textureLoader.load(
+    "./assets/textures/sand/Sand 002_OCC.jpg"
+  );
+
+  const WIDTH = 80;
+  const LENGTH = 80;
+
+  const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH, 512, 512);
+  const material = new THREE.MeshStandardMaterial({
+    map: sandBaseColor,
+    normalMap: sandNormalMap,
+    displacementMap: sandHeightMap,
+    displacementScale: 0.1,
+    aoMap: sandAmbientOcclusion,
+    roughness: 0.4, // Lower for more reflectivity
+    metalness: 0.2, // Add some metalness for better light reflection
+    envMapIntensity: 1.0, // Increase for brighter reflections
+  });
+
+  wrapAndRepeatTexture(material.map);
+  wrapAndRepeatTexture(material.normalMap);
+  wrapAndRepeatTexture(material.displacementMap);
+  wrapAndRepeatTexture(material.aoMap);
+
+  const floor = new THREE.Mesh(geometry, material);
+  floor.receiveShadow = true;
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+}
+
+function generateLight(scene) {
+  // Add a slightly stronger ambient light
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+  // Make the directional light brighter and position it for better coverage
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  dirLight.position.set(-60, 100, -10);
+  dirLight.castShadow = true;
+  dirLight.shadow.camera.top = 50;
+  dirLight.shadow.camera.bottom = -50;
+  dirLight.shadow.camera.left = -50;
+  dirLight.shadow.camera.right = 50;
+  dirLight.shadow.camera.near = 0.1;
+  dirLight.shadow.camera.far = 200;
+  dirLight.shadow.mapSize.width = 4096;
+  dirLight.shadow.mapSize.height = 4096;
+  scene.add(dirLight);
+
+  // Add a secondary fill light from another angle
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  fillLight.position.set(60, 60, 60);
+  scene.add(fillLight);
+}
+
+function wrapAndRepeatTexture(map) {
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.x = map.repeat.y = 10;
+}
+
+async function loadModel(filePath, scene) {
+  const animations = {};
+
+  const loader = new GLTFLoader(LOADING_MANAGER);
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath("three/examples/jsm/libs/draco/");
+  dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
+  loader.setDRACOLoader(dracoLoader);
+  const gltfData = await loader.loadAsync(filePath);
+
+  const model = gltfData.scene;
+  model.traverse(function (child) {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+  const box = new THREE.Box3().setFromObject(model);
+  const modelHeight = box.max.y - box.min.y;
+  console.log(filePath, "height:", modelHeight);
+
+  scene.add(model);
+
+  const mixer = new THREE.AnimationMixer(model);
+
+  gltfData.animations.forEach((animation) => {
+    const action = mixer.clipAction(animation);
+    if (
+      animation.name.includes("attack") ||
+      animation.name.includes("spin") ||
+      animation.name.includes("slash") ||
+      animation.name.includes("roar") ||
+      animation.name.includes("death") ||
+      animation.name.includes("impact") ||
+      animation.name.includes("kick")
+    ) {
+      action.loop = THREE.LoopOnce;
+      action.clampWhenFinished = true;
+
+      action.getMixer().addEventListener('finished', (event) => {
+        console.log("Animation finished!", event);
+        const finishedAction = event.action;
+        console.log("Finished action:", finishedAction.getClip().name);
+      });
+    }
+    animations[animation.name] = {
+      action,
+      clip: animation,
+    };
+  });
+
+  return {
+    model,
+    animations,
+    mixer,
+  };
+}
+
+async function loadEnvironment(scene) {
+  const loader = new GLTFLoader(LOADING_MANAGER);
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath("three/examples/jsm/libs/draco/");
+  dracoLoader.setDecoderConfig({ type: "js" });
+  dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
+  loader.setDRACOLoader(dracoLoader);
+  const model = await loader.loadAsync("/assets/models/kingdom.glb");
+  scene.add(model.scene);
+}
+
+async function init() {
+  // Create scene
+  const scene = new THREE.Scene();
+
+  const loader = new THREE.CubeTextureLoader();
+  const skybox = loader.load([
+    "./assets/skybox/posx.jpg",
+    "./assets/skybox/negx.jpg",
+    "./assets/skybox/posy.jpg",
+    "./assets/skybox/negy.jpg",
+    "./assets/skybox/posz.jpg",
+    "./assets/skybox/negz.jpg",
+  ]);
+  skybox.encoding = THREE.sRGBEncoding;
+  scene.background = skybox;
+  // scene.background = new THREE.Color(0xa8def0);
+  // scene.fog = new THREE.Fog(0xa0a0a0, 10, 50);
+
+  // Create camera
+  CAMERA.camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    1,
+    10000
+  );
+  CAMERA.camera.position.set(0, 25, 25);
+  scene.add(CAMERA.camera);
+
+  generateLight(scene);
+  generateFloor(scene);
+
+  // Add axes helper
+  const axesHelper = new THREE.AxesHelper(15); // The parameter defines the length of the axes
+  scene.add(axesHelper);
+
+  // Red is X axis
+  // Green is Y axis
+  // Blue is Z axis
+
+  // Create renderer
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.gammaOutput = true; // Apply gamma correction
+  renderer.gammaFactor = 2.2; // Standard gamma correction
+  renderer.outputEncoding = THREE.sRGBEncoding; // Ensures colors are displayed correctly
+
+  // Add Stats (FPS meter)
+  const stats = new Stats();
+  stats.domElement.style.position = "absolute";
+  stats.domElement.style.top = "0px";
+  stats.domElement.style.left = "0px";
+  document.body.appendChild(stats.domElement);
+
+  document.body.appendChild(renderer.domElement);
+
+  CAMERA.orbitControls = new OrbitControls(CAMERA.camera, renderer.domElement);
+  CAMERA.orbitControls.enableDamping = true;
+  CAMERA.orbitControls.maxPolarAngle = Math.PI / 2;
+  CAMERA.orbitControls.update();
+  // CAMERA.orbitControls.minDistance = 5;
+  // CAMERA.orbitControls.maxDistance = 15;
+
+  // Load models
+  await Promise.all([
+    loadModel("/assets/models/archer-out.glb", scene),
+    loadModel("/assets/models/austen-out.glb", scene),
+    // loadModel("/assets/models/dragon-out.glb", scene),
+  ]).then(([player, austen, dragon]) => {
+    PLAYER.model = player.model;
+    PLAYER.animations = player.animations;
+    PLAYER.mixer = player.mixer;
+    console.log("player", PLAYER.animations);
+
+    AUSTEN.model = austen.model;
+    AUSTEN.animations = austen.animations;
+    AUSTEN.mixer = austen.mixer;
+    console.log("austen", AUSTEN.animations);
+
+    // DRAGON.model = dragon.model;
+    // DRAGON.animations = dragon.animations;
+    // DRAGON.mixer = dragon.mixer;
+    // console.log('dragon', DRAGON.animations);
+  });
+
+  // Load environment
+  await loadEnvironment(scene);
+
+  // Add axes helper to player
+  const axesHelperPlayer = new THREE.AxesHelper(5);
+  PLAYER.model.add(axesHelperPlayer);
+
+  // CAMERA.camera.position.set(0, 25, CAMERA_DISTANCE);
+  // CAMERA.lookAtTargetModel(PLAYER.model);
+
+  window.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+    console.log(key);
+    KEYS[key] = true;
+  });
+
+  window.addEventListener("keyup", (event) => {
+    const key = event.key.toLowerCase();
+    KEYS[key] = false;
+  });
+
+  let clock = new THREE.Clock();
+
+  function animate() {
+    stats.begin();
+
+    const delta = clock.getDelta();
+    PLAYER.update(delta);
+    CAMERA.orbitControls.update();
+    // Update all mixers with the same delta time
+    renderer.render(scene, CAMERA.camera);
+
+    stats.end();
+  }
+
+  renderer.setAnimationLoop(animate);
+}
+
+window.addEventListener("DOMContentLoaded", init);
