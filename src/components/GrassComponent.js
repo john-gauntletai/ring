@@ -78,10 +78,18 @@ class GrassComponent {
       varying vec2 vUv;
       varying float vHeight;
       varying vec3 vWorldPosition;
+      varying vec3 vNormal;
       
       // Noise functions for wind effect
       float random(vec2 st) {
         return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+      }
+      
+      // Rotate vector around Y axis
+      vec3 rotateY(float angle, vec3 v) {
+        float c = cos(angle);
+        float s = sin(angle);
+        return vec3(c * v.x - s * v.z, v.y, s * v.x + c * v.z);
       }
       
       void main() {
@@ -120,6 +128,26 @@ class GrassComponent {
         // Apply wind effect (only to x-position for simplicity)
         pos.x += windEffect;
         
+        // Create rounded normals similar to the image technique
+        // Determine width percent (how far from center we are)
+        float widthPercent = abs(position.x / 0.075); // 0.075 is half blade width
+        
+        // Base normal for a flat plane facing forward (standard normal)
+        vec3 grassVertexNormal = normal;
+        
+        // Create two rotated normals by rotating slightly around Y
+        vec3 rotatedNormal1 = rotateY(3.14159 * 0.3, grassVertexNormal);
+        vec3 rotatedNormal2 = rotateY(3.14159 * -0.3, grassVertexNormal);
+        
+        // Mix the two rotated normals based on width percent
+        vec3 mixedNormal = mix(rotatedNormal1, rotatedNormal2, widthPercent);
+        
+        // Normalize to ensure proper length
+        mixedNormal = normalize(mixedNormal);
+        
+        // Pass the rounded normal to fragment shader
+        vNormal = normalMatrix * mixedNormal;
+        
         // Transform with instance matrix
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(pos, 1.0);
       }
@@ -132,6 +160,7 @@ class GrassComponent {
       varying vec2 vUv;
       varying float vHeight;
       varying vec3 vWorldPosition;
+      varying vec3 vNormal;
       
       void main() {
         // Define sun direction (from positive X, higher in the sky to match main.js)
@@ -145,10 +174,10 @@ class GrassComponent {
         // Afternoon sunlight - brighter, less golden
         vec3 sunlightColor = vec3(1.0, 0.95, 0.8); // Slightly warm but not orange
         
-        // Calculate world normal (simplified for grass blade)
-        vec3 normal = normalize(vec3(0.0, 1.0, 0.0)); 
+        // Use the varying normal that has the rounded effect
+        vec3 normal = normalize(vNormal);
         
-        // Calculate sun contribution with height variation
+        // Calculate sun contribution with height variation using rounded normal
         float sunContribution = max(0.3, dot(normal, sunDirection));
         
         // Adjust sun contribution based on X position to match HDR sun from +X
@@ -304,14 +333,12 @@ class GrassComponent {
       this.scene.add(debugMarker);
       
       // Calculate number of grass blades in this patch
-      // Use a higher density for Windows XP-like fields
-      const density = 5; // 5 blades per square unit
-      const instanceCount = Math.floor(this.patchSize * this.patchSize * density);
+      const instanceCount = Math.floor(this.patchSize * this.patchSize * this.density);
       
       // Create grass blades using simple plane geometry with more segments for better bending
-      const bladeGeometry = new THREE.PlaneGeometry(0.15, 1.5, 1, 6);
+      const bladeGeometry = new THREE.PlaneGeometry(0.15, 1.5, 1, 8); // Added more vertical segments for smoother taper
       
-      // Adjust vertices to create a more natural grass blade
+      // Adjust vertices to create a sharp pointed tip
       const positions = bladeGeometry.attributes.position.array;
       for (let i = 0; i < positions.length; i += 3) {
         const y = positions[i + 1];
@@ -319,11 +346,18 @@ class GrassComponent {
         if (y > 0) {
           const heightRatio = y / 1.5;
           
-          // Make blade thinner as it gets higher (taper toward the tip)
-          positions[i] *= 1.0 - (heightRatio * 0.7);
+          // Make blade thinner as it gets higher, with sharper taper toward the tip
+          const taperFactor = Math.pow(1.0 - heightRatio, 0.5); // Adjusted power curve for sharper taper
+          positions[i] *= taperFactor;
           
-          // Add slight curve - less dramatic for Windows XP style
-          positions[i] += 0.03 * Math.pow(heightRatio, 2);
+          // Add a slight curve but maintain the sharp tip
+          if (heightRatio < 0.9) {
+            // Add curve to the lower 90% of the blade
+            positions[i] += 0.03 * Math.sin(heightRatio * Math.PI);
+          } else {
+            // Make the tip extremely thin and sharp
+            positions[i] *= (1.0 - heightRatio) * 5; // Gets very thin at the top
+          }
         }
       }
       
@@ -470,7 +504,7 @@ class GrassComponent {
   }
   
   /**
-   * Update patches based on player position
+   * Update patches based on player position and camera field of view
    */
   updatePatches() {
     if (!this.playerObject) return;
@@ -478,8 +512,6 @@ class GrassComponent {
     // Get player position
     const playerX = this.playerObject.position.x;
     const playerZ = this.playerObject.position.z;
-    
-    console.log(`Player at world position: (${playerX.toFixed(2)}, ${playerZ.toFixed(2)})`);
     
     // Calculate player grid position
     const terrainHalfSize = this.terrainSize / 2;
@@ -489,19 +521,12 @@ class GrassComponent {
     
     console.log(`Player at grid position: (${playerGridX}, ${playerGridZ})`);
     
-    // Force-create patch at player position
-    this.createPatch(playerGridX, playerGridZ);
-    
-    // Render distance in grid cells (smaller for debugging)
-    const renderDistance = 10; 
-    console.log(`Render distance: ${renderDistance} grid cells`);
-    
     // Track which patches should be active
     const shouldBeActive = new Set();
     
-    // Generate patches in a square around player
-    for (let dx = -renderDistance; dx <= renderDistance; dx++) {
-      for (let dz = -renderDistance; dz <= renderDistance; dz++) {
+    // 1. ALWAYS create the four patches directly around the player (2x2 grid)
+    for (let dx = 0; dx <= 1; dx++) {
+      for (let dz = 0; dz <= 1; dz++) {
         const gridX = playerGridX + dx;
         const gridZ = playerGridZ + dz;
         
@@ -513,6 +538,106 @@ class GrassComponent {
           // Create patch if it doesn't exist
           if (!this.activePatches.has(key)) {
             this.createPatch(gridX, gridZ);
+          }
+        }
+      }
+    }
+    
+    // 2. Get camera for frustum calculations
+    const camera = window.CAMERA ? window.CAMERA.camera : null;
+    if (camera) {
+      // Create temporary frustum to check visibility
+      const frustum = new THREE.Frustum();
+      const projScreenMatrix = new THREE.Matrix4();
+      
+      // Update projection matrix with current camera settings
+      projScreenMatrix.multiplyMatrices(
+        camera.projectionMatrix, 
+        camera.matrixWorldInverse
+      );
+      
+      frustum.setFromProjectionMatrix(projScreenMatrix);
+      
+      // Extend render distance for patches within/near camera view
+      const viewDistance = 4; // How many patches to check around player
+      
+      // Check patches in a square around player for visibility
+      for (let dx = -viewDistance; dx <= viewDistance; dx++) {
+        for (let dz = -viewDistance; dz <= viewDistance; dz++) {
+          // Skip the 2x2 area around player (already added)
+          if (dx >= 0 && dx <= 1 && dz >= 0 && dz <= 1) continue;
+          
+          const gridX = playerGridX + dx;
+          const gridZ = playerGridZ + dz;
+          
+          // Make sure we stay within valid grid coordinates
+          if (gridX >= 0 && gridX < this.gridSize && gridZ >= 0 && gridZ < this.gridSize) {
+            // Calculate world position of patch center
+            const worldX = (gridX * this.patchSize) - (this.terrainSize / 2) + (this.patchSize / 2);
+            const worldZ = (gridZ * this.patchSize) - (this.terrainSize / 2) + (this.patchSize / 2);
+            const worldY = this.sampleHeight(worldX, worldZ);
+            
+            // Create a bounding sphere for the patch
+            const center = new THREE.Vector3(worldX, worldY, worldZ);
+            const radius = this.patchSize * Math.SQRT2 / 2; // Diagonal distance / 2
+            
+            // Check if patch or its immediate surroundings are in or near frustum
+            const sphere = new THREE.Sphere(center, radius * 1.5); // Slightly larger to catch nearby patches
+            
+            if (frustum.intersectsSphere(sphere)) {
+              const key = `${gridX},${gridZ}`;
+              shouldBeActive.add(key);
+              
+              // Create patch if it doesn't exist
+              if (!this.activePatches.has(key)) {
+                this.createPatch(gridX, gridZ);
+              }
+              
+              // Also add patches 1 grid cell away from visible patches
+              // This creates a buffer around the visible patches
+              for (let nx = -1; nx <= 1; nx++) {
+                for (let nz = -1; nz <= 1; nz++) {
+                  if (nx === 0 && nz === 0) continue; // Skip the patch itself
+                  
+                  const neighborX = gridX + nx;
+                  const neighborZ = gridZ + nz;
+                  
+                  if (neighborX >= 0 && neighborX < this.gridSize && 
+                      neighborZ >= 0 && neighborZ < this.gridSize) {
+                    const neighborKey = `${neighborX},${neighborZ}`;
+                    shouldBeActive.add(neighborKey);
+                    
+                    // Create neighbor patch if it doesn't exist
+                    if (!this.activePatches.has(neighborKey)) {
+                      this.createPatch(neighborX, neighborZ);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Fallback if camera isn't accessible - just use a static render distance
+      const renderDistance = 2;
+      console.log(`Camera not found. Using fallback render distance: ${renderDistance} grid cells`);
+      
+      // Generate patches in a square around player
+      for (let dx = -renderDistance; dx <= renderDistance; dx++) {
+        for (let dz = -renderDistance; dz <= renderDistance; dz++) {
+          const gridX = playerGridX + dx;
+          const gridZ = playerGridZ + dz;
+          
+          // Make sure we stay within valid grid coordinates
+          if (gridX >= 0 && gridX < this.gridSize && gridZ >= 0 && gridZ < this.gridSize) {
+            const key = `${gridX},${gridZ}`;
+            shouldBeActive.add(key);
+            
+            // Create patch if it doesn't exist
+            if (!this.activePatches.has(key)) {
+              this.createPatch(gridX, gridZ);
+            }
           }
         }
       }

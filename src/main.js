@@ -126,7 +126,7 @@ async function init() {
     4,
     0.5
   );
-  const terrain = generateTerrain(TERRAIN_SIZE, TERRAIN_SIZE, 2, 2, heightmap);
+  const terrain = generateTerrain(TERRAIN_SIZE, TERRAIN_SIZE, 10, 10, heightmap);
   scene.add(terrain);
 
   // Add axes helper
@@ -134,9 +134,9 @@ async function init() {
   scene.add(axesHelper);
 
   // Load models
-  const [player, austen, dragon] = await Promise.all([
+  const [player, goldenKnight] = await Promise.all([
     loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
-    // loadModel("/assets/models/golden-knight-out.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/golden-knight-out.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
@@ -179,8 +179,8 @@ async function init() {
     maxHeight: TERRAIN_HEIGHT, // Use the same height as terrain
     minHeight: TERRAIN_MIN_HEIGHT,
     heightOffset: 0,
-    patchSize: 20, // Larger patch size for better coverage
-    density: 1, // Increased density for better appearance
+    patchSize: 5, // Larger patch size for better coverage
+    density: 30, // Increased density for better appearance
     playerObject: PLAYER.model,
   });
 
