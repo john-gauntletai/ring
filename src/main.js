@@ -233,17 +233,17 @@ async function init() {
   PLAYER.model.add(axesHelperPlayer);
 
   // Initialize grass system
-  // grassSystem = new GrassComponent({
-  //   scene: scene,
-  //   heightMap: heightmap,
-  //   terrainSize: TERRAIN_SIZE,
-  //   maxHeight: TERRAIN_HEIGHT,
-  //   minHeight: TERRAIN_MIN_HEIGHT,
-  //   heightOffset: 0,
-  //   patchSize: 10,
-  //   density: 2, // Lower density for better performance
-  //   playerObject: PLAYER.model,
-  // });
+  grassSystem = new GrassComponent({
+    scene: scene,
+    heightMap: heightmap,
+    terrainSize: TERRAIN_SIZE,
+    maxHeight: 0.8,
+    minHeight: 0.5,
+    heightOffset: 0,
+    patchSize: 10,
+    density: 1, // Lower density for better performance
+    playerObject: PLAYER.model,
+  });
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();

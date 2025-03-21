@@ -21,7 +21,7 @@ class GrassComponent {
     this.scene = params.scene;
     this.heightMap = params.heightMap;
     this.terrainSize = params.terrainSize || 100;
-    this.maxHeight = params.maxHeight || 10;
+    this.maxHeight = params.maxHeight || 1;
     this.minHeight = params.minHeight || 0;
     this.heightOffset = params.heightOffset || 0;
     this.patchSize = params.patchSize || 10;
@@ -38,7 +38,7 @@ class GrassComponent {
 
     // Visual parameters
     this.grassWidth = 0.1;
-    this.grassHeight = 1.5;
+    this.grassHeight = 0.2;
     
     // LOD parameters
     this.lodDistance = 15;
@@ -58,7 +58,6 @@ class GrassComponent {
       this.createGrassGeometries();
       
       // Create test patches to ensure we have grass
-      this.createTestPatches();
       
       // Initialize patches around player
       this.updatePatches();
@@ -331,7 +330,7 @@ class GrassComponent {
         quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2);
         
         // Random scale
-        const height = 1.0 + Math.random() * 1.5; // Height between 1.0 and 2.5
+        const height = Math.random() * this.maxHeight; // Height between 1.0 and 2.5
         const width = 0.2 + Math.random() * 0.3; // Width between 0.2 and 0.5
         
         scale.set(width, height, 1);
@@ -412,7 +411,7 @@ class GrassComponent {
     this.createPatch(playerGridX, playerGridZ);
     
     // Render distance in grid cells (smaller for debugging)
-    const renderDistance = 2; 
+    const renderDistance = 10; 
     console.log(`Render distance: ${renderDistance} grid cells`);
     
     // Track which patches should be active
