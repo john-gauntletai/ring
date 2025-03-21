@@ -75,7 +75,7 @@ const heightmap = generateHeightmap(256, 0.02, 1.2, 4);
 // Create the grass system
 const grassSystem = new GrassComponent({
   scene: yourScene,                   // Three.js scene
-  heightMap: heightmap,               // Heightmap texture
+  heightmap: heightmap,               // Heightmap texture
   terrainSize: 100,                   // Width/depth of terrain
   maxHeight: 5,                       // Maximum terrain height
   minHeight: 0,                       // Minimum terrain height

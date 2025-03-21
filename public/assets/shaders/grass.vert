@@ -1,6 +1,6 @@
 // Grass Vertex Shader
 uniform float time;
-uniform sampler2D heightMap;
+uniform sampler2D heightmap;
 uniform vec3 playerPosition;
 uniform float terrainSize;
 uniform float maxHeight;
@@ -42,7 +42,7 @@ float getHeight(vec2 position) {
     uv = clamp(uv, 0.0, 1.0);
     
     // Sample heightmap and convert to world height
-    return texture2D(heightMap, uv).r * (maxHeight - minHeight) + minHeight + heightOffset;
+    return texture2D(heightmap, uv).r * (maxHeight - minHeight) + minHeight + heightOffset;
 }
 
 // Wind effect

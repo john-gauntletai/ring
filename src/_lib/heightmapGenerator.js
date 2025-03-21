@@ -1,103 +1,65 @@
 import * as THREE from "three";
 
-/**
- * Generate a procedural heightmap using Perlin noise
- * @param {number} size Width/height of the heightmap in pixels
- * @param {number} scale Noise scale factor
- * @param {number} elevation Elevation factor for height
- * @param {number} iterations Number of noise iterations (octaves)
- * @returns {THREE.DataTexture} Heightmap texture
- */
-export function generateHeightmap(size = 256, scale = 0.03, elevation = 1.0, iterations = 4) {
-  // Create data array for the heightmap (R channel only)
-  const data = new Float32Array(size * size);
-  
-  // Generate Perlin noise-like heightmap
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      // Initialize height
-      let height = 0;
-      
-      // Multiple noise iterations with different frequencies
-      let frequency = scale;
-      let amplitude = 1.0;
-      
-      for (let i = 0; i < iterations; i++) {
-        // Simple noise function (not true Perlin, but good enough for demo)
-        const nx = x * frequency;
-        const ny = y * frequency;
-        
-        // Improvised noise using sine functions
-        const noise = Math.sin(nx) * Math.cos(ny) + 
-                      Math.sin(nx * 0.7) * Math.cos(ny * 1.3) * 0.5;
-        
-        // Add to height with current amplitude
-        height += noise * amplitude;
-        
-        // Increase frequency and decrease amplitude for next iteration
-        frequency *= 2.0;
-        amplitude *= 0.5;
-      }
-      
-      // Normalize to 0-1 range
-      height = (height + 1) * 0.5;
-      
-      // Apply elevation factor
-      height = Math.pow(height, elevation);
-      
-      // Store in data array
-      data[y * size + x] = height;
+import { createNoise2D } from 'simplex-noise';
+
+// Function to generate a heightmap using Simplex noise
+export const generateHeightmap = (width, length, scale = 0.005, amplitude = 10, octaves = 4, persistence = 0.5) => {
+  const noise2D = createNoise2D();  
+  const heightmap = new Float32Array(width * length);
+
+    // Loop through each point in the heightmap
+    for (let y = 0; y < length; y++) {
+        for (let x = 0; x < width; x++) {
+            let value = 0;
+            let frequency = scale;
+            let maxValue = 0;
+
+            // Combine multiple octaves of noise for more natural variation
+            for (let i = 0; i < octaves; i++) {
+                value += noise2D(x * frequency, y * frequency) * amplitude * Math.pow(persistence, i);
+                maxValue += amplitude * Math.pow(persistence, i);
+                frequency *= 2; // Double the frequency for each octave
+            }
+
+            // Normalize the value to the range [0, 1] and scale by amplitude
+            value = (value / maxValue) * amplitude;
+            heightmap[y * width + x] = value;
+        }
     }
-  }
-  
-  // Create texture from data
-  const texture = new THREE.DataTexture(
-    data,
-    size,
-    size,
-    THREE.RedFormat,
-    THREE.FloatType
-  );
-  
-  texture.needsUpdate = true;
-  
-  return texture;
+
+    return heightmap;
 }
 
-/**
- * Create a terrain mesh using a heightmap
- * @param {THREE.Texture} heightmap Heightmap texture
- * @param {number} width Width of the terrain
- * @param {number} height Height (max elevation) of the terrain
- * @param {number} segments Number of segments in the terrain grid
- * @returns {THREE.Mesh} Terrain mesh
- */
-export function createTerrainMesh(heightmap, width = 100, height = 10, segments = 100) {
-  // Create geometry
-  const geometry = new THREE.PlaneGeometry(width, width, segments, segments);
-  
-  // Create material with heightmap
-  const material = new THREE.MeshStandardMaterial({
-    map: null,
-    displacementMap: heightmap,
-    displacementScale: height,
-    wireframe: false,
-    color: new THREE.Color(0.3, 0.5, 0.2),
-    metalness: 0.1,
-    roughness: 0.8,
-    side: THREE.DoubleSide
-  });
-  
-  // Create mesh
-  const terrain = new THREE.Mesh(geometry, material);
-  
-  // Rotate to horizontal plane
-  terrain.rotation.x = -Math.PI / 2;
-  
-  return terrain;
-}
+export const generateTerrain = (width, height, widthSegments, heightSegments, heightmap) => {
+    // Create a plane geometry with the specified dimensions and segments
+    const geometry = new THREE.PlaneGeometry(width, height, widthSegments - 1, heightSegments - 1);
 
-export default {
-  generateHeightmap,
-  createTerrainMesh
-}; 
+    // Apply the heightmap to the geometry's vertices
+    const vertices = geometry.attributes.position.array;
+    for (let i = 0; i < vertices.length; i += 3) {
+        const x = i / 3 % widthSegments;
+        const y = Math.floor(i / 3 / widthSegments);
+        const heightValue = heightmap[y * widthSegments + x];
+        vertices[i + 2] = heightValue; // Set the z-coordinate (height) of the vertex
+    }
+
+    // Recalculate normals for proper lighting
+    geometry.computeVertexNormals();
+
+    // Create a basic material (you can replace this with a custom material later)
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x4a8f45, // A grassy green color
+        side: THREE.DoubleSide,
+        wireframe: false
+    });
+
+    // Create the terrain mesh
+    const terrain = new THREE.Mesh(geometry, material);
+
+    // Rotate the plane to lie flat (PlaneGeometry is vertical by default)
+    terrain.rotation.x = -Math.PI / 2;
+    terrain.receiveShadow = true;
+    terrain.castShadow = true;
+
+    return terrain;
+}
