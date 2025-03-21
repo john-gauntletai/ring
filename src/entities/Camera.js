@@ -7,6 +7,7 @@ import KEYS from "../_lib/keys";
 CameraControls.install( { THREE: THREE } );
 
 const ORBIT_SPEED = 0.8;
+const OVER_SHOULDER_DISTANCE = 3;
 const DISTANCE_TO_PLAYER = 5.5;
 
 class Camera {
@@ -22,6 +23,7 @@ class Camera {
     this.locations = {
       behindPlayer: new THREE.Object3D(),
       startScreen: new THREE.Object3D(),
+      overShoulder: new THREE.Object3D(),
     };
 
     this.locations.behindPlayer.position.set(
@@ -29,6 +31,7 @@ class Camera {
       playerEntity.model.position.y + 1,
       playerEntity.model.position.z + DISTANCE_TO_PLAYER
     );
+
     this.locations.startScreen.position.set(
       playerEntity.model.position.x + 5,
       playerEntity.model.position.y + 1,
@@ -55,12 +58,14 @@ class Camera {
   }
 
   lookAtPlayer(playerEntity, smooth = true) {
-    this.controls.setTarget(
-      playerEntity.model.position.x,
-      playerEntity.model.position.y + 1.7,
-      playerEntity.model.position.z,
-      smooth
-    );
+    if (this.activeLocation === "behindPlayer") {
+      this.controls.setTarget(
+        playerEntity.model.position.x,
+        playerEntity.model.position.y + 1.7,
+        playerEntity.model.position.z,
+        smooth
+      );
+    }
   }
 
   update(delta, playerEntity) {

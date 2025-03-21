@@ -18,6 +18,7 @@ import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 window.GAME_STARTED = true;
 
 const LOADING_MANAGER = new THREE.LoadingManager();
+const TERRAIN_SIZE = 400;
 
 LOADING_MANAGER.onProgress = (url, itemsLoaded, itemsTotal) => {
   // console.log(url, itemsLoaded, itemsTotal);
@@ -32,7 +33,6 @@ LOADING_MANAGER.onError = (url) => {
 };
 
 // Global terrain parameters
-const TERRAIN_SIZE = 100;
 const TERRAIN_HEIGHT = 5;
 const TERRAIN_MIN_HEIGHT = 0;
 
@@ -41,7 +41,7 @@ let grassSystem;
 
 function generateTerrain(scene) {
   // Generate a procedural heightmap with more pronounced features
-  const heightmap = generateHeightmap(256, 0.04, 1.8, 4);
+  const heightmap = generateHeightmap(TERRAIN_SIZE, 0.04, 1.8, 4);
 
   // Create terrain mesh with the heightmap
   const terrain = createTerrainMesh(
@@ -51,7 +51,7 @@ function generateTerrain(scene) {
     100
   );
   terrain.receiveShadow = true;
-
+  terrain.position.z = -130;
   // Add terrain to scene
   scene.add(terrain);
 
@@ -71,6 +71,11 @@ function generateTerrain(scene) {
   return { terrain, heightmap };
 }
 
+function wrapAndRepeatTexture(map) {
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.x = map.repeat.y = 50;
+}
+
 function generateFloor(scene) {
   // TEXTURES
   const textureLoader = new THREE.TextureLoader();
@@ -87,15 +92,12 @@ function generateFloor(scene) {
     "./assets/textures/sand/Sand 002_OCC.jpg"
   );
 
-  const WIDTH = 250;
-  const LENGTH = 400;
-
-  const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH, 512, 512);
+  const geometry = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 512, 512);
   const material = new THREE.MeshStandardMaterial({
     map: sandBaseColor,
     normalMap: sandNormalMap,
     displacementMap: sandHeightMap,
-    displacementScale: 0.1,
+    displacementScale: 0,
     aoMap: sandAmbientOcclusion,
     roughness: 0.6, // Lower for more reflectivity
     metalness: 0.2, // Add some metalness for better light reflection
@@ -134,27 +136,22 @@ function generateLight(scene) {
   const dirLight = new THREE.DirectionalLight(0xffe4b5, 3); // Warm peachy tone, moderate intensity
   dirLight.position.set(10, 30, 30); // Position to mimic sunset angle (adjust to match skybox sun)
   dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 2048; // Softer shadows with lower resolution
-  dirLight.shadow.mapSize.height = 2048;
+  dirLight.shadow.mapSize.width = 4096; // Softer shadows with lower resolution
+  dirLight.shadow.mapSize.height = 4096;
   dirLight.shadow.camera.top = 40;
   dirLight.shadow.camera.bottom = -40;
   dirLight.shadow.camera.left = -40;
   dirLight.shadow.camera.right = 40;
-  dirLight.shadow.camera.near = 0.1;
-  dirLight.shadow.camera.far = 5000;
+  dirLight.shadow.camera.near = 1;
+  dirLight.shadow.camera.far = 500;
   dirLight.shadow.bias = -0.0001; // Reduce shadow artifacts
-  dirLight.shadow.radius = 1; // Softer shadow edges
+  dirLight.shadow.radius = 5; // Softer shadow edges
   scene.add(dirLight);
 }
 
 function generateGrid(scene) {
   const grid = new THREE.GridHelper(100, 100);
   scene.add(grid);
-}
-
-function wrapAndRepeatTexture(map) {
-  map.wrapS = map.wrapT = THREE.RepeatWrapping;
-  map.repeat.x = map.repeat.y = 50;
 }
 
 async function loadEnvironment(scene) {
@@ -177,10 +174,10 @@ async function init() {
   generateHDR(scene);
   
   // Generate terrain instead of flat floor
-  // const { terrain, heightmap } = generateTerrain(scene);
+  const { terrain, heightmap } = generateTerrain(scene);
 
   // Comment out old floor generation
-  generateFloor(scene);
+  // generateFloor(scene);
 
   // Add axes helper
   const axesHelper = new THREE.AxesHelper(15); // The parameter defines the length of the axes
