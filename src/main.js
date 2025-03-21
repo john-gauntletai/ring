@@ -87,8 +87,8 @@ function generateFloor(scene) {
     "./assets/textures/sand/Sand 002_OCC.jpg"
   );
 
-  const WIDTH = 200;
-  const LENGTH = 200;
+  const WIDTH = 250;
+  const LENGTH = 400;
 
   const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH, 512, 512);
   const material = new THREE.MeshStandardMaterial({
@@ -97,7 +97,7 @@ function generateFloor(scene) {
     displacementMap: sandHeightMap,
     displacementScale: 0.1,
     aoMap: sandAmbientOcclusion,
-    roughness: 0.4, // Lower for more reflectivity
+    roughness: 0.6, // Lower for more reflectivity
     metalness: 0.2, // Add some metalness for better light reflection
     envMapIntensity: 0.5, // Increase for brighter reflections
   });
@@ -110,6 +110,7 @@ function generateFloor(scene) {
   const floor = new THREE.Mesh(geometry, material);
   floor.receiveShadow = true;
   floor.rotation.x = -Math.PI / 2;
+  floor.position.z = -130;
   scene.add(floor);
 }
 
@@ -124,21 +125,6 @@ async function generateHDR(scene) {
   scene.background = texture;
   scene.environment = texture;
 }
-
-// function generateLight(scene) {
-//   const hemiLight = new THREE.HemisphereLight(0xffeeb1, 0x080820, 4);
-//   scene.add(hemiLight);
-
-//   const spotlight = new THREE.SpotLight(0xffa95c, 4);
-//   spotlight.castShadow = true;
-//   spotlight.shadow.bias = -0.0001;
-//   spotlight.shadow.mapSize.width = 1024 * 4;
-//   spotlight.shadow.mapSize.height = 1024 * 4;
-//   scene.add(spotlight);
-
-//   const helper = new THREE.SpotLightHelper(spotlight);
-//   scene.add(helper);
-// }
 
 function generateLight(scene) {
   // Ambient Light: Soft, cool-toned to simulate scattered sky light
@@ -159,21 +145,6 @@ function generateLight(scene) {
   dirLight.shadow.bias = -0.0001; // Reduce shadow artifacts
   dirLight.shadow.radius = 1; // Softer shadow edges
   scene.add(dirLight);
-
-  // const dirLight = new THREE.DirectionalLight(0xffe4b5, 2.0); // Increased from 1.5
-  // dirLight.position.set(1000, 500, 300); // Kept for sunset angle
-  // dirLight.castShadow = true;
-  // dirLight.shadow.mapSize.width = 4096; // Higher resolution for sharper shadows
-  // dirLight.shadow.mapSize.height = 4096;
-  // dirLight.shadow.camera.top = 50; // Expanded slightly for larger terrain
-  // dirLight.shadow.camera.bottom = -50;
-  // dirLight.shadow.camera.left = -50;
-  // dirLight.shadow.camera.right = 50;
-  // dirLight.shadow.camera.near = 0.1;
-  // dirLight.shadow.camera.far = 200;
-  // dirLight.shadow.bias = -0.00005; // Tighter bias for crisper shadows
-  // dirLight.shadow.radius = 1; // Reduced from 2 for sharper edges
-  // scene.add(dirLight);
 }
 
 function generateGrid(scene) {
@@ -183,7 +154,7 @@ function generateGrid(scene) {
 
 function wrapAndRepeatTexture(map) {
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
-  map.repeat.x = map.repeat.y = 10;
+  map.repeat.x = map.repeat.y = 50;
 }
 
 async function loadEnvironment(scene) {
