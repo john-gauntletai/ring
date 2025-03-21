@@ -26,12 +26,12 @@ class Camera {
 
     this.locations.behindPlayer.position.set(
       playerEntity.model.position.x,
-      playerEntity.model.position.y + 2,
+      playerEntity.model.position.y + 1,
       playerEntity.model.position.z + DISTANCE_TO_PLAYER
     );
     this.locations.startScreen.position.set(
       playerEntity.model.position.x + 5,
-      playerEntity.model.position.y + 2,
+      playerEntity.model.position.y + 1,
       playerEntity.model.position.z + DISTANCE_TO_PLAYER
     );
 
@@ -47,17 +47,17 @@ class Camera {
 
   initializeCamera() {
     return new THREE.PerspectiveCamera(
-      45,
+      40,
       window.innerWidth / window.innerHeight,
       1,
-      1000
+      5000
     );
   }
 
   lookAtPlayer(playerEntity, smooth = true) {
     this.controls.setTarget(
       playerEntity.model.position.x,
-      playerEntity.model.position.y + 2,
+      playerEntity.model.position.y + 1.7,
       playerEntity.model.position.z,
       smooth
     );

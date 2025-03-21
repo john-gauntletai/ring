@@ -10,8 +10,8 @@ class PlayerEntity {
     this.animations = animations;
     this.mixer = mixer;
 
-    this.runVelocity = 3;
-    this.walkVelocity = 1;
+    this.runVelocity = 6;
+    this.walkVelocity = 1.5;
     this.moveDirection = new THREE.Vector3();
     this.rotateAngle = new THREE.Vector3(0, 1, 0);
     this.rotateQuaternion = new THREE.Quaternion(); // Used for smooth rotation
