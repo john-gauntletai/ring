@@ -120,6 +120,7 @@ async function init() {
   
   // Position the golden knight at (150, 0, 0) - now handled in EnemyEntity constructor
   console.log("Golden Knight position:", ENEMY.model.position);
+  console.log("Golden Knight animations:", goldenKnight.animations);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -202,8 +203,8 @@ async function init() {
     combatManager.update(delta);
     
     // Update grass animation and LOD
-    // Only show log messages every 2 seconds to avoid console spam
-    const shouldLog = logTimer > 5.0;
+    // Only show log messages every 10 seconds to avoid console spam
+    const shouldLog = logTimer > 10.0;
     if (shouldLog) {
       logTimer = 0;
     }
