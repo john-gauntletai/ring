@@ -12,7 +12,7 @@ import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 window.GAME_STARTED = true;
 
 const LOADING_MANAGER = new THREE.LoadingManager();
-const TERRAIN_SIZE = 400;
+const TERRAIN_SIZE = 300;
 
 LOADING_MANAGER.onProgress = (url, itemsLoaded, itemsTotal) => {
   // console.log(url, itemsLoaded, itemsTotal);
@@ -35,12 +35,12 @@ async function generateHDR(scene) {
 }
 
 function generateLight(scene) {
-  // Ambient Light: Bright afternoon light
-  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.7); // Increased intensity
+  // Ambient Light: Reduced intensity for darker feel
+  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.5); // Reduced from 0.7 to 0.5
   scene.add(ambientLight);
 
-  // Directional Light: Afternoon sun from positive X direction to match HDR
-  const dirLight = new THREE.DirectionalLight(0xfffaf0, 2.2); // Increased brightness
+  // Directional Light: Maintain sun brightness but adjust color for contrast
+  const dirLight = new THREE.DirectionalLight(0xffeecc, 2.0); // Slightly warmer, reduced intensity
   dirLight.position.set(50, 40, 10); // Positioned at positive X to match HDR sun
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 4096;
@@ -52,16 +52,16 @@ function generateLight(scene) {
   dirLight.shadow.camera.near = 1;
   dirLight.shadow.camera.far = 500;
   dirLight.shadow.bias = -0.0001;
-  dirLight.shadow.radius = 1.5; // Sharper shadows for mid-day
+  dirLight.shadow.radius = 2.0; // Increased for softer shadows against darker terrain
   scene.add(dirLight);
   
   // Secondary fill light to balance shadows (from opposite direction)
-  const fillLight = new THREE.DirectionalLight(0xd0e6ff, 0.4); // Increased sky blue light
+  const fillLight = new THREE.DirectionalLight(0xd0e6ff, 0.3); // Reduced from 0.4 to 0.3
   fillLight.position.set(-30, 30, -20); // Opposite side from main light
   scene.add(fillLight);
   
   // Add a ground-reflecting light to brighten the terrain
-  const groundLight = new THREE.HemisphereLight(0xffffff, 0x8d7c4d, 0.4);
+  const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.35); // Darker ground reflection
   scene.add(groundLight);
 }
 
@@ -77,7 +77,7 @@ async function init() {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace; // Updated from outputEncoding
   renderer.toneMapping = THREE.ACESFilmicToneMapping; // Recommended for HDR
-  renderer.toneMappingExposure = 0.8; // Increased exposure for better visibility
+  renderer.toneMappingExposure = 0.7; // Reduced to make the scene darker overall
 
   // Add Stats (FPS meter)
   const stats = new Stats();

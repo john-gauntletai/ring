@@ -42,10 +42,10 @@ class FlatTerrain {
       normalScale: new THREE.Vector2(1.5, 1.5),
       side: THREE.DoubleSide,
       wireframe: false,
-      roughness: 0.8,
-      metalness: 0.05,
-      color: 0xe8e8d8,
-      envMapIntensity: 0.2,
+      roughness: 0.9,
+      metalness: 0.02,
+      color: 0x403a32,
+      envMapIntensity: 0.15,
     });
 
     // Create mesh
