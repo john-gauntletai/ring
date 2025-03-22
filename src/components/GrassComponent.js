@@ -788,7 +788,7 @@ class GrassComponent {
         
         // Apply wind to X direction with increased effect at the top
         float heightFactor = heightPercent * heightPercent * heightPercent; // Cubic for stronger top movement
-        pos.x -= finalWindStrength * heightFactor * bendFactor * 1.0; // Reduced multiplier from 1.5 to 1.0
+        pos.x += finalWindStrength * heightFactor * bendFactor * 1.0; // Wind now blows from opposite direction
         
         // Add faster vertical motion
         pos.y += sin(time * 2.5 + worldPos.x * 0.4) * 0.03 * heightFactor * bendFactor;

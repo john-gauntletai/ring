@@ -56,12 +56,12 @@ function generateLight(scene) {
   dirLight.shadow.bias = -0.0001;
   dirLight.shadow.radius = 2.0; // Increased for softer shadows against darker terrain
   scene.add(dirLight);
-  
+
   // Secondary fill light to balance shadows (from opposite direction)
   const fillLight = new THREE.DirectionalLight(0xd0e6ff, 0.3); // Reduced from 0.4 to 0.3
   fillLight.position.set(-30, 30, -20); // Opposite side from main light
   scene.add(fillLight);
-  
+
   // Add a ground-reflecting light to brighten the terrain
   const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.35); // Darker ground reflection
   scene.add(groundLight);
@@ -111,13 +111,13 @@ async function init() {
     player.animations,
     player.mixer
   );
-
+  goldenKnight.model.position.set(0, 0, 0);
   const ENEMY = new EnemyEntity(
     goldenKnight.model,
     goldenKnight.animations,
     goldenKnight.mixer
   );
-  
+
   // Position the golden knight at (150, 0, 0) - now handled in EnemyEntity constructor
   console.log("Golden Knight position:", ENEMY.model.position);
   console.log("Golden Knight animations:", goldenKnight.animations);
@@ -138,37 +138,49 @@ async function init() {
   const combatManager = new CombatManager();
   combatManager.registerEntity(PLAYER);
   combatManager.registerEntity(ENEMY);
-  
+
   // Set references to combat manager in entities
   PLAYER.combatManager = combatManager;
   ENEMY.combatManager = combatManager;
-  
+
   // Enable debug mode with the ` (backtick) key
-  window.addEventListener('keydown', (e) => {
-    if (e.key === '`') {
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "`") {
       combatManager.setDebugMode(!combatManager.debugMode);
-      console.log(`Debug mode: ${combatManager.debugMode ? 'enabled' : 'disabled'}`);
+      console.log(
+        `Debug mode: ${combatManager.debugMode ? "enabled" : "disabled"}`
+      );
     }
   });
 
   // Initialize grass component
   const grass = new GrassComponent(scene, PLAYER);
   grass.init();
-  
+
   // Position grass group at ground level
   grass.grassGroup.position.y = 0;
-  
+
   // Debug: Verify grass is added to scene
   console.log("Grass component initialized:");
-  console.log("- Group added to scene:", scene.children.includes(grass.grassGroup));
-  console.log("- Number of LOD geometries:", grass.geometryLow ? 1 : 0, grass.geometryHigh ? 1 : 0);
-  console.log("- Number of materials:", grass.grassMaterialLow ? 1 : 0, grass.grassMaterialHigh ? 1 : 0);
+  console.log(
+    "- Group added to scene:",
+    scene.children.includes(grass.grassGroup)
+  );
+  console.log(
+    "- Number of LOD geometries:",
+    grass.geometryLow ? 1 : 0,
+    grass.geometryHigh ? 1 : 0
+  );
+  console.log(
+    "- Number of materials:",
+    grass.grassMaterialLow ? 1 : 0,
+    grass.grassMaterialHigh ? 1 : 0
+  );
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
-    console.log(key);
     KEYS[key] = true;
-    
+
     // Special key handling
     if (key === "e") {
       // Light attack with E key
@@ -188,31 +200,27 @@ async function init() {
 
   let clock = new THREE.Clock();
   let logTimer = 0;
-  
+
   function animate() {
     stats.begin();
 
     const delta = clock.getDelta();
     logTimer += delta;
-
     PLAYER.update(delta);
     ENEMY.update(delta, PLAYER);
     CAMERA.update(delta, PLAYER);
-    
+
     // Update combat manager
     combatManager.update(delta);
-    
+
     // Update grass animation and LOD
     // Only show log messages every 10 seconds to avoid console spam
     const shouldLog = logTimer > 10.0;
     if (shouldLog) {
       logTimer = 0;
     }
-    
     grass.update(delta, CAMERA.camera, shouldLog);
-
     renderer.render(scene, CAMERA.camera);
-
     stats.end();
   }
 

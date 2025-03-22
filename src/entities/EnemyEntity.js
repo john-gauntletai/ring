@@ -31,6 +31,7 @@ class EnemyEntity {
     this.isBlocking = false;
     this.lastAttackTime = 0;
     this.attackCooldown = 0; // current cooldown timer
+    this.attackCallbackSet = false;
     
     // Animation properties
     this.currentAction = null;
@@ -56,7 +57,7 @@ class EnemyEntity {
   init() {
     // Position the golden-knight at initial coordinates (150, 0, 0)
     this.model.position.set(80, 0, 0);
-    
+
     // Clone and store default material
     if (this.model.material) {
       // For a single material
@@ -103,11 +104,69 @@ class EnemyEntity {
     this.detectionSphere.visible = false; // Hide by default, shown in debug mode
     
     // Initialize animations if available
-    if (this.animations && Object.keys(this.animations).length > 0) {
-      this.playAnimation('idle');
-    }
+    this.setupAnimations();
     
     console.log("Golden Knight initialized at position:", this.model.position);
+  }
+  
+  /**
+   * Initialize animations if available
+   */
+  setupAnimations() {
+    if (!this.animations) {
+      console.warn("No animations available for Golden Knight");
+      return;
+    }
+    
+    // Setup animation sequences
+    Object.keys(this.animations).forEach(animationName => {
+      const animationData = this.animations[animationName];
+      if (animationData && animationData.action) {
+        // Set loop mode based on animation type
+        if (["comboAttack", "impact", "death"].includes(animationName)) {
+          animationData.action.loop = THREE.LoopOnce;
+          animationData.action.clampWhenFinished = true;
+        } else {
+          animationData.action.loop = THREE.LoopRepeat;
+        }
+      }
+    });
+    
+    // Set up animation callbacks for non-looping animations
+    this.setupAnimationCallbacks();
+    
+    // Start with idle animation
+    this.playAnimation('idle');
+  }
+  
+  /**
+   * Set up callbacks for animation completion
+   */
+  setupAnimationCallbacks() {
+    // Set up callback for attack animation completion
+    if (this.animations.comboAttack && this.animations.comboAttack.action) {
+      const attackAction = this.animations.comboAttack.action;
+      
+      // Remove any existing listeners to avoid duplicates
+      attackAction.getMixer().removeEventListener('finished', this.onAttackFinished);
+      
+      // Create a bound callback to handle animation completion
+      this.onAttackFinished = (e) => {
+        if (e.action === attackAction) {
+          console.log("Enemy attack animation finished");
+          this.isAttacking = false;
+          this.attackCooldown = this.data.attackCooldown;
+          
+          // Return to idle animation
+          if (this.currentState === "ATTACK") {
+            this.playAnimation('idle');
+          }
+        }
+      };
+      
+      // Add the event listener to the mixer
+      attackAction.getMixer().addEventListener('finished', this.onAttackFinished);
+    }
   }
   
   /**
@@ -414,16 +473,22 @@ class EnemyEntity {
     // Face the player
     this.faceTarget();
     
-    // If not already attacking, start attack
-    if (this.attackCooldown <= 0) {
-      // Play attack animation
-      this.playAnimation('attack');
+    // Check if we're currently attacking or in cooldown
+    if (this.isAttacking) {
+      // Let the attack animation finish - handled by animation callback
+      return;
+    } else if (this.attackCooldown <= 0) {
+      // Start a new attack
+      this.isAttacking = true;
       
-      // Create hitbox after a delay
+      // Play attack animation - its completion will be handled by the animation callback
+      this.playAnimation('comboAttack');
+      
+      // Create hitbox after a delay to match animation
       if (this.combatManager) {
         setTimeout(() => {
           // Only create hitbox if still in attack state
-          if (this.currentState === "ATTACK") {
+          if (this.currentState === "ATTACK" && this.isAttacking) {
             const hitboxOffset = new THREE.Vector3(0, 1, -1.5);
             const hitboxSize = new THREE.Vector3(1.2, 1, 1.5);
             
@@ -438,19 +503,11 @@ class EnemyEntity {
             
             console.log("Created enemy attack hitbox");
           }
-        }, 400); // Delay hitbox creation to match animation
+        }, 400); // Delay hitbox creation to match animation timing
       }
-      
-      // Set attack cooldown
-      this.attackCooldown = this.data.attackCooldown;
     } else {
-      // Reduce attack cooldown
+      // Still in cooldown, reduce timer
       this.attackCooldown -= delta;
-      
-      // Play idle animation while waiting for cooldown
-      if (this.attackCooldown > this.data.attackCooldown - 0.5) {
-        this.playAnimation('idle');
-      }
     }
   }
 }
