@@ -30,17 +30,69 @@ class PlayerEntity {
     this.minHeight = 0;
     this.maxHeight = 3;
     this.heightOffset = 0;
+    
+    // Combat properties
+    this.health = 100;
+    this.maxHealth = 100;
+    this.stamina = 100;
+    this.maxStamina = 100;
+    this.attackPower = 25;
+    this.currentState = "IDLE"; // IDLE, ATTACKING, BLOCKING, DODGE, STAGGERED, DEAD
+    this.invulnerable = false;
+    this.staggerTime = 0;
+    this.attackCooldown = 0;
+    
+    // References
+    this.combatManager = null;
 
     console.log('this.animations', this.animations);
-    // this.init();
+    this.init();
   }
 
   init() {
-    this.markAsLoopOnce(this.animations.attack.action);
     this.markAsLoopOnce(this.animations.slash.action);
-    this.markAsLoopOnce(this.animations["jump attack"].action);
+    this.markAsLoopOnce(this.animations.jumpAttack.action);
     this.markAsLoopOnce(this.animations.block.action);
     this.markAsLoopOnce(this.animations.death.action);
+    
+    // Set up animation complete callbacks
+    this.setupAnimationCallbacks();
+  }
+  
+  // Set up callbacks for animation completion
+  setupAnimationCallbacks() {
+    if (this.animations.attack) {
+      this.animations.attack.action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations.attack.action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+    
+    if (this.animations.slash) {
+      this.animations.slash.action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations.slash.action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+    
+    if (this.animations["jump attack"]) {
+      this.animations["jump attack"].action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations["jump attack"].action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+  }
+  
+  // Called when attack animations complete
+  onAttackComplete() {
+    this.isAttacking = false;
+    this.currentAttack = null;
+    this.attackAnimationComplete = true;
+    this.currentState = "IDLE";
+    console.log("Attack complete");
   }
 
   markAsLoopOnce(action) {
@@ -62,9 +114,153 @@ class PlayerEntity {
     }
     this.activeAction = action;
   }
+  
+  // Perform a light attack
+  attack() {
+    if (this.isAttacking || this.currentState === "STAGGERED" || this.currentState === "DEAD" || this.attackCooldown > 0) {
+      return;
+    }
+    
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "light";
+    
+    // Play attack animation
+    this.fadeToAction(this.animations.attack.action, false);
+    
+    // Create hitbox in front of player after a slight delay (mid animation)
+    if (this.combatManager) {
+      // Schedule hitbox creation
+      setTimeout(() => {
+        const hitboxOffset = new THREE.Vector3(0, 1, -1.5); // In front of player (player faces -Z)
+        const hitboxSize = new THREE.Vector3(1.5, 1, 2); // Size of the hitbox
+        
+        this.combatManager.createHitbox(
+          this.model,           // Parent object
+          hitboxOffset,         // Position offset
+          hitboxSize,           // Size
+          this.attackPower,     // Damage
+          0.2,                 // Duration in seconds
+          { owner: this, knockback: 2 }  // Additional options
+        );
+        
+        console.log("Created player attack hitbox");
+      }, 300); // 300ms into the animation
+    }
+    
+    // Set attack cooldown
+    this.attackCooldown = 0.8; // 0.8 seconds before next attack
+  }
+  
+  // Perform a heavy attack
+  heavyAttack() {
+    if (this.isAttacking || this.currentState === "STAGGERED" || this.currentState === "DEAD" || this.attackCooldown > 0) {
+      return;
+    }
+    
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "heavy";
+    
+    // Play heavy attack animation
+    this.fadeToAction(this.animations.slash.action, false);
+    
+    // Create larger hitbox in front of player after a delay
+    if (this.combatManager) {
+      // Schedule hitbox creation
+      setTimeout(() => {
+        const hitboxOffset = new THREE.Vector3(0, 1, -2); // Further in front for heavy attack
+        const hitboxSize = new THREE.Vector3(2.5, 1.2, 2.5); // Larger size for heavy attack
+        
+        this.combatManager.createHitbox(
+          this.model,           // Parent object
+          hitboxOffset,         // Position offset
+          hitboxSize,           // Size
+          this.attackPower * 1.5, // Higher damage
+          0.3,                 // Duration in seconds
+          { owner: this, knockback: 4 }  // More knockback
+        );
+        
+        console.log("Created player heavy attack hitbox");
+      }, 500); // 500ms into the animation (heavy attack has longer windup)
+    }
+    
+    // Set attack cooldown (longer for heavy attack)
+    this.attackCooldown = 1.2; // 1.2 seconds before next attack
+  }
+  
+  // Take damage from an attack
+  takeDamage(damage) {
+    if (this.invulnerable || this.currentState === "DEAD") {
+      return;
+    }
+    
+    this.health -= damage;
+    console.log(`Player took ${damage} damage. Health: ${this.health}/${this.maxHealth}`);
+    
+    // Check for death
+    if (this.health <= 0) {
+      this.health = 0;
+      this.die();
+      return;
+    }
+    
+    // Get staggered
+    this.getStaggered();
+  }
+  
+  // Enter staggered state
+  getStaggered() {
+    this.currentState = "STAGGERED";
+    this.staggerTime = 0.5; // Staggered for 0.5 seconds
+    
+    // Play stagger animation (e.g., flinch or hit reaction)
+    // For now we'll use the block animation as a placeholder
+    this.fadeToAction(this.animations.block.action, false);
+  }
+  
+  // Die
+  die() {
+    this.currentState = "DEAD";
+    this.fadeToAction(this.animations.death.action, false);
+    console.log("Player died");
+  }
+  
+  // Set debug visualization mode
+  setDebugVisualization(enabled) {
+    // No specific debug visualization for player currently
+    console.log(`Player debug visualization: ${enabled ? 'enabled' : 'disabled'}`);
+  }
 
 
   update(delta) {
+    // Update cooldown timers
+    if (this.attackCooldown > 0) {
+      this.attackCooldown -= delta;
+    }
+    
+    // Handle staggered state
+    if (this.currentState === "STAGGERED") {
+      this.staggerTime -= delta;
+      if (this.staggerTime <= 0) {
+        this.currentState = "IDLE";
+      }
+      
+      // Early return - no movement or attacks while staggered
+      return;
+    }
+    
+    // Skip remaining logic if dead or attacking
+    if (this.currentState === "DEAD" || this.isAttacking) {
+      // Update the mixer
+      if (this.mixer) {
+        this.mixer.update(delta);
+      }
+      return;
+    }
+
     // Movement and rotation logic
     const isMoving = KEYS.w || KEYS.s || KEYS.a || KEYS.d;
     const isWalking = KEYS.shift;

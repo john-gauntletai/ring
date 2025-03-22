@@ -7,6 +7,7 @@ import Camera from "./entities/Camera.js";
 import KEYS from "./_lib/keys";
 import GrassComponent from "./components/GrassComponent.js";
 import FlatTerrain from "./components/FlatTerrain.js";
+import CombatManager from "./combat/CombatManager.js";
 
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 
@@ -116,6 +117,9 @@ async function init() {
     goldenKnight.animations,
     goldenKnight.mixer
   );
+  
+  // Position the golden knight at (150, 0, 0) - now handled in EnemyEntity constructor
+  console.log("Golden Knight position:", ENEMY.model.position);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -124,6 +128,27 @@ async function init() {
   // Add axes helper to player
   const axesHelperPlayer = new THREE.AxesHelper(5);
   PLAYER.model.add(axesHelperPlayer);
+
+  // Debug visualization for enemy too
+  const axesHelperEnemy = new THREE.AxesHelper(5);
+  ENEMY.model.add(axesHelperEnemy);
+
+  // Initialize combat manager
+  const combatManager = new CombatManager();
+  combatManager.registerEntity(PLAYER);
+  combatManager.registerEntity(ENEMY);
+  
+  // Set references to combat manager in entities
+  PLAYER.combatManager = combatManager;
+  ENEMY.combatManager = combatManager;
+  
+  // Enable debug mode with the ` (backtick) key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '`') {
+      combatManager.setDebugMode(!combatManager.debugMode);
+      console.log(`Debug mode: ${combatManager.debugMode ? 'enabled' : 'disabled'}`);
+    }
+  });
 
   // Initialize grass component
   const grass = new GrassComponent(scene, PLAYER);
@@ -142,6 +167,15 @@ async function init() {
     const key = event.key.toLowerCase();
     console.log(key);
     KEYS[key] = true;
+    
+    // Special key handling
+    if (key === "e") {
+      // Light attack with E key
+      PLAYER.attack();
+    } else if (key === "q") {
+      // Heavy attack with Q key
+      PLAYER.heavyAttack();
+    }
   });
 
   window.addEventListener("keyup", (event) => {
@@ -161,7 +195,11 @@ async function init() {
     logTimer += delta;
 
     PLAYER.update(delta);
+    ENEMY.update(delta, PLAYER);
     CAMERA.update(delta, PLAYER);
+    
+    // Update combat manager
+    combatManager.update(delta);
     
     // Update grass animation and LOD
     // Only show log messages every 2 seconds to avoid console spam
