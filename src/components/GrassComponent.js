@@ -119,7 +119,7 @@ class GrassComponent {
       uniforms: {
         time: { value: 0.0 },
         playerPosition: { value: new THREE.Vector3() },
-        sunDirection: { value: new THREE.Vector3(0.75, 0.6, 0.15).normalize() },
+        sunDirection: { value: new THREE.Vector3(1.0, 0.5, -0.05).normalize() },
         sunColor: { value: new THREE.Vector3(1.0, 0.9, 0.7) },
         terrainSize: { value: GRASS_PATCH_SIZE * 10 },
         maxHeight: { value: GRASS_HEIGHT },
@@ -769,6 +769,7 @@ class GrassComponent {
       varying float vDistanceToCamera;
       varying vec3 vNormal;
       varying vec3 vPosition;
+      varying float vTipType;
       
       // Noise function for wind effect
       float noise(vec2 st) {
@@ -909,37 +910,137 @@ class GrassComponent {
         // Pass color to fragment shader (without random jitter)
         vColor = instanceColor;
         
-        // Create very sharp tips for the blades
-        float tipSharpness = 6.0; // Higher value means even sharper tip
+        // Determine tip type based on instanceRandom
+        // 0: Sharp tip (default)
+        // 1: Flat tip
+        // 2: Diagonal tip
+        // 3: Broken tip
+        float tipRandom = fract(instanceRandom * 7.83 + sin(instancePosition.x * 13.37 + instancePosition.z * 8.41) * 43.21);
+        float tipType = 0.0;
         
-        // Only apply tip thinning to the top 40% of the blade
+        // Distribution: 60% sharp, 15% flat, 15% diagonal, 10% broken
+        if (tipRandom > 0.6 && tipRandom <= 0.75) {
+            tipType = 1.0; // Flat tip
+        } else if (tipRandom > 0.75 && tipRandom <= 0.9) {
+            tipType = 2.0; // Diagonal tip
+        } else if (tipRandom > 0.9) {
+            tipType = 3.0; // Broken tip
+        }
+        
+        // Pass tip type to fragment shader
+        vTipType = tipType;
+        
+        // Only apply tip shaping to the top 40% of the blade
         float tipStartHeight = 0.6;
         float tipThinning = 1.0;
+        float tipEffect = 1.0;
         
         if (heightPercent > tipStartHeight) {
-          // Calculate how far into the tip section we are (0 at start, 1 at very top)
-          float tipProgress = (heightPercent - tipStartHeight) / (1.0 - tipStartHeight);
-          // Apply progressive thinning
-          tipThinning = 1.0 - pow(tipProgress, tipSharpness);
+            // Calculate how far into the tip section we are (0 at start, 1 at very top)
+            float tipProgress = (heightPercent - tipStartHeight) / (1.0 - tipStartHeight);
+            
+            // Apply different tip shapes based on the tip type
+            if (tipType < 0.5) {
+                // SHARP TIP (Default)
+                // Create very sharp tips for the blades
+                float tipSharpness = 6.0; // Higher value means even sharper tip
+                tipThinning = 1.0 - pow(tipProgress, tipSharpness);
+                
+                // Make tip converge to a single point at the very top
+                if (heightPercent > 0.9) { // Start point convergence later for better shape
+                    // Force blades to approach 0 at the very top (creating a point)
+                    float pointFactor = (heightPercent - 0.9) / 0.1; // 0 at 0.9, 1 at 1.0
+                    tipThinning *= (1.0 - pointFactor);
+                }
+            } 
+            else if (tipType < 1.5) {
+                // FLAT TIP
+                // Maintain reasonable width until very end, then cut off
+                tipThinning = heightPercent > 0.95 ? 0.0 : 0.8;
+                
+                // Create a slight random offset for slight variation in flat tips
+                float flatRandom = fract(instanceRandom * 3.14159);
+                tipThinning *= (0.9 + 0.2 * flatRandom);
+            }
+            else if (tipType < 2.5) {
+                // DIAGONAL TIP
+                // Create a diagonal tip by scaling one side more than the other
+                // Determine the diagonal direction randomly
+                float diagDirection = fract(instanceRandom * 9.876) > 0.5 ? 1.0 : -1.0;
+                
+                // For front-back plane (X axis)
+                if (abs(position.x) > 0.01) {
+                    // Create diagonal effect on x-axis
+                    float diagEffect = mix(1.0, 0.0, tipProgress);
+                    // Apply diagonal offset, more at the tip
+                    pos.x += diagDirection * 0.05 * tipProgress;
+                    
+                    // Different diagonal scaling based on which side of the blade
+                    if ((position.x > 0.0 && diagDirection > 0.0) || (position.x < 0.0 && diagDirection < 0.0)) {
+                        tipThinning = mix(1.0, 0.1, tipProgress);
+                    } else {
+                        tipThinning = mix(1.0, 0.6, tipProgress);
+                    }
+                }
+                // For side-to-side plane (Z axis)
+                else if (abs(position.z) > 0.01) {
+                    // Create diagonal effect on z-axis
+                    float diagEffect = mix(1.0, 0.0, tipProgress);
+                    // Apply diagonal offset, more at the tip
+                    pos.z += diagDirection * 0.05 * tipProgress;
+                    
+                    // Different diagonal scaling based on which side of the blade
+                    if ((position.z > 0.0 && diagDirection > 0.0) || (position.z < 0.0 && diagDirection < 0.0)) {
+                        tipThinning = mix(1.0, 0.1, tipProgress);
+                    } else {
+                        tipThinning = mix(1.0, 0.6, tipProgress);
+                    }
+                }
+            }
+            else {
+                // BROKEN TIP
+                // Create a broken/bent tip effect
+                float breakPoint = 0.7 + fract(instanceRandom * 2.718) * 0.2; // Break point varies between 70-90% of height
+                float breakStrength = 0.15 + fract(instanceRandom * 1.618) * 0.25; // Strength of the break
+                
+                if (heightPercent > breakPoint) {
+                    // Calculate how far we're into the broken section
+                    float breakProgress = (heightPercent - breakPoint) / (1.0 - breakPoint);
+                    
+                    // Determine random break direction
+                    float breakAngle = fract(instanceRandom * 6.28) * 3.14159;
+                    
+                    // Apply the break as an offset in a random direction
+                    float breakX = cos(breakAngle) * breakStrength * breakProgress;
+                    float breakZ = sin(breakAngle) * breakStrength * breakProgress;
+                    
+                    pos.x += breakX;
+                    pos.z += breakZ;
+                    
+                    // Sometimes bend slightly downward for drooping effect
+                    if (fract(instanceRandom * 5.432) > 0.7) {
+                        pos.y -= breakProgress * 0.1;
+                    }
+                    
+                    // Add some twist effect
+                    float twistFactor = fract(instanceRandom * 8.765) - 0.5;
+                    if (abs(position.x) > 0.01) {
+                        pos.z += twistFactor * 0.05 * breakProgress;
+                    } else if (abs(position.z) > 0.01) {
+                        pos.x += twistFactor * 0.05 * breakProgress;
+                    }
+                    
+                    // Thinning is less extreme for broken tips - they break rather than taper
+                    tipThinning = mix(1.0, 0.5, breakProgress);
+                }
+            }
         }
         
-        // Adjust width based on height (thinner at top to create a sharp point)
-        // Apply the thinning to whichever component is non-zero (to preserve the cross)
+        // Apply the tipThinning to whichever component is non-zero (to preserve the cross)
         if (abs(position.x) > 0.01) {
-          pos.x *= tipThinning;
+            pos.x *= tipThinning;
         } else if (abs(position.z) > 0.01) {
-          pos.z *= tipThinning;
-        }
-        
-        // Make tip converge to a single point at the very top
-        if (heightPercent > 0.9) { // Start point convergence later for better shape
-          // Force blades to approach 0 at the very top (creating a point)
-          float pointFactor = (heightPercent - 0.9) / 0.1; // 0 at 0.9, 1 at 1.0
-          if (abs(position.x) > 0.01) {
-            pos.x *= (1.0 - pointFactor);
-          } else if (abs(position.z) > 0.01) {
-            pos.z *= (1.0 - pointFactor);
-          }
+            pos.z *= tipThinning;
         }
         
         // Pass the actual vertex normal for better lighting from all angles
@@ -976,6 +1077,7 @@ class GrassComponent {
       varying float vDistanceToCamera;
       varying vec3 vNormal;
       varying vec3 vPosition;
+      varying float vTipType;
       
       void main() {
         // Basic lighting calculation with sun direction
@@ -1121,6 +1223,17 @@ class GrassComponent {
         // Apply color gradient with enhanced ambient occlusion
         vec3 color = mix(rootColor, tipColor, aoGradient);
         
+        // Adjust color for broken tips - slightly duller/browner
+        if (vTipType > 2.5 && heightRatio > 0.7) {
+          // Only apply to the broken part of the tip
+          float brownFactor = (heightRatio - 0.7) / 0.3;
+          
+          // Reduce green, slightly increase red for a more dried-out look
+          color.g *= (1.0 - brownFactor * 0.2);
+          color.r *= (1.0 + brownFactor * 0.1);
+          color.b *= (1.0 - brownFactor * 0.15);
+        }
+        
         // Add slight color variation based on time and position for subtle movement effect
         float colorNoise = sin(time * 0.5 + vPosition.x * 0.1 + vPosition.z * 0.1) * 0.02;
         color.g += colorNoise;  // Subtle green variation
@@ -1138,29 +1251,81 @@ class GrassComponent {
         float ambientOcclusion = 0.3 + 0.7 * aoGradient;
         ambient *= ambientOcclusion;
         
-        // Diffuse light with reduced view dependency
-        // Calculate diffuse lighting from sun direction for stronger morning rays
-        float mainDiff = max(dot(normal, normalize(sunDirection)), 0.0);
+        // Define light direction
+        vec3 lightDir = normalize(sunDirection);
+        
+        // Diffuse light with consistent lighting from sun direction
+        // Calculate diffuse lighting from sun direction
+        float mainDiff = max(dot(normal, lightDir), 0.0);
         
         // Add some light from above for more consistent illumination
         float topDiff = max(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0) * 0.3;
         
-        // Add a small amount of light from all directions
-        float hemisphereDiff = 0.5 + 0.5 * dot(normal, vec3(0.0, 1.0, 0.0));
+        // Add a light contribution from other directions for more balanced lighting
+        float sideDiff = max(0.0, dot(normal, vec3(0.0, 0.0, 1.0))) * 0.15;
         
-        // Combine the different lighting sources with weights adjusted for morning light
-        vec3 diffuse = (mainDiff * 0.5 + topDiff * 0.2 + hemisphereDiff * 0.2) * sunColor;
+        // Combine the different lighting sources
+        vec3 diffuse = (mainDiff * 0.6 + topDiff + sideDiff) * sunColor;
         
         // Enhance base darkening by reducing diffuse light contribution near the ground
         diffuse *= 0.3 + 0.7 * aoGradient;
         
-        // Enhanced backlighting for morning sun rim effect
-        float backFactor = max(0.0, -dot(normal, normalize(sunDirection)));
-        float backlight = 0.25 * pow(backFactor, 2.0); // Stronger rim lighting
-        vec3 backlighting = backlight * vec3(1.0, 0.9, 0.7); // Warm backlight color
+        // ----------------------------------------------------
+        // COMPLETELY VIEW-INDEPENDENT SPECULAR CALCULATION
+        // ----------------------------------------------------
         
-        // Apply lighting to color
-        color = color * (ambient + diffuse) + backlighting * 0.3;
+        // Create a fixed reflection direction optimized for the sun direction
+        // This ensures highlights are consistent regardless of viewing angle
+        
+        // Define specular intensity based on how much the blade faces the light
+        float facingLight = max(0.0, dot(normal, lightDir));
+        
+        // Create an anisotropic highlight along the blade
+        // Using the up vector and cross product to create a binormal along the blade
+        vec3 upVector = vec3(0.0, 1.0, 0.0);
+        vec3 binormal = normalize(cross(normal, upVector));
+        
+        // Calculate anisotropic highlight based on blade orientation to light
+        float anisotropicFactor = max(0.0, dot(binormal, lightDir));
+        
+        // Modify the highlight to be stronger at the top of the blade
+        float heightSpecularFactor = smoothstep(0.3, 0.8, heightRatio);
+        
+        // Calculate fixed specular term from light alignment with blade
+        // Higher power for sharper, more localized highlights
+        float specPower = 12.0;
+        float specular1 = pow(facingLight, specPower) * 0.6;
+        
+        // Calculate anisotropic highlight along blade
+        float specular2 = pow(anisotropicFactor, 8.0) * 0.4;
+        
+        // Combine the two specular components
+        float spec = (specular1 + specular2) * heightSpecularFactor;
+        
+        // Special handling for dried/white grass - stronger highlights
+        float specIntensity = 0.6; // Base specular intensity
+        if (vColor.r > 0.6 && vColor.g > 0.6) {
+            // Whiter grass gets stronger highlights
+            specIntensity = 1.2;
+            // Additional highlight for white grass
+            spec = spec * 1.5;
+        }
+        
+        // Calculate final specular highlight
+        vec3 specular = specIntensity * spec * sunColor;
+        
+        // Add positional variation to break up uniform specular pattern
+        // This simulates the random orientation of individual blades
+        float posNoise = sin(vPosition.x * 2.5 + vPosition.z * 2.1) * 0.5 + 0.5;
+        specular *= 0.7 + 0.6 * posNoise;
+        
+        // Enhanced backlighting where sun hits from behind
+        float backFactor = max(0.0, -dot(normal, lightDir));
+        float backlight = 0.2 * pow(backFactor, 1.5); // Rim lighting
+        vec3 backlighting = backlight * sunColor;
+        
+        // Apply all lighting components
+        color = color * (ambient + diffuse) + backlighting * 0.4 + specular;
         
         // Ensure minimum brightness to prevent grass from getting too dark
         float luminance = dot(color, vec3(0.299, 0.587, 0.114));

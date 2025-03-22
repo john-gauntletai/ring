@@ -8,7 +8,7 @@ CameraControls.install( { THREE: THREE } );
 
 const ORBIT_SPEED = 0.8;
 const OVER_SHOULDER_DISTANCE = 3;
-const DISTANCE_TO_PLAYER = 5.5;
+const DISTANCE_TO_PLAYER = 5;
 
 class Camera {
   constructor(playerEntity, renderer) {
