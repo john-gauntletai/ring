@@ -6,10 +6,10 @@ const GRASS_SEGMENTS_LOW = 1;    // Low LOD segments
 const GRASS_SEGMENTS_HIGH = 4;   // Reduced high LOD segments for better performance
 const GRASS_VERTICES_LOW = (GRASS_SEGMENTS_LOW + 1) * 2;
 const GRASS_VERTICES_HIGH = (GRASS_SEGMENTS_HIGH + 1) * 2;
-const GRASS_LOD_DIST = 30;       // Increased LOD distance for better performance
+const GRASS_LOD_DIST = 10;       // Increased LOD distance for better performance
 const GRASS_MAX_DIST = 150;      // Reduced max distance to avoid unnecessary rendering
 const GRASS_PATCH_SIZE = 10;     // Size of each grass patch
-const GRASS_WIDTH = 0.045;        // Increased width from 0.02 to 0.03 for slightly thicker blades
+const GRASS_WIDTH = 0.05;        // Increased width from 0.02 to 0.03 for slightly thicker blades
 const GRASS_HEIGHT = 0.9;        // Increased grass blade height from 0.9 to 1.1 for taller grass
 // More reasonable patch radius for performance while ensuring coverage
 const PATCH_RADIUS = 9;         // Standard patch radius for areas in front of player
