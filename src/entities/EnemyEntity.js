@@ -16,7 +16,7 @@ class EnemyEntity {
       maxHealth: 500,
       name: "The Golden Knight",
       isHostile: false,
-      detectionRadius: 50,
+      detectionRadius: 20,
       attackRange: 3,
       attackDamage: 15,
       attackCooldown: 2.0
@@ -56,7 +56,7 @@ class EnemyEntity {
    */
   init() {
     // Position the golden-knight at initial coordinates (150, 0, 0)
-    this.model.position.set(80, 0, 0);
+    this.model.position.set(100, 0, 0);
     this.model.rotation.y = Math.PI * 0.5;
 
     // Clone and store default material

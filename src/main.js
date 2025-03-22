@@ -100,9 +100,9 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, kingdom] = await Promise.all([
+  const [player, goldenKnight] = await Promise.all([
     loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
-    // loadModel("/assets/models/golden-knight-out2.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/golden-knight-out2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/kingdom.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
@@ -113,11 +113,11 @@ async function init() {
     player.mixer
   );
 
-  // const ENEMY = new EnemyEntity(
-  //   goldenKnight.model,
-  //   goldenKnight.animations,
-  //   goldenKnight.mixer
-  // );
+  const ENEMY = new EnemyEntity(
+    goldenKnight.model,
+    goldenKnight.animations,
+    goldenKnight.mixer
+  );
 
   // kingdom.model.position.set(30, -60, 0);
   // kingdom.model.rotation.y = Math.PI;
@@ -132,11 +132,11 @@ async function init() {
   // Initialize combat manager
   const combatManager = new CombatManager();
   combatManager.registerEntity(PLAYER);
-  // combatManager.registerEntity(ENEMY);
+  combatManager.registerEntity(ENEMY);
 
   // Set references to combat manager in entities
   PLAYER.combatManager = combatManager;
-  // ENEMY.combatManager = combatManager;
+  ENEMY.combatManager = combatManager;
 
   // Enable debug mode with the ` (backtick) key
   window.addEventListener("keydown", (e) => {
@@ -185,7 +185,7 @@ async function init() {
     const delta = clock.getDelta();
     logTimer += delta;
     PLAYER.update(delta);
-    // ENEMY.update(delta, PLAYER);
+    ENEMY.update(delta, PLAYER);
     CAMERA.update(delta, PLAYER);
 
     // Update combat manager
