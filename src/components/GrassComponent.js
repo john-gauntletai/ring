@@ -9,7 +9,7 @@ const GRASS_VERTICES_HIGH = (GRASS_SEGMENTS_HIGH + 1) * 2;
 const GRASS_LOD_DIST = 20;       // Increased LOD distance for better performance
 const GRASS_MAX_DIST = 150;      // Reduced max distance to avoid unnecessary rendering
 const GRASS_PATCH_SIZE = 10;     // Size of each grass patch
-const GRASS_WIDTH = 0.03;        // Increased width from 0.02 to 0.03 for slightly thicker blades
+const GRASS_WIDTH = 0.04;        // Increased width from 0.02 to 0.03 for slightly thicker blades
 const GRASS_HEIGHT = 1.1;        // Increased grass blade height from 0.9 to 1.1 for taller grass
 // More reasonable patch radius for performance while ensuring coverage
 const PATCH_RADIUS = 15;         // Reduced radius for better performance
@@ -222,11 +222,43 @@ class GrassComponent {
       // Width variation for thicker blades
       instanceWidths[i] = 0.6 + Math.random() * 0.2;
       
-      // Adjust color for early morning light - slightly more yellow-green
-      // Morning sun brings out the yellow tones in grass
-      instanceColors[i * 3] = 0.12 + Math.random() * 0.05; // red (slightly increased for yellow tone)
-      instanceColors[i * 3 + 1] = 0.45 + Math.random() * 0.15; // green (same)
-      instanceColors[i * 3 + 2] = 0.03 + Math.random() * 0.04; // blue (reduced for more yellow appearance)
+      // Choose a color variation type based on random value
+      const colorType = Math.random();
+      
+      if (colorType < 0.2) {
+        // Main grass color - lush green (20% of blades)
+        instanceColors[i * 3] = 0.07 + Math.random() * 0.05;     // R: 0.07-0.12 (reduced red for more intense green)
+        instanceColors[i * 3 + 1] = 0.48 + Math.random() * 0.14; // G: 0.48-0.62 (increased green)
+        instanceColors[i * 3 + 2] = 0.02 + Math.random() * 0.03; // B: 0.02-0.05 (minimal blue)
+      } 
+      else if (colorType < 0.6) {
+        // Yellowish-green variation (40% of blades)
+        instanceColors[i * 3] = 0.22 + Math.random() * 0.08;     // R: 0.22-0.30 (increased red for more yellow)
+        instanceColors[i * 3 + 1] = 0.42 + Math.random() * 0.14; // G: 0.42-0.56 (similar green)
+        instanceColors[i * 3 + 2] = 0.01 + Math.random() * 0.02; // B: 0.01-0.03 (minimal blue)
+      }
+      else if (colorType < 0.85) {
+        // Darker green variation (25% of blades)
+        instanceColors[i * 3] = 0.04 + Math.random() * 0.04;     // R: 0.04-0.08 (minimal red for darker green)
+        instanceColors[i * 3 + 1] = 0.30 + Math.random() * 0.10; // G: 0.30-0.40 (reduced green for darker green)
+        instanceColors[i * 3 + 2] = 0.01 + Math.random() * 0.02; // B: 0.01-0.03 (minimal blue)
+      }
+      else {
+        // Light sun-bleached tips (15% of blades)
+        instanceColors[i * 3] = 0.28 + Math.random() * 0.10;     // R: 0.28-0.38 (increased red for more golden)
+        instanceColors[i * 3 + 1] = 0.52 + Math.random() * 0.15; // G: 0.52-0.67 (increased green)
+        instanceColors[i * 3 + 2] = 0.06 + Math.random() * 0.08; // B: 0.06-0.14 (slightly more blue for beige tint)
+      }
+      
+      // Add positional variation - grass near patch edges slightly different color
+      const distFromCenter = Math.sqrt(gridX * gridX + gridZ * gridZ) * 2; // 0 at center, ~1 at edges
+      
+      // Edges slightly more yellow/dry
+      if (distFromCenter > 0.7) {
+        const edgeFactor = (distFromCenter - 0.7) / 0.3; // 0-1 scale for outer 30%
+        instanceColors[i * 3] += edgeFactor * 0.08; // More red at edges
+        instanceColors[i * 3 + 1] -= edgeFactor * 0.05; // Less green at edges
+      }
       
       // Moderate bend factor for less dramatic wind movement
       instanceBend[i] = 0.3 + Math.random() * 0.4;
@@ -756,6 +788,91 @@ class GrassComponent {
         // Basic lighting calculation with sun direction
         vec3 normal = normalize(vNormal);
         
+        // Apply height-based color variation - greener at bottom, slightly yellower at top
+        float heightRatio = clamp(vPosition.y / 1.1, 0.0, 1.0); // Height relative to max grass height
+        
+        // Base color from the instance attribute
+        vec3 baseColor = vColor;
+        
+        // Enhanced color variations based on height
+        vec3 tipColor, rootColor;
+        
+        // For main lush green grass blades (20%)
+        if (vColor.g > 0.45 && vColor.r < 0.15) {
+          // Lush green grass - maintain intense green with minimal yellowing at tips
+          tipColor = vec3(
+            baseColor.r + 0.06, 
+            baseColor.g + 0.08, 
+            baseColor.b + 0.02
+          );
+          
+          // Darker at the roots
+          rootColor = vec3(
+            baseColor.r * 0.65,
+            baseColor.g * 0.75,
+            baseColor.b * 0.8
+          );
+        }
+        // For yellowish-green grass blades (40%)
+        else if (vColor.r > 0.2) {
+          // Pronounced yellow tips for dry grass
+          tipColor = vec3(
+            baseColor.r + 0.12,
+            baseColor.g + 0.04,
+            baseColor.b + 0.01
+          );
+          
+          // Slightly darker, more green at roots
+          rootColor = vec3(
+            baseColor.r * 0.75,
+            baseColor.g * 0.85,
+            baseColor.b * 0.7
+          );
+        }
+        // For darker green grass blades (25%)
+        else if (vColor.g < 0.4) {
+          // Slightly lighter tips
+          tipColor = vec3(
+            baseColor.r + 0.03,
+            baseColor.g + 0.08,
+            baseColor.b + 0.01
+          );
+          
+          // Very dark roots
+          rootColor = vec3(
+            baseColor.r * 0.55,
+            baseColor.g * 0.65,
+            baseColor.b * 0.7
+          );
+        }
+        // For light sun-bleached blades (15%)
+        else {
+          // Very light golden tips
+          tipColor = vec3(
+            baseColor.r + 0.15,
+            baseColor.g + 0.08,
+            baseColor.b + 0.05
+          );
+          
+          // More green at the base
+          rootColor = vec3(
+            baseColor.r * 0.7,
+            baseColor.g * 0.9,
+            baseColor.b * 0.65
+          );
+        }
+        
+        // Create a non-linear gradient from root to tip
+        // Using smoothstep for a more natural transition
+        float tipInfluence = smoothstep(0.0, 0.9, heightRatio);  // More sudden change near top
+        
+        // Apply color gradient - mix between root color and tip color
+        vec3 color = mix(rootColor, tipColor, tipInfluence);
+        
+        // Add slight color variation based on time and position for subtle movement effect
+        float colorNoise = sin(time * 0.5 + vPosition.x * 0.1 + vPosition.z * 0.1) * 0.02;
+        color.g += colorNoise;  // Subtle green variation
+        
         // Ambient light - adjusted for early morning lighting
         float ambientStrength = 0.5; // Slightly reduced for more pronounced directional light
         vec3 ambient = ambientStrength * sunColor;
@@ -784,7 +901,7 @@ class GrassComponent {
         vec3 backlighting = backlight * vec3(1.0, 0.9, 0.7); // Warm backlight color
         
         // Apply lighting to color
-        vec3 color = vColor * (ambient + diffuse) + backlighting * 0.3;
+        color = color * (ambient + diffuse) + backlighting * 0.3;
         
         // Ensure minimum brightness to prevent grass from getting too dark
         float luminance = dot(color, vec3(0.299, 0.587, 0.114));
@@ -793,12 +910,12 @@ class GrassComponent {
           color *= minLuminance / max(0.001, luminance);
         }
         
-        // Darken the color more prominently near the ground to create better depth
-        // and a more realistic gradient from base to tip
-        float heightRatio = clamp(vPosition.y / 0.5, 0.0, 1.0);
-        // Even more pronounced darkening at the base (0.5 at base, 1.0 at middle/top)
-        // Using a steeper curve with pow() to create more dramatic gradient
-        color *= mix(0.5, 1.0, pow(heightRatio, 0.75));
+        // Apply slight distance-based fog/desaturation for atmospheric depth
+        if (vDistanceToCamera > maxLodDistance * 0.5) {
+          float fogFactor = smoothstep(maxLodDistance * 0.5, maxLodDistance * 0.9, vDistanceToCamera) * 0.3;
+          vec3 fogColor = vec3(0.8, 0.9, 1.0); // Blueish distance fog
+          color = mix(color, fogColor, fogFactor);
+        }
         
         // Output final color
         gl_FragColor = vec4(color, 1.0);
