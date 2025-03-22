@@ -47,6 +47,22 @@ class GrassComponent {
   }
 
   /**
+   * Helper function to generate deterministic noise from a position
+   * Used for spatial color variation to avoid checkerboard patterns
+   */
+  noise(position) {
+    // Simple 2D noise function based on sin
+    return Math.abs(Math.sin(this.dot(position, new THREE.Vector2(12.9898, 78.233)) * 43758.5453) % 1);
+  }
+
+  /**
+   * Helper function to calculate dot product
+   */
+  dot(v1, v2) {
+    return v1.x * v2.x + v1.y * v2.y;
+  }
+
+  /**
    * Initialize the grass component
    */
   init() {
@@ -222,8 +238,33 @@ class GrassComponent {
       // Width variation for thicker blades
       instanceWidths[i] = 0.6 + Math.random() * 0.2;
       
-      // Choose a color variation type based on random value
-      const colorType = Math.random();
+      // Generate a lower frequency noise pattern for more coherent spatial variation
+      const noiseScale1 = 0.05; // Large scale variation
+      const noiseScale2 = 0.15; // Medium scale variation
+      const noiseScale3 = 0.4;  // Small scale variation
+      
+      // Sample noise at multiple frequencies for more natural pattern 
+      const noise1 = this.noise(new THREE.Vector2(
+        instancePositions[i * 3] * noiseScale1, 
+        instancePositions[i * 3 + 2] * noiseScale1
+      ));
+      
+      const noise2 = this.noise(new THREE.Vector2(
+        instancePositions[i * 3] * noiseScale2 + 43.3, 
+        instancePositions[i * 3 + 2] * noiseScale2 + 17.1
+      ));
+      
+      const noise3 = this.noise(new THREE.Vector2(
+        instancePositions[i * 3] * noiseScale3 + 87.2, 
+        instancePositions[i * 3 + 2] * noiseScale3 + 33.7
+      ));
+      
+      // Combine noise at different scales for natural-looking clumps
+      // Weight toward the larger patterns for more coherent grouping
+      const spatialFactor = noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1;
+      
+      // Add some pure randomness to break up any remaining patterns (40% random, 60% spatial)
+      const colorType = Math.random() * 0.4 + spatialFactor * 0.6;
       
       if (colorType < 0.2) {
         // Main grass color - lush green (20% of blades)
@@ -250,6 +291,53 @@ class GrassComponent {
         instanceColors[i * 3 + 2] = 0.06 + Math.random() * 0.08; // B: 0.06-0.14 (slightly more blue for beige tint)
       }
       
+      // Add positional variation to blend between adjacent color types for smoother transitions
+      // Use different frequency noise for blending than for color type selection
+      const blendNoise = this.noise(new THREE.Vector2(
+        instancePositions[i * 3] * 0.25 + 123.4, 
+        instancePositions[i * 3 + 2] * 0.25 + 87.6
+      ));
+      
+      // Create more continuous blending across color categories
+      const blendFactor = blendNoise * 0.2;
+      
+      // Apply subtle blending between color types based on position
+      // This creates smoother transitions between color zones
+      if (colorType < 0.3) {
+        // Near the boundary between lush green and yellowish-green
+        // Create a smooth transition between these types
+        const transitionFactor = (colorType / 0.3); // 0-1.0 as we approach the boundary
+        const edgeBlend = transitionFactor * blendFactor;
+        
+        // Blend colors proportionally to boundary proximity
+        instanceColors[i * 3] += edgeBlend * 0.12;       // Increase red (moving toward yellow)
+        instanceColors[i * 3 + 1] -= edgeBlend * 0.04;  // Slightly decrease green
+      } 
+      else if (colorType < 0.7) {
+        // Near boundary between yellowish-green and darker green
+        const transitionFactor = ((colorType - 0.3) / 0.4); // 0-1.0 as we approach the boundary
+        const edgeBlend = (1.0 - Math.abs(transitionFactor - 0.5) * 2.0) * blendFactor;
+        
+        // Blend colors based on transition factor
+        instanceColors[i * 3] -= edgeBlend * 0.1;     // Adjust red toward darker green
+        instanceColors[i * 3 + 1] -= edgeBlend * 0.05; // Decrease green slightly
+      }
+      else {
+        // Near boundary between darker green and sun-bleached
+        const transitionFactor = ((colorType - 0.7) / 0.3); // 0-1.0 as we approach the boundary  
+        const edgeBlend = transitionFactor * blendFactor;
+        
+        // Blend toward sun-bleached color
+        instanceColors[i * 3] += edgeBlend * 0.14;     // Increase red significantly 
+        instanceColors[i * 3 + 1] += edgeBlend * 0.12; // Increase green
+        instanceColors[i * 3 + 2] += edgeBlend * 0.04; // Increase blue slightly
+      }
+      
+      // Add slight random variation to each color to further break up patterns
+      instanceColors[i * 3] += (Math.random() - 0.5) * 0.03;
+      instanceColors[i * 3 + 1] += (Math.random() - 0.5) * 0.03;
+      instanceColors[i * 3 + 2] += (Math.random() - 0.5) * 0.01;
+      
       // Add positional variation - grass near patch edges slightly different color
       const distFromCenter = Math.sqrt(gridX * gridX + gridZ * gridZ) * 2; // 0 at center, ~1 at edges
       
@@ -267,7 +355,7 @@ class GrassComponent {
       instanceRandom[i] = Math.random();
       
       // Random depth offset to prevent z-fighting between grass blades
-      instanceDepth[i] = Math.random(); 
+      instanceDepth[i] = Math.random();
     }
     
     // Set instanced attributes
