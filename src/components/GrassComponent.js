@@ -1177,15 +1177,12 @@ class GrassComponent {
     console.log(
       `Grass Blades: ${formatNumber(
         totalBlades
-      )} (${bladePercentChange} change) | ` +
-        `Triangles: ${formatNumber(totalTriangles)}`
+      )} (${bladePercentChange} change)`
     );
     console.log(
       `Memory: ~${memoryUsageMB.toFixed(2)} MB | Time: ${this.totalTime.toFixed(
         1
-      )}s | ` +
-        `Position: x=${this.playerObject.model.position.x.toFixed(1)}, ` +
-        `z=${this.playerObject.model.position.z.toFixed(1)}`
+      )}s`
     );
   }
 }
