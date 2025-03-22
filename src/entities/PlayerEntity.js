@@ -30,85 +30,69 @@ class PlayerEntity {
     this.minHeight = 0;
     this.maxHeight = 3;
     this.heightOffset = 0;
+    
+    // Combat properties
+    this.health = 100;
+    this.maxHealth = 100;
+    this.stamina = 100;
+    this.maxStamina = 100;
+    this.attackPower = 25;
+    this.currentState = "IDLE"; // IDLE, ATTACKING, BLOCKING, DODGE, STAGGERED, DEAD
+    this.invulnerable = false;
+    this.staggerTime = 0;
+    this.attackCooldown = 0;
+    
+    // References
+    this.combatManager = null;
 
     console.log('this.animations', this.animations);
-    // this.init();
-  }
-
-  // Set terrain data for height sampling
-  setTerrainData(heightmap, terrainSize, minHeight, maxHeight) {
-    this.heightmap = heightmap;
-    this.terrainSize = terrainSize;
-    this.minHeight = minHeight;
-    this.maxHeight = maxHeight;
-    console.log('Terrain data set for player:', { terrainSize, minHeight, maxHeight });
-  }
-
-  // Sample height from the heightmap at the player's position
-  sampleHeight(worldX, worldZ) {
-    if (!this.heightmap) {
-      console.warn('No heightmap available for sampling');
-      return 0;
-    }
-    
-    try {
-      // Convert world coordinates to heightmap UV coordinates (0-1)
-      const uvX = (worldX + (this.terrainSize / 2)) / this.terrainSize;
-      const uvZ = (worldZ + (this.terrainSize / 2)) / this.terrainSize;
-      
-      // Clamp UVs to 0-1 range to prevent sampling outside the heightmap
-      const clampedUvX = Math.max(0, Math.min(1, uvX));
-      const clampedUvZ = Math.max(0, Math.min(1, uvZ));
-      
-      if (uvX !== clampedUvX || uvZ !== clampedUvZ) {
-        // Position is outside terrain bounds
-        return this.minHeight;
-      }
-      
-      // Check if we can access heightmap data directly
-      if (this.heightmap.image && this.heightmap.image.data) {
-        // Get image dimensions
-        const width = this.heightmap.image.width || 256;
-        const height = this.heightmap.image.height || 256;
-        
-        // Convert UV to pixel coordinates
-        const pixelX = Math.floor(clampedUvX * (width - 1));
-        const pixelZ = Math.floor(clampedUvZ * (height - 1));
-        
-        // Calculate pixel index in the data array
-        const pixelIndex = pixelZ * width + pixelX;
-        
-        // Get height value (handle both Uint8 and Float32 formats)
-        let heightValue;
-        if (this.heightmap.image.data instanceof Float32Array) {
-          // If using float format (0-1 range)
-          heightValue = this.heightmap.image.data[pixelIndex];
-        } else {
-          // If using standard 8-bit format (0-255 range)
-          heightValue = this.heightmap.image.data[pixelIndex] / 255.0;
-        }
-        
-        // Scale by height range
-        const calculatedHeight = this.minHeight + (heightValue * (this.maxHeight - this.minHeight));
-        
-        return calculatedHeight;
-      } else {
-        // Fallback to a simple height function if heightmap can't be accessed
-        const heightNoise = Math.sin(worldX * 0.2) * Math.cos(worldZ * 0.2) * 0.5 + 0.5;
-        return this.minHeight + heightNoise * (this.maxHeight - this.minHeight);
-      }
-    } catch (error) {
-      console.error('Error sampling height:', error);
-      return this.minHeight;
-    }
+    this.init();
   }
 
   init() {
-    this.markAsLoopOnce(this.animations.attack.action);
     this.markAsLoopOnce(this.animations.slash.action);
-    this.markAsLoopOnce(this.animations["jump attack"].action);
+    this.markAsLoopOnce(this.animations.jumpAttack.action);
     this.markAsLoopOnce(this.animations.block.action);
     this.markAsLoopOnce(this.animations.death.action);
+    
+    // Set up animation complete callbacks
+    this.setupAnimationCallbacks();
+  }
+  
+  // Set up callbacks for animation completion
+  setupAnimationCallbacks() {
+    if (this.animations.attack) {
+      this.animations.attack.action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations.attack.action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+    
+    if (this.animations.slash) {
+      this.animations.slash.action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations.slash.action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+    
+    if (this.animations["jump attack"]) {
+      this.animations["jump attack"].action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations["jump attack"].action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+  }
+  
+  // Called when attack animations complete
+  onAttackComplete() {
+    this.isAttacking = false;
+    this.currentAttack = null;
+    this.attackAnimationComplete = true;
+    this.currentState = "IDLE";
+    console.log("Attack complete");
   }
 
   markAsLoopOnce(action) {
@@ -130,23 +114,153 @@ class PlayerEntity {
     }
     this.activeAction = action;
   }
+  
+  // Perform a light attack
+  attack() {
+    if (this.isAttacking || this.currentState === "STAGGERED" || this.currentState === "DEAD" || this.attackCooldown > 0) {
+      return;
+    }
+    
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "light";
+    
+    // Play attack animation
+    this.fadeToAction(this.animations.attack.action, false);
+    
+    // Create hitbox in front of player after a slight delay (mid animation)
+    if (this.combatManager) {
+      // Schedule hitbox creation
+      setTimeout(() => {
+        const hitboxOffset = new THREE.Vector3(0, 1, -1.5); // In front of player (player faces -Z)
+        const hitboxSize = new THREE.Vector3(1.5, 1, 2); // Size of the hitbox
+        
+        this.combatManager.createHitbox(
+          this.model,           // Parent object
+          hitboxOffset,         // Position offset
+          hitboxSize,           // Size
+          this.attackPower,     // Damage
+          0.2,                 // Duration in seconds
+          { owner: this, knockback: 2 }  // Additional options
+        );
+        
+        console.log("Created player attack hitbox");
+      }, 300); // 300ms into the animation
+    }
+    
+    // Set attack cooldown
+    this.attackCooldown = 0.8; // 0.8 seconds before next attack
+  }
+  
+  // Perform a heavy attack
+  heavyAttack() {
+    if (this.isAttacking || this.currentState === "STAGGERED" || this.currentState === "DEAD" || this.attackCooldown > 0) {
+      return;
+    }
+    
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "heavy";
+    
+    // Play heavy attack animation
+    this.fadeToAction(this.animations.slash.action, false);
+    
+    // Create larger hitbox in front of player after a delay
+    if (this.combatManager) {
+      // Schedule hitbox creation
+      setTimeout(() => {
+        const hitboxOffset = new THREE.Vector3(0, 1, -2); // Further in front for heavy attack
+        const hitboxSize = new THREE.Vector3(2.5, 1.2, 2.5); // Larger size for heavy attack
+        
+        this.combatManager.createHitbox(
+          this.model,           // Parent object
+          hitboxOffset,         // Position offset
+          hitboxSize,           // Size
+          this.attackPower * 1.5, // Higher damage
+          0.3,                 // Duration in seconds
+          { owner: this, knockback: 4 }  // More knockback
+        );
+        
+        console.log("Created player heavy attack hitbox");
+      }, 500); // 500ms into the animation (heavy attack has longer windup)
+    }
+    
+    // Set attack cooldown (longer for heavy attack)
+    this.attackCooldown = 1.2; // 1.2 seconds before next attack
+  }
+  
+  // Take damage from an attack
+  takeDamage(damage) {
+    if (this.invulnerable || this.currentState === "DEAD") {
+      return;
+    }
+    
+    this.health -= damage;
+    console.log(`Player took ${damage} damage. Health: ${this.health}/${this.maxHealth}`);
+    
+    // Check for death
+    if (this.health <= 0) {
+      this.health = 0;
+      this.die();
+      return;
+    }
+    
+    // Get staggered
+    this.getStaggered();
+  }
+  
+  // Enter staggered state
+  getStaggered() {
+    this.currentState = "STAGGERED";
+    this.staggerTime = 0.5; // Staggered for 0.5 seconds
+    
+    // Play stagger animation (e.g., flinch or hit reaction)
+    // For now we'll use the block animation as a placeholder
+    this.fadeToAction(this.animations.block.action, false);
+  }
+  
+  // Die
+  die() {
+    this.currentState = "DEAD";
+    this.fadeToAction(this.animations.death.action, false);
+    console.log("Player died");
+  }
+  
+  // Set debug visualization mode
+  setDebugVisualization(enabled) {
+    // No specific debug visualization for player currently
+    console.log(`Player debug visualization: ${enabled ? 'enabled' : 'disabled'}`);
+  }
 
-  // Handler for animation finished events
-  // onAnimationFinished: function(e) {
-  //   // Reset attack state when attack animation finishes
-  //   if (this.isAttacking) {
-  //     this.isAttacking = false;
-  //     this.currentAttack = null;
-  //     this.attackAnimationComplete = true;
-
-  //     // Transition back to idle animation
-  //     if (this.animations.idle) {
-  //       this.fadeToAction(this.animations.idle.action, true);
-  //     }
-  // }
-  // }
 
   update(delta) {
+    // Update cooldown timers
+    if (this.attackCooldown > 0) {
+      this.attackCooldown -= delta;
+    }
+    
+    // Handle staggered state
+    if (this.currentState === "STAGGERED") {
+      this.staggerTime -= delta;
+      if (this.staggerTime <= 0) {
+        this.currentState = "IDLE";
+      }
+      
+      // Early return - no movement or attacks while staggered
+      return;
+    }
+    
+    // Skip remaining logic if dead or attacking
+    if (this.currentState === "DEAD" || this.isAttacking) {
+      // Update the mixer
+      if (this.mixer) {
+        this.mixer.update(delta);
+      }
+      return;
+    }
+
     // Movement and rotation logic
     const isMoving = KEYS.w || KEYS.s || KEYS.a || KEYS.d;
     const isWalking = KEYS.shift;
@@ -204,41 +318,6 @@ class PlayerEntity {
       
       // Update camera position in X and Z
       this.updateCamera(moveX, moveZ, 0);
-    }
-    
-    // Always update height, whether moving or not
-    if (this.heightmap) {
-      this.updatePlayerHeight(delta);
-    }
-  }
-  
-  // New method to handle height updates separately
-  updatePlayerHeight(delta) {
-    // Sample height at current position
-    const terrainHeight = this.sampleHeight(this.model.position.x, this.model.position.z);
-    
-    // Calculate target Y with offset
-    const targetY = terrainHeight + this.heightOffset;
-    
-    // Calculate current height difference
-    const heightDiff = targetY - this.model.position.y;
-    
-    // Use smooth damping for height adjustment
-    // Smaller height differences use faster adjustment speed
-    const smoothingFactor = Math.min(1, delta * 5);
-    
-    // Apply smaller movements when close to target height
-    const moveY = heightDiff * smoothingFactor;
-    
-    // Only update if the change is significant enough
-    if (Math.abs(moveY) > 0.001) {
-      this.model.position.y += moveY;
-      
-      // Update camera height to follow player
-      // Do not update camera directly for small changes to prevent jitter
-      if (Math.abs(moveY) > 0.01) {
-        this.updateCamera(0, 0, moveY);
-      }
     }
   }
 
