@@ -103,7 +103,7 @@ async function init() {
   const [player, kingdom] = await Promise.all([
     loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/golden-knight-out2.glb", scene, LOADING_MANAGER),
-    loadModel("/assets/models/kingdom.glb", scene, LOADING_MANAGER),
+    // loadModel("/assets/models/kingdom.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
@@ -119,8 +119,8 @@ async function init() {
   //   goldenKnight.mixer
   // );
 
-  kingdom.model.position.set(30, -60, 0);
-  kingdom.model.rotation.y = Math.PI;
+  // kingdom.model.position.set(30, -60, 0);
+  // kingdom.model.rotation.y = Math.PI;
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
