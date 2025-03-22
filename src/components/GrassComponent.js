@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 // Constants for grass configuration
-const NUM_GRASS = 70 * 70; // Reduced blade count per patch for better performance
+const NUM_GRASS = 60 * 60; // Reduced blade count per patch for better performance
 const GRASS_SEGMENTS_LOW = 1; // Low LOD segments
 const GRASS_SEGMENTS_HIGH = 4; // Reduced high LOD segments for better performance
 const GRASS_VERTICES_LOW = (GRASS_SEGMENTS_LOW + 1) * 2;
@@ -9,8 +9,8 @@ const GRASS_VERTICES_HIGH = (GRASS_SEGMENTS_HIGH + 1) * 2;
 const GRASS_LOD_DIST = 7; // Increased LOD distance for better performance
 const GRASS_MAX_DIST = 150; // Reduced max distance to avoid unnecessary rendering
 const GRASS_PATCH_SIZE = 10; // Size of each grass patch
-const GRASS_WIDTH = 0.05; // Increased width from 0.02 to 0.03 for slightly thicker blades
-const GRASS_HEIGHT = 0.9; // Increased grass blade height from 0.9 to 1.1 for taller grass
+const GRASS_WIDTH = 0.04; // Increased width from 0.02 to 0.03 for slightly thicker blades
+const GRASS_HEIGHT = 1; // Increased grass blade height from 0.9 to 1.1 for taller grass
 // More reasonable patch radius for performance while ensuring coverage
 const PATCH_RADIUS = 9; // Standard patch radius for areas in front of player
 const BEHIND_PATCH_RADIUS = 3; // Reduced patch radius for areas behind player
@@ -294,26 +294,36 @@ class GrassComponent {
       // Add some pure randomness to break up any remaining patterns (40% random, 60% spatial)
       const colorType = Math.random() * 0.4 + spatialFactor * 0.6;
 
-      if (colorType < 0.2) {
-        // Main grass color - lush green (20% of blades)
-        instanceColors[i * 3] = 0.07 + Math.random() * 0.05; // R: 0.07-0.12 (reduced red for more intense green)
-        instanceColors[i * 3 + 1] = 0.48 + Math.random() * 0.14; // G: 0.48-0.62 (increased green)
-        instanceColors[i * 3 + 2] = 0.02 + Math.random() * 0.03; // B: 0.02-0.05 (minimal blue)
-      } else if (colorType < 0.6) {
-        // Yellowish-green variation (40% of blades)
-        instanceColors[i * 3] = 0.22 + Math.random() * 0.08; // R: 0.22-0.30 (increased red for more yellow)
-        instanceColors[i * 3 + 1] = 0.42 + Math.random() * 0.14; // G: 0.42-0.56 (similar green)
-        instanceColors[i * 3 + 2] = 0.01 + Math.random() * 0.02; // B: 0.01-0.03 (minimal blue)
-      } else if (colorType < 0.85) {
-        // Darker green variation (25% of blades)
-        instanceColors[i * 3] = 0.04 + Math.random() * 0.04; // R: 0.04-0.08 (minimal red for darker green)
-        instanceColors[i * 3 + 1] = 0.3 + Math.random() * 0.1; // G: 0.30-0.40 (reduced green for darker green)
-        instanceColors[i * 3 + 2] = 0.01 + Math.random() * 0.02; // B: 0.01-0.03 (minimal blue)
+      if (colorType < 0.15) {
+        // Main grass color - lush green (15% of blades)
+        instanceColors[i * 3] = 0.05 + Math.random() * 0.04; // R: 0.05-0.09
+        instanceColors[i * 3 + 1] = 0.37 + Math.random() * 0.14; // G: 0.37-0.51
+        instanceColors[i * 3 + 2] = 0.01 + Math.random() * 0.03; // B: 0.01-0.04
+      } else if (colorType < 0.50) {
+        // Yellowish-green variation (35% of blades, increased from 30%)
+        instanceColors[i * 3] = 0.18 + Math.random() * 0.07; // R: 0.18-0.25
+        instanceColors[i * 3 + 1] = 0.34 + Math.random() * 0.12; // G: 0.34-0.46
+        instanceColors[i * 3 + 2] = 0.01 + Math.random() * 0.02; // B: 0.01-0.03
+      } else if (colorType < 0.70) {
+        // Darker green variation (20% of blades)
+        instanceColors[i * 3] = 0.03 + Math.random() * 0.03; // R: 0.03-0.06
+        instanceColors[i * 3 + 1] = 0.22 + Math.random() * 0.1; // G: 0.22-0.32
+        instanceColors[i * 3 + 2] = 0.01 + Math.random() * 0.02; // B: 0.01-0.03
+      } else if (colorType < 0.80) {
+        // Light sun-bleached tips (10% of blades)
+        instanceColors[i * 3] = 0.22 + Math.random() * 0.09; // R: 0.22-0.31
+        instanceColors[i * 3 + 1] = 0.42 + Math.random() * 0.14; // G: 0.42-0.56
+        instanceColors[i * 3 + 2] = 0.04 + Math.random() * 0.07; // B: 0.04-0.11
+      } else if (colorType < 0.98) {
+        // Very dark green variation (18% of blades, reduced from 20%)
+        instanceColors[i * 3] = 0.01 + Math.random() * 0.02; // R: 0.01-0.03
+        instanceColors[i * 3 + 1] = 0.15 + Math.random() * 0.07; // G: 0.15-0.22
+        instanceColors[i * 3 + 2] = 0.02 + Math.random() * 0.02; // B: 0.02-0.04
       } else {
-        // Light sun-bleached tips (15% of blades)
-        instanceColors[i * 3] = 0.28 + Math.random() * 0.1; // R: 0.28-0.38 (increased red for more golden)
-        instanceColors[i * 3 + 1] = 0.52 + Math.random() * 0.15; // G: 0.52-0.67 (increased green)
-        instanceColors[i * 3 + 2] = 0.06 + Math.random() * 0.08; // B: 0.06-0.14 (slightly more blue for beige tint)
+        // Nearly white dried grass (2% of blades, reduced from 5%)
+        instanceColors[i * 3] = 0.65 + Math.random() * 0.15; // R: 0.65-0.80
+        instanceColors[i * 3 + 1] = 0.60 + Math.random() * 0.15; // G: 0.60-0.75
+        instanceColors[i * 3 + 2] = 0.45 + Math.random() * 0.15; // B: 0.45-0.60
       }
 
       // Add positional variation to blend between adjacent color types for smoother transitions
@@ -339,24 +349,30 @@ class GrassComponent {
         // Blend colors proportionally to boundary proximity
         instanceColors[i * 3] += edgeBlend * 0.12; // Increase red (moving toward yellow)
         instanceColors[i * 3 + 1] -= edgeBlend * 0.04; // Slightly decrease green
-      } else if (colorType < 0.7) {
-        // Near boundary between yellowish-green and darker green
-        const transitionFactor = (colorType - 0.3) / 0.4; // 0-1.0 as we approach the boundary
-        const edgeBlend =
-          (1.0 - Math.abs(transitionFactor - 0.5) * 2.0) * blendFactor;
+      } else if (colorType < 0.75) {
+        // Near boundary between yellowish-green and darker/sun-bleached
+        const transitionFactor = (colorType - 0.3) / 0.45; // 0-1.0 as we approach the boundary
+        const edgeBlend = (1.0 - Math.abs(transitionFactor - 0.5) * 2.0) * blendFactor;
 
         // Blend colors based on transition factor
         instanceColors[i * 3] -= edgeBlend * 0.1; // Adjust red toward darker green
         instanceColors[i * 3 + 1] -= edgeBlend * 0.05; // Decrease green slightly
       } else {
-        // Near boundary between darker green and sun-bleached
-        const transitionFactor = (colorType - 0.7) / 0.3; // 0-1.0 as we approach the boundary
+        // Near boundary between high contrast types (dark green, sun-bleached, and white)
+        const transitionFactor = (colorType - 0.75) / 0.25; // 0-1.0 as we approach the boundary
         const edgeBlend = transitionFactor * blendFactor;
 
-        // Blend toward sun-bleached color
-        instanceColors[i * 3] += edgeBlend * 0.14; // Increase red significantly
-        instanceColors[i * 3 + 1] += edgeBlend * 0.12; // Increase green
-        instanceColors[i * 3 + 2] += edgeBlend * 0.04; // Increase blue slightly
+        // Enhance contrast with distance from transition point
+        if (colorType < 0.9) {
+          // Moving toward very dark green
+          instanceColors[i * 3] -= edgeBlend * 0.1; // Decrease red
+          instanceColors[i * 3 + 1] -= edgeBlend * 0.15; // Decrease green significantly
+        } else {
+          // Moving toward white dried grass
+          instanceColors[i * 3] += edgeBlend * 0.2; // Increase red significantly
+          instanceColors[i * 3 + 1] += edgeBlend * 0.15; // Increase green
+          instanceColors[i * 3 + 2] += edgeBlend * 0.1; // Increase blue significantly
+        }
       }
 
       // Add slight random variation to each color to further break up patterns
@@ -965,68 +981,114 @@ class GrassComponent {
         // Enhanced color variations based on height
         vec3 tipColor, rootColor;
         
-        // For main lush green grass blades (20%)
-        if (vColor.g > 0.45 && vColor.r < 0.15) {
+        // For main lush green grass blades
+        if (vColor.g > 0.35 && vColor.r < 0.15) {
           // Lush green grass - maintain intense green with minimal yellowing at tips
           tipColor = vec3(
-            baseColor.r + 0.06, 
-            baseColor.g + 0.08, 
-            baseColor.b + 0.02
+            baseColor.r + 0.05, 
+            baseColor.g + 0.06, 
+            baseColor.b + 0.01
           );
           
           // Darker at the roots
-          rootColor = vec3(
-            baseColor.r * 0.65,
-            baseColor.g * 0.75,
-            baseColor.b * 0.8
-          );
-        }
-        // For yellowish-green grass blades (40%)
-        else if (vColor.r > 0.2) {
-          // Pronounced yellow tips for dry grass
-          tipColor = vec3(
-            baseColor.r + 0.12,
-            baseColor.g + 0.04,
-            baseColor.b + 0.01
-          );
-          
-          // Slightly darker, more green at roots
-          rootColor = vec3(
-            baseColor.r * 0.75,
-            baseColor.g * 0.85,
-            baseColor.b * 0.7
-          );
-        }
-        // For darker green grass blades (25%)
-        else if (vColor.g < 0.4) {
-          // Slightly lighter tips
-          tipColor = vec3(
-            baseColor.r + 0.03,
-            baseColor.g + 0.08,
-            baseColor.b + 0.01
-          );
-          
-          // Very dark roots
           rootColor = vec3(
             baseColor.r * 0.55,
             baseColor.g * 0.65,
             baseColor.b * 0.7
           );
         }
-        // For light sun-bleached blades (15%)
-        else {
+        // For yellowish-green grass blades
+        else if (vColor.r > 0.15 && vColor.r < 0.3) {
+          // Pronounced yellow tips for dry grass
+          tipColor = vec3(
+            baseColor.r + 0.10,
+            baseColor.g + 0.02,
+            baseColor.b + 0.01
+          );
+          
+          // Slightly darker, more green at roots
+          rootColor = vec3(
+            baseColor.r * 0.65,
+            baseColor.g * 0.75,
+            baseColor.b * 0.6
+          );
+        }
+        // For darker green grass blades
+        else if (vColor.g > 0.2 && vColor.g < 0.35) {
+          // Slightly lighter tips
+          tipColor = vec3(
+            baseColor.r + 0.02,
+            baseColor.g + 0.06,
+            baseColor.b + 0.01
+          );
+          
+          // Very dark roots
+          rootColor = vec3(
+            baseColor.r * 0.45,
+            baseColor.g * 0.55,
+            baseColor.b * 0.6
+          );
+        }
+        // For light sun-bleached blades
+        else if (vColor.g > 0.4 && vColor.r < 0.4) {
           // Very light golden tips
           tipColor = vec3(
-            baseColor.r + 0.15,
-            baseColor.g + 0.08,
-            baseColor.b + 0.05
+            baseColor.r + 0.12,
+            baseColor.g + 0.06,
+            baseColor.b + 0.04
           );
           
           // More green at the base
           rootColor = vec3(
-            baseColor.r * 0.7,
-            baseColor.g * 0.9,
+            baseColor.r * 0.6,
+            baseColor.g * 0.8,
+            baseColor.b * 0.55
+          );
+        }
+        // NEW: For very dark green blades
+        else if (vColor.g < 0.25 && vColor.r < 0.1) {
+          // Slightly lighter tips but still very dark
+          tipColor = vec3(
+            baseColor.r + 0.01,
+            baseColor.g + 0.04,
+            baseColor.b + 0.01
+          );
+          
+          // Extremely dark roots
+          rootColor = vec3(
+            baseColor.r * 0.35,
+            baseColor.g * 0.45,
+            baseColor.b * 0.5
+          );
+        }
+        // NEW: For nearly white dried grass
+        else if (vColor.r > 0.6) {
+          // Whiter tips for dead grass
+          tipColor = vec3(
+            baseColor.r + 0.15,
+            baseColor.g + 0.15,
+            baseColor.b + 0.15
+          );
+          
+          // Slightly more yellowish at roots
+          rootColor = vec3(
+            baseColor.r * 0.85,
+            baseColor.g * 0.75,
             baseColor.b * 0.65
+          );
+        }
+        // Default fallback for any other colors
+        else {
+          tipColor = vec3(
+            baseColor.r + 0.05,
+            baseColor.g + 0.05,
+            baseColor.b + 0.02
+          );
+          
+          rootColor = vec3(
+            baseColor.r * 0.5,
+            baseColor.g * 0.6,
+            baseColor.b * 0.5
           );
         }
         
