@@ -2,6 +2,7 @@ import * as THREE from "three";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import { loadModel, addResizeEventListeners } from "./_lib/helpers.js";
 import PlayerEntity from "./entities/PlayerEntity.js";
+// import EnemyEntity from "./entities/EnemyEntity.js";
 import Camera from "./entities/Camera.js";
 import KEYS from "./_lib/keys";
 import GrassComponent from "./components/GrassComponent.js";
@@ -100,7 +101,7 @@ async function init() {
   // Load models
   const [player, goldenKnight] = await Promise.all([
     loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
-    // loadModel("/assets/models/golden-knight-out.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/golden-knight-out.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
@@ -109,6 +110,12 @@ async function init() {
     player.animations,
     player.mixer
   );
+
+  // const ENEMY = new EnemyEntity(
+  //   goldenKnight.model,
+  //   goldenKnight.animations,
+  //   goldenKnight.mixer
+  // );
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -158,7 +165,7 @@ async function init() {
     
     // Update grass animation and LOD
     // Only show log messages every 2 seconds to avoid console spam
-    const shouldLog = logTimer > 2.0;
+    const shouldLog = logTimer > 5.0;
     if (shouldLog) {
       logTimer = 0;
     }

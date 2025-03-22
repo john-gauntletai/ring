@@ -58,9 +58,6 @@ export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
       child.receiveShadow = true;
     }
   });
-  const box = new THREE.Box3().setFromObject(model);
-  const modelHeight = box.max.y - box.min.y;
-  console.log(filePath, "height:", modelHeight);
 
   scene.add(model);
 

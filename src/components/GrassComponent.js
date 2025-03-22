@@ -1,18 +1,20 @@
 import * as THREE from "three";
 
 // Constants for grass configuration
-const NUM_GRASS = (64 * 64); // Reduced blade count per patch for better performance
+const NUM_GRASS = (70 * 70); // Reduced blade count per patch for better performance
 const GRASS_SEGMENTS_LOW = 1;    // Low LOD segments
 const GRASS_SEGMENTS_HIGH = 4;   // Reduced high LOD segments for better performance
 const GRASS_VERTICES_LOW = (GRASS_SEGMENTS_LOW + 1) * 2;
 const GRASS_VERTICES_HIGH = (GRASS_SEGMENTS_HIGH + 1) * 2;
-const GRASS_LOD_DIST = 20;       // Increased LOD distance for better performance
+const GRASS_LOD_DIST = 30;       // Increased LOD distance for better performance
 const GRASS_MAX_DIST = 150;      // Reduced max distance to avoid unnecessary rendering
 const GRASS_PATCH_SIZE = 10;     // Size of each grass patch
 const GRASS_WIDTH = 0.045;        // Increased width from 0.02 to 0.03 for slightly thicker blades
-const GRASS_HEIGHT = 1.1;        // Increased grass blade height from 0.9 to 1.1 for taller grass
+const GRASS_HEIGHT = 0.9;        // Increased grass blade height from 0.9 to 1.1 for taller grass
 // More reasonable patch radius for performance while ensuring coverage
-const PATCH_RADIUS = 15;         // Reduced radius for better performance
+const PATCH_RADIUS = 9;         // Standard patch radius for areas in front of player
+const BEHIND_PATCH_RADIUS = 3;  // Reduced patch radius for areas behind player
+const TERRAIN_SIZE = 300;       // Match the terrain size for full coverage
 
 class GrassComponent {
   constructor(scene, playerObject) {
@@ -507,23 +509,44 @@ class GrassComponent {
   /**
    * Update grass patches based on camera position
    */
-  updateGrassPatches(camera, shouldLog) {
+  updateGrassPatches(camera, shouldLog = false) {
     // Get the player position or use camera position if player not available
     let playerPos;
+    let playerDir;
+    
     if (this.playerObject) {
       if (this.playerObject.position) {
         playerPos = this.playerObject.position.clone();
+        // Get player direction from model's forward vector (Z-axis in local space)
+        if (this.playerObject.model) {
+          const forward = new THREE.Vector3(0, 0, 1);
+          forward.applyQuaternion(this.playerObject.model.quaternion);
+          playerDir = forward.normalize();
+        } else {
+          // Default direction is looking forward along z-axis
+          playerDir = new THREE.Vector3(0, 0, 1);
+        }
       } else if (this.playerObject.model && this.playerObject.model.position) {
         playerPos = this.playerObject.model.position.clone();
+        // Get player direction from model's forward vector (Z-axis in local space)
+        const forward = new THREE.Vector3(0, 0, 1);
+        forward.applyQuaternion(this.playerObject.model.quaternion);
+        playerDir = forward.normalize();
       } else {
         playerPos = camera.position.clone();
+        // Use camera direction if player direction not available
+        playerDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
       }
     } else {
       playerPos = camera.position.clone();
+      // Use camera direction if player not available
+      playerDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     }
     
     // Ensure Y is 0 for flat terrain
     playerPos.y = 0;
+    playerDir.y = 0;
+    playerDir.normalize();
     
     // Create frustum for camera view culling
     const frustum = new THREE.Frustum();
@@ -541,22 +564,26 @@ class GrassComponent {
       mesh.visible = false;
     }
     
-    // Fixed grid centered on origin 
-    const gridSize = PATCH_RADIUS * 2 + 1;
-    
     // Log debugging info
     if (shouldLog) {
       console.log("Player position:", playerPos);
-      console.log("Grid size:", gridSize);
+      console.log("Player direction:", playerDir);
     }
     
     let visiblePatches = 0;
     let playerPatchX = Math.round(playerPos.x / GRASS_PATCH_SIZE);
     let playerPatchZ = Math.round(playerPos.z / GRASS_PATCH_SIZE);
     
-    // Create a complete grid of patches
-    for (let x = -PATCH_RADIUS; x <= PATCH_RADIUS; x++) {
-      for (let z = -PATCH_RADIUS; z <= PATCH_RADIUS; z++) {
+    // Calculate terrain coverage in patch units
+    const terrainHalfSize = TERRAIN_SIZE / 2;
+    const minPatchX = Math.floor(-terrainHalfSize / GRASS_PATCH_SIZE);
+    const maxPatchX = Math.ceil(terrainHalfSize / GRASS_PATCH_SIZE);
+    const minPatchZ = Math.floor(-terrainHalfSize / GRASS_PATCH_SIZE);
+    const maxPatchZ = Math.ceil(terrainHalfSize / GRASS_PATCH_SIZE);
+    
+    // Create a complete grid of patches covering the entire terrain
+    for (let x = minPatchX; x <= maxPatchX; x++) {
+      for (let z = minPatchZ; z <= maxPatchZ; z++) {
         // Calculate patch center position
         const patchPos = new THREE.Vector3(
           x * GRASS_PATCH_SIZE, 
@@ -567,37 +594,38 @@ class GrassComponent {
         // Create a key for this position to check if we already have this patch
         const key = `${Math.round(patchPos.x)},${Math.round(patchPos.z)}`;
         
-        // Create bounding box for frustum test
-        const box = new THREE.Box3();
-        box.setFromCenterAndSize(
-          patchPos,
-          new THREE.Vector3(GRASS_PATCH_SIZE, GRASS_HEIGHT * 2, GRASS_PATCH_SIZE)
-        );
+        // Determine if this patch is within the standard or reduced radius
+        const relativePos = new THREE.Vector3().subVectors(patchPos, playerPos);
         
-        // Determine if patch should be visible:
-        // 1. Always show 9 patches centered on player (3x3 grid)
-        const patchGridX = Math.round(patchPos.x / GRASS_PATCH_SIZE);
-        const patchGridZ = Math.round(patchPos.z / GRASS_PATCH_SIZE);
-        const isNearPlayer = (
-          Math.abs(patchGridX - playerPatchX) <= 1 && 
-          Math.abs(patchGridZ - playerPatchZ) <= 1
-        );
+        // Determine if the patch is behind the player using dot product
+        const dotProduct = relativePos.dot(playerDir);
+        const isBehindPlayer = dotProduct < 0;
         
-        // 2. Show patches in the camera frustum or near its borders (+1 patch border)
-        // First test if box is in frustum
-        let isInFrustum = frustum.intersectsBox(box);
+        // Calculate distance in patch units
+        const patchDistanceX = Math.abs(x - playerPatchX);
+        const patchDistanceZ = Math.abs(z - playerPatchZ);
+        const patchDistance = Math.max(patchDistanceX, patchDistanceZ);
         
-        // If not in frustum, check if it's within one patch distance of the frustum
-        if (!isInFrustum && !isNearPlayer) {
-          // Expand the box by one patch size in all directions to test for "near frustum"
-          const expandedBox = box.clone();
-          expandedBox.expandByVector(new THREE.Vector3(GRASS_PATCH_SIZE, 0, GRASS_PATCH_SIZE));
-          isInFrustum = frustum.intersectsBox(expandedBox);
-        }
+        // Use different patch radius depending on direction
+        const effectiveRadius = isBehindPlayer ? BEHIND_PATCH_RADIUS : PATCH_RADIUS;
         
-        // Skip if not near player and not in/near frustum
-        if (!isNearPlayer && !isInFrustum) {
-          continue;
+        // Skip patches that are too far from player based on the effective radius
+        if (patchDistance > effectiveRadius) {
+          // Create bounding box for frustum test
+          const box = new THREE.Box3();
+          box.setFromCenterAndSize(
+            patchPos,
+            new THREE.Vector3(GRASS_PATCH_SIZE, GRASS_HEIGHT * 2, GRASS_PATCH_SIZE)
+          );
+          
+          // Check if it's in the view frustum
+          // Keep patches in frustum regardless of distance
+          let isInFrustum = frustum.intersectsBox(box);
+          
+          // Skip if not in frustum and beyond effective radius
+          if (!isInFrustum) {
+            continue;
+          }
         }
         
         // Get or create the mesh for this patch
@@ -620,7 +648,7 @@ class GrassComponent {
         // DEBUG: Log patch position for the first few patches
         if (shouldLog && visiblePatches < 5) {
           console.log(`Patch ${visiblePatches} position:`, patchPos, 
-            isNearPlayer ? "(near player)" : "(in frustum)");
+            isBehindPlayer ? "(behind player)" : "(in front of player)");
         }
         
         visiblePatches++;
@@ -630,6 +658,7 @@ class GrassComponent {
     if (shouldLog) {
       console.log(`Visible patches: ${visiblePatches} of ${this.grassGroup.children.length} total patches`);
       console.log(`Player position: ${playerPos.x.toFixed(2)}, ${playerPos.z.toFixed(2)}`);
+      console.log(`Using patch radius: ${PATCH_RADIUS} (front), ${BEHIND_PATCH_RADIUS} (behind)`);
     }
   }
 
