@@ -458,11 +458,6 @@ class GrassComponent {
       this.meshesHigh.push(mesh);
     }
 
-    console.log(
-      "Created new grass mesh:",
-      isLowDetail ? "low detail" : "high detail"
-    );
-
     return mesh;
   }
 
@@ -626,12 +621,6 @@ class GrassComponent {
       mesh.visible = false;
     }
 
-    // Log debugging info
-    if (shouldLog) {
-      console.log("Player position:", playerPos);
-      console.log("Player direction:", playerDir);
-    }
-
     let visiblePatches = 0;
     let playerPatchX = Math.round(playerPos.x / GRASS_PATCH_SIZE);
     let playerPatchZ = Math.round(playerPos.z / GRASS_PATCH_SIZE);
@@ -713,15 +702,6 @@ class GrassComponent {
         // Show the mesh
         mesh.visible = true;
 
-        // DEBUG: Log patch position for the first few patches
-        if (shouldLog && visiblePatches < 5) {
-          console.log(
-            `Patch ${visiblePatches} position:`,
-            patchPos,
-            isBehindPlayer ? "(behind player)" : "(in front of player)"
-          );
-        }
-
         visiblePatches++;
       }
     }
@@ -729,12 +709,6 @@ class GrassComponent {
     if (shouldLog) {
       console.log(
         `Visible patches: ${visiblePatches} of ${this.grassGroup.children.length} total patches`
-      );
-      console.log(
-        `Player position: ${playerPos.x.toFixed(2)}, ${playerPos.z.toFixed(2)}`
-      );
-      console.log(
-        `Using patch radius: ${PATCH_RADIUS} (front), ${BEHIND_PATCH_RADIUS} (behind)`
       );
     }
   }

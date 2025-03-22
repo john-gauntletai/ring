@@ -88,8 +88,6 @@ class EnemyEntity {
       });
     }
     
-    console.log("Materials initialized:", this.materials.default ? "Yes" : "No");
-    
     // Create detection sphere for visualization
     const detectionGeometry = new THREE.SphereGeometry(this.data.detectionRadius, 16, 16);
     const detectionMaterial = new THREE.MeshBasicMaterial({
