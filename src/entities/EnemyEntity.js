@@ -9,7 +9,7 @@ class EnemyEntity {
     this.model = model;
     this.animations = animations;
     this.mixer = mixer;
-    
+    console.log("Golden Knight animations:", this.animations);
     // Enemy data based on COMBAT_TODO.md
     this.data = {
       health: 500,
@@ -57,6 +57,7 @@ class EnemyEntity {
   init() {
     // Position the golden-knight at initial coordinates (150, 0, 0)
     this.model.position.set(80, 0, 0);
+    this.model.rotation.y = Math.PI * 0.5;
 
     // Clone and store default material
     if (this.model.material) {

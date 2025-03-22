@@ -100,9 +100,10 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, goldenKnight] = await Promise.all([
+  const [player, kingdom] = await Promise.all([
     loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
-    loadModel("/assets/models/golden-knight-out.glb", scene, LOADING_MANAGER),
+    // loadModel("/assets/models/golden-knight-out2.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/kingdom.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
@@ -111,37 +112,31 @@ async function init() {
     player.animations,
     player.mixer
   );
-  goldenKnight.model.position.set(0, 0, 0);
-  const ENEMY = new EnemyEntity(
-    goldenKnight.model,
-    goldenKnight.animations,
-    goldenKnight.mixer
-  );
 
-  // Position the golden knight at (150, 0, 0) - now handled in EnemyEntity constructor
-  console.log("Golden Knight position:", ENEMY.model.position);
-  console.log("Golden Knight animations:", goldenKnight.animations);
+  // const ENEMY = new EnemyEntity(
+  //   goldenKnight.model,
+  //   goldenKnight.animations,
+  //   goldenKnight.mixer
+  // );
+
+  kingdom.model.position.set(30, -60, 0);
+  kingdom.model.rotation.y = Math.PI;
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
   scene.add(CAMERA.camera);
-
   // Add axes helper to player
   const axesHelperPlayer = new THREE.AxesHelper(5);
   PLAYER.model.add(axesHelperPlayer);
 
-  // Debug visualization for enemy too
-  const axesHelperEnemy = new THREE.AxesHelper(5);
-  ENEMY.model.add(axesHelperEnemy);
-
   // Initialize combat manager
   const combatManager = new CombatManager();
   combatManager.registerEntity(PLAYER);
-  combatManager.registerEntity(ENEMY);
+  // combatManager.registerEntity(ENEMY);
 
   // Set references to combat manager in entities
   PLAYER.combatManager = combatManager;
-  ENEMY.combatManager = combatManager;
+  // ENEMY.combatManager = combatManager;
 
   // Enable debug mode with the ` (backtick) key
   window.addEventListener("keydown", (e) => {
@@ -159,23 +154,6 @@ async function init() {
 
   // Position grass group at ground level
   grass.grassGroup.position.y = 0;
-
-  // Debug: Verify grass is added to scene
-  console.log("Grass component initialized:");
-  console.log(
-    "- Group added to scene:",
-    scene.children.includes(grass.grassGroup)
-  );
-  console.log(
-    "- Number of LOD geometries:",
-    grass.geometryLow ? 1 : 0,
-    grass.geometryHigh ? 1 : 0
-  );
-  console.log(
-    "- Number of materials:",
-    grass.grassMaterialLow ? 1 : 0,
-    grass.grassMaterialHigh ? 1 : 0
-  );
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
@@ -207,7 +185,7 @@ async function init() {
     const delta = clock.getDelta();
     logTimer += delta;
     PLAYER.update(delta);
-    ENEMY.update(delta, PLAYER);
+    // ENEMY.update(delta, PLAYER);
     CAMERA.update(delta, PLAYER);
 
     // Update combat manager

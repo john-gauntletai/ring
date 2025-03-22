@@ -61,20 +61,24 @@ export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
 
   scene.add(model);
 
-  const mixer = new THREE.AnimationMixer(model);
+  let mixer;
 
-  gltfData.animations.forEach((animation) => {
-    const action = mixer.clipAction(animation);
+  if (gltfData.animations.length > 0) {
+    mixer = new THREE.AnimationMixer(model);
 
-    animations[animation.name] = {
-      action,
-      clip: animation,
-    };
-  });
+    gltfData.animations.forEach((animation) => {
+      const action = mixer.clipAction(animation);
+
+      animations[animation.name] = {
+        action,
+        clip: animation,
+      };
+    });
+  }
 
   return {
     model,
     animations,
     mixer,
   };
-}
+};
