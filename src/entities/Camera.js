@@ -53,7 +53,7 @@ class Camera {
       40,
       window.innerWidth / window.innerHeight,
       1,
-      2000
+      5000
     );
   }
 
