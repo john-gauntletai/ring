@@ -1,795 +1,893 @@
 import * as THREE from "three";
 
-/**
- * GrassComponent for rendering realistic grass on terrain
- */
+// Constants for grass configuration
+const NUM_GRASS = (64 * 64); // Reduced blade count per patch for better performance
+const GRASS_SEGMENTS_LOW = 1;    // Low LOD segments
+const GRASS_SEGMENTS_HIGH = 4;   // Reduced high LOD segments for better performance
+const GRASS_VERTICES_LOW = (GRASS_SEGMENTS_LOW + 1) * 2;
+const GRASS_VERTICES_HIGH = (GRASS_SEGMENTS_HIGH + 1) * 2;
+const GRASS_LOD_DIST = 20;       // Increased LOD distance for better performance
+const GRASS_MAX_DIST = 150;      // Reduced max distance to avoid unnecessary rendering
+const GRASS_PATCH_SIZE = 10;     // Size of each grass patch
+const GRASS_WIDTH = 0.03;        // Increased width from 0.02 to 0.03 for slightly thicker blades
+const GRASS_HEIGHT = 1.1;        // Increased grass blade height from 0.9 to 1.1 for taller grass
+// More reasonable patch radius for performance while ensuring coverage
+const PATCH_RADIUS = 15;         // Reduced radius for better performance
+
 class GrassComponent {
+  constructor(scene, playerObject) {
+    this.scene = scene;
+    this.playerObject = playerObject;
+    
+    // Create container for all grass objects
+    this.grassGroup = new THREE.Group();
+    this.grassGroup.name = "GRASS";
+    
+    // Initialize arrays for both LOD levels
+    this.meshesLow = [];
+    this.meshesHigh = [];
+    
+    // Track time for animation
+    this.totalTime = 0;
+    
+    // Materials and geometries will be initialized in init()
+    this.grassMaterialLow = null;
+    this.grassMaterialHigh = null;
+    this.geometryLow = null;
+    this.geometryHigh = null;
+    
+    // Flag to track if initial patches have been created
+    this.initialized = false;
+    
+    // Stats tracking
+    this.statsTimer = 0;
+    this.statsInterval = 5.0; // Log stats every 5 seconds
+    this.lastPatchCount = 0;
+    this.lastBladeCount = 0;
+  }
+
   /**
-   * Create a new grass component
-   * @param {Object} params Configuration parameters
-   * @param {THREE.Scene} params.scene The Three.js scene
-   * @param {THREE.Texture} params.heightmap Terrain height map
-   * @param {number} params.terrainSize Width/depth of the terrain
-   * @param {number} params.maxHeight Maximum terrain height
-   * @param {number} params.minHeight Minimum terrain height
-   * @param {number} params.heightOffset Height offset for the terrain
-   * @param {number} params.patchSize Size of each grass patch
-   * @param {number} params.density Grass blades per unit area
-   * @param {THREE.Object3D} params.playerObject Player reference for interaction
+   * Initialize the grass component
    */
-  constructor(params) {
-    this.scene = params.scene;
-    this.heightmap = params.heightmap;
-    this.terrainSize = params.terrainSize || 100;
-    this.maxHeight = params.maxHeight || 1;
-    this.minHeight = params.minHeight || 0;
-    this.heightOffset = params.heightOffset || 0;
-    this.patchSize = params.patchSize || 10;
-    this.density = params.density || 2; // Reduced density for better performance
-    this.playerObject = params.playerObject;
+  init() {
+    // Add grass group to scene
+    this.scene.add(this.grassGroup);
+    
+    // Create shader materials for both LOD levels
+    this.createMaterials();
+    
+    // Create geometries for both LOD levels
+    this.geometryLow = this.createGeometry(GRASS_SEGMENTS_LOW);
+    this.geometryHigh = this.createGeometry(GRASS_SEGMENTS_HIGH);
+    
+    // Initial update to place grass around the starting position
+    if (this.playerObject) {
+      const dummyCamera = {
+        position: new THREE.Vector3(0, 2, 0),
+        projectionMatrix: new THREE.Matrix4(),
+        matrixWorldInverse: new THREE.Matrix4()
+      };
+      this.updateGrassPatches(dummyCamera);
+    }
+  }
 
-    console.log('Initializing GrassComponent with parameters:');
-    console.log(`- terrainSize: ${this.terrainSize}`);
-    console.log(`- maxHeight: ${this.maxHeight}`);
-    console.log(`- minHeight: ${this.minHeight}`);
-    console.log(`- patchSize: ${this.patchSize}`);
-    console.log(`- density: ${this.density}`);
-    console.log(`- Expected blades per patch: ${Math.floor(this.patchSize * this.patchSize * this.density)}`);
+  /**
+   * Create materials for grass rendering
+   */
+  createMaterials() {
+    // Create shader materials for both LOD levels
+    this.grassMaterialLow = this.createGrassMaterial(GRASS_SEGMENTS_LOW, GRASS_VERTICES_LOW);
+    this.grassMaterialHigh = this.createGrassMaterial(GRASS_SEGMENTS_HIGH, GRASS_VERTICES_HIGH);
+  }
 
-    // Visual parameters
-    this.grassWidth = 0.01;
-    this.grassHeight = 0.5;
-    
-    // LOD parameters
-    this.lodDistance = 15;
-    this.maxLodDistance = 100;
-    
-    // Patch grid dimensions
-    this.gridSize = Math.ceil(this.terrainSize / this.patchSize);
-    console.log(`- Grid size: ${this.gridSize}x${this.gridSize} (${this.gridSize * this.gridSize} total patches)`);
-    
-    // Track active patches
-    this.activePatches = new Map();
-    
-    // Create shaders (load them asynchronously)
-    this.loadShaders().then(() => {
-      console.log('Shaders loaded successfully');
-      // Create grass geometries
-      this.createGrassGeometries();
-      
-      // Create test patches to ensure we have grass
-      
-      // Initialize patches around player
-      this.updatePatches();
+  /**
+   * Create a grass material with appropriate shader settings
+   */
+  createGrassMaterial(segments, vertices) {
+    // Create shader material
+    const material = new THREE.ShaderMaterial({
+      vertexShader: this.getGrassVertexShader(),
+      fragmentShader: this.getGrassFragmentShader(),
+      uniforms: {
+        time: { value: 0.0 },
+        playerPosition: { value: new THREE.Vector3() },
+        sunDirection: { value: new THREE.Vector3(0.75, 0.6, 0.15).normalize() },
+        sunColor: { value: new THREE.Vector3(1.0, 0.9, 0.7) },
+        terrainSize: { value: GRASS_PATCH_SIZE * 10 },
+        maxHeight: { value: GRASS_HEIGHT },
+        minHeight: { value: 0.0 },
+        heightOffset: { value: 0.0 },
+        lodDistance: { value: GRASS_LOD_DIST },
+        maxLodDistance: { value: GRASS_MAX_DIST },
+        grassParams: { value: new THREE.Vector4(segments, vertices, GRASS_HEIGHT, 0.0) },
+        grassSize: { value: new THREE.Vector2(GRASS_WIDTH, GRASS_HEIGHT) }
+      },
+      side: THREE.DoubleSide, // Important: render both sides of the geometry
+      transparent: false,
+      alphaTest: 0.0,
+      depthWrite: true,
+      depthTest: true,
+      flatShading: false, // Use smooth shading for better appearance
     });
+    
+    return material;
+  }
+
+  /**
+   * Create geometry for grass blades
+   */
+  createGeometry(segments) {
+    // Create instanced buffer geometry for efficient rendering
+    const geometry = new THREE.InstancedBufferGeometry();
+    
+    // Create basic blade geometry as a cross shape for better visibility from all angles
+    const positions = [];
+    const indices = [];
+    const normals = [];
+    const uvs = [];
+    
+    // Create vertices for a single blade with specified segments
+    const vertexCount = (segments + 1) * 4; // 4 vertices per segment for cross shape
+    
+    // Generate indices for the blade triangles (two perpendicular quads)
+    for (let i = 0; i < segments; i++) {
+      const vi = i * 4;
+      
+      // First quad (front-back)
+      indices.push(vi + 0);
+      indices.push(vi + 1);
+      indices.push(vi + 4);
+      
+      indices.push(vi + 4);
+      indices.push(vi + 1);
+      indices.push(vi + 5);
+      
+      // Second quad (left-right, perpendicular to first)
+      indices.push(vi + 2);
+      indices.push(vi + 3);
+      indices.push(vi + 6);
+      
+      indices.push(vi + 6);
+      indices.push(vi + 3);
+      indices.push(vi + 7);
+    }
+    
+    // Create blade vertices - cross shape with two perpendicular quads
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      
+      // Calculate width with a curve that makes the base thicker
+      // Root is 40% thicker than the standard width, then tapers up
+      const baseFactor = 1.4 - t * 0.7; // 1.4 at base (t=0), then tapers to 0.7 at tip (t=1)
+      
+      // Additional aggressive taper for the top portion
+      const tipTaper = (t > 0.6) ? (1.0 - (t - 0.6) * 0.6 / 0.4) : 1.0;
+      
+      // Combined taper effect: thicker at base, standard in middle, thin at tip
+      const width = baseFactor * tipTaper;
+      
+      // First plane (front-back) - slightly wider width with base thickening
+      positions.push(-0.5 * width * 0.7, t, 0); // left vertex, now 30% thinner instead of 40%
+      positions.push(0.5 * width * 0.7, t, 0);  // right vertex, now 30% thinner instead of 40%
+      
+      // Second plane (left-right, perpendicular to first) - slightly wider width with base thickening
+      positions.push(0, t, -0.5 * width * 0.7); // back vertex, now 30% thinner instead of 40%
+      positions.push(0, t, 0.5 * width * 0.7);  // front vertex, now 30% thinner instead of 40%
+      
+      // Normals - different for each plane
+      normals.push(0, 0, 1); // first plane normal
+      normals.push(0, 0, 1);
+      
+      normals.push(1, 0, 0); // second plane normal
+      normals.push(1, 0, 0);
+      
+      // UVs
+      uvs.push(0, t);
+      uvs.push(1, t);
+      uvs.push(0, t);
+      uvs.push(1, t);
+    }
+    
+    // Set geometry attributes
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    
+    // Create instanced attributes for position, height, width, color, and randomness
+    const instancePositions = new Float32Array(NUM_GRASS * 3);
+    const instanceHeights = new Float32Array(NUM_GRASS);
+    const instanceWidths = new Float32Array(NUM_GRASS);
+    const instanceColors = new Float32Array(NUM_GRASS * 3);
+    const instanceBend = new Float32Array(NUM_GRASS);
+    const instanceRandom = new Float32Array(NUM_GRASS);
+    const instanceDepth = new Float32Array(NUM_GRASS); // Add depth offset for z-fighting prevention
+    
+    // Initialize with random values - more uniform distribution with less variation
+    for (let i = 0; i < NUM_GRASS; i++) {
+      // Random position within patch, with better distribution
+      // Use a grid-based approach to avoid clumping
+      const gridSize = Math.sqrt(NUM_GRASS);
+      const gridX = Math.floor(i % gridSize) / gridSize - 0.5;
+      const gridZ = Math.floor(i / gridSize) / gridSize - 0.5;
+      
+      // Add just a small amount of jitter within the grid cell
+      instancePositions[i * 3] = (gridX + (Math.random() * 0.5 - 0.25) / gridSize) * GRASS_PATCH_SIZE;
+      instancePositions[i * 3 + 1] = 0; // Flat terrain
+      instancePositions[i * 3 + 2] = (gridZ + (Math.random() * 0.5 - 0.25) / gridSize) * GRASS_PATCH_SIZE;
+      
+      // Less height variation (0.8 to 1.1 of base height)
+      instanceHeights[i] = 0.8 + Math.random() * 0.3;
+      
+      // Width variation for thicker blades
+      instanceWidths[i] = 0.6 + Math.random() * 0.2;
+      
+      // Adjust color for early morning light - slightly more yellow-green
+      // Morning sun brings out the yellow tones in grass
+      instanceColors[i * 3] = 0.12 + Math.random() * 0.05; // red (slightly increased for yellow tone)
+      instanceColors[i * 3 + 1] = 0.45 + Math.random() * 0.15; // green (same)
+      instanceColors[i * 3 + 2] = 0.03 + Math.random() * 0.04; // blue (reduced for more yellow appearance)
+      
+      // Moderate bend factor for less dramatic wind movement
+      instanceBend[i] = 0.3 + Math.random() * 0.4;
+      
+      // Random value for misc effects (kept for compatibility)
+      instanceRandom[i] = Math.random();
+      
+      // Random depth offset to prevent z-fighting between grass blades
+      instanceDepth[i] = Math.random(); 
+    }
+    
+    // Set instanced attributes
+    geometry.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(instancePositions, 3));
+    geometry.setAttribute('instanceHeight', new THREE.InstancedBufferAttribute(instanceHeights, 1));
+    geometry.setAttribute('instanceWidth', new THREE.InstancedBufferAttribute(instanceWidths, 1));
+    geometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(instanceColors, 3));
+    geometry.setAttribute('instanceBend', new THREE.InstancedBufferAttribute(instanceBend, 1));
+    geometry.setAttribute('instanceRandom', new THREE.InstancedBufferAttribute(instanceRandom, 1));
+    geometry.setAttribute('instanceDepth', new THREE.InstancedBufferAttribute(instanceDepth, 1));
+    
+    // Set instance count
+    geometry.instanceCount = NUM_GRASS;
+    
+    return geometry;
   }
   
   /**
-   * Load grass shaders
+   * Create a new grass mesh using the appropriate LOD level
    */
-  async loadShaders() {
-    console.log('Loading grass shaders');
+  createMesh(distToCamera) {
+    // Select appropriate geometry and material based on distance
+    const isLowDetail = distToCamera > GRASS_LOD_DIST;
+    const geometry = isLowDetail ? this.geometryLow : this.geometryHigh;
+    const material = isLowDetail ? this.grassMaterialLow : this.grassMaterialHigh;
     
-    // Vertex shader for grass
-    this.vertexShader = `
+    // Create new mesh
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    // Store LOD type for updates
+    mesh.userData.isLowDetail = isLowDetail;
+    
+    // Disable frustum culling on the mesh so it's always rendered
+    mesh.frustumCulled = false;
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    
+    // Set a high render order to ensure grass renders after terrain
+    mesh.renderOrder = 2000; 
+    
+    // Apply a small y-offset to prevent z-fighting with terrain
+    mesh.position.y = 0.01;
+    
+    // Add to scene
+    this.grassGroup.add(mesh);
+    
+    // Store in appropriate array for tracking
+    if (isLowDetail) {
+      this.meshesLow.push(mesh);
+    } else {
+      this.meshesHigh.push(mesh);
+    }
+    
+    console.log("Created new grass mesh:", isLowDetail ? "low detail" : "high detail");
+    
+    return mesh;
+  }
+  
+  /**
+   * Update grass (animation, LOD, etc.)
+   */
+  update(delta, camera, shouldLog = false) {
+    // Update time for animation
+    this.totalTime += delta;
+    
+    // Update stats timer
+    this.statsTimer += delta;
+    
+    // Update uniforms
+    this.grassMaterialLow.uniforms.time.value = this.totalTime;
+    this.grassMaterialHigh.uniforms.time.value = this.totalTime;
+    
+    // Update player position for grass interaction
+    if (this.playerObject) {
+      // Handle different player object structures
+      let playerPos;
+      if (this.playerObject.position) {
+        playerPos = this.playerObject.position.clone();
+      } else if (this.playerObject.model && this.playerObject.model.position) {
+        playerPos = this.playerObject.model.position.clone();
+      } else {
+        playerPos = new THREE.Vector3();
+      }
+      
+      // Set position in shader uniforms
+      this.grassMaterialLow.uniforms.playerPosition.value.copy(playerPos);
+      this.grassMaterialHigh.uniforms.playerPosition.value.copy(playerPos);
+      
+      // Log position for debugging only if enabled
+      if (shouldLog) {
+        console.log("Player position:", playerPos);
+      }
+    }
+    
+    // Update LOD for existing patches
+    this.updateLOD(camera, shouldLog);
+    
+    // Update grass patch visibility based on camera and player position
+    // Do this every frame since camera view and player position change frequently
+    this.updateGrassPatches(camera, shouldLog);
+    
+    // Log stats at regular intervals
+    if (this.statsTimer >= this.statsInterval) {
+      this.logRenderingStats();
+      this.statsTimer = 0; // Reset timer
+    }
+  }
+  
+  /**
+   * Update LOD levels for existing patches based on camera distance
+   */
+  updateLOD(camera, shouldLog) {
+    let lodSwitches = 0;
+    
+    // Update LOD for all patches based on current camera position
+    for (const mesh of this.grassGroup.children) {
+      const distToCamera = camera.position.distanceTo(mesh.position);
+      const shouldBeLowDetail = distToCamera > GRASS_LOD_DIST;
+      
+      // Check if we need to switch LOD
+      if (mesh.userData.isLowDetail !== shouldBeLowDetail) {
+        // Get current arrays
+        const fromArray = mesh.userData.isLowDetail ? this.meshesLow : this.meshesHigh;
+        const toArray = mesh.userData.isLowDetail ? this.meshesHigh : this.meshesLow;
+        
+        // Remove from old array
+        const index = fromArray.indexOf(mesh);
+        if (index !== -1) {
+          fromArray.splice(index, 1);
+        }
+        
+        // Update mesh
+        mesh.geometry = shouldBeLowDetail ? this.geometryLow : this.geometryHigh;
+        mesh.material = shouldBeLowDetail ? this.grassMaterialLow : this.grassMaterialHigh;
+        mesh.userData.isLowDetail = shouldBeLowDetail;
+        
+        // Add to new array
+        toArray.push(mesh);
+        
+        lodSwitches++;
+      }
+    }
+    
+    if (shouldLog && lodSwitches > 0) {
+      console.log(`LOD updates: ${lodSwitches}`);
+    }
+  }
+  
+  /**
+   * Update grass patches based on camera position
+   */
+  updateGrassPatches(camera, shouldLog) {
+    // Get the player position or use camera position if player not available
+    let playerPos;
+    if (this.playerObject) {
+      if (this.playerObject.position) {
+        playerPos = this.playerObject.position.clone();
+      } else if (this.playerObject.model && this.playerObject.model.position) {
+        playerPos = this.playerObject.model.position.clone();
+      } else {
+        playerPos = camera.position.clone();
+      }
+    } else {
+      playerPos = camera.position.clone();
+    }
+    
+    // Ensure Y is 0 for flat terrain
+    playerPos.y = 0;
+    
+    // Create frustum for camera view culling
+    const frustum = new THREE.Frustum();
+    const projScreenMatrix = new THREE.Matrix4();
+    projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projScreenMatrix);
+    
+    // Track all existing patches by their position string key
+    const existingPatchPositions = new Map();
+    for (const mesh of this.grassGroup.children) {
+      const key = `${Math.round(mesh.position.x)},${Math.round(mesh.position.z)}`;
+      existingPatchPositions.set(key, mesh);
+      
+      // Start by hiding all patches - we'll show only the ones we need
+      mesh.visible = false;
+    }
+    
+    // Fixed grid centered on origin 
+    const gridSize = PATCH_RADIUS * 2 + 1;
+    
+    // Log debugging info
+    if (shouldLog) {
+      console.log("Player position:", playerPos);
+      console.log("Grid size:", gridSize);
+    }
+    
+    let visiblePatches = 0;
+    let playerPatchX = Math.round(playerPos.x / GRASS_PATCH_SIZE);
+    let playerPatchZ = Math.round(playerPos.z / GRASS_PATCH_SIZE);
+    
+    // Create a complete grid of patches
+    for (let x = -PATCH_RADIUS; x <= PATCH_RADIUS; x++) {
+      for (let z = -PATCH_RADIUS; z <= PATCH_RADIUS; z++) {
+        // Calculate patch center position
+        const patchPos = new THREE.Vector3(
+          x * GRASS_PATCH_SIZE, 
+          0, // Flat terrain
+          z * GRASS_PATCH_SIZE
+        );
+        
+        // Create a key for this position to check if we already have this patch
+        const key = `${Math.round(patchPos.x)},${Math.round(patchPos.z)}`;
+        
+        // Create bounding box for frustum test
+        const box = new THREE.Box3();
+        box.setFromCenterAndSize(
+          patchPos,
+          new THREE.Vector3(GRASS_PATCH_SIZE, GRASS_HEIGHT * 2, GRASS_PATCH_SIZE)
+        );
+        
+        // Determine if patch should be visible:
+        // 1. Always show 9 patches centered on player (3x3 grid)
+        const patchGridX = Math.round(patchPos.x / GRASS_PATCH_SIZE);
+        const patchGridZ = Math.round(patchPos.z / GRASS_PATCH_SIZE);
+        const isNearPlayer = (
+          Math.abs(patchGridX - playerPatchX) <= 1 && 
+          Math.abs(patchGridZ - playerPatchZ) <= 1
+        );
+        
+        // 2. Show patches in the camera frustum or near its borders (+1 patch border)
+        // First test if box is in frustum
+        let isInFrustum = frustum.intersectsBox(box);
+        
+        // If not in frustum, check if it's within one patch distance of the frustum
+        if (!isInFrustum && !isNearPlayer) {
+          // Expand the box by one patch size in all directions to test for "near frustum"
+          const expandedBox = box.clone();
+          expandedBox.expandByVector(new THREE.Vector3(GRASS_PATCH_SIZE, 0, GRASS_PATCH_SIZE));
+          isInFrustum = frustum.intersectsBox(expandedBox);
+        }
+        
+        // Skip if not near player and not in/near frustum
+        if (!isNearPlayer && !isInFrustum) {
+          continue;
+        }
+        
+        // Get or create the mesh for this patch
+        let mesh;
+        
+        // If we already have this patch, reuse it
+        if (existingPatchPositions.has(key)) {
+          mesh = existingPatchPositions.get(key);
+          existingPatchPositions.delete(key); // Remove from map since we're using it
+        } else {
+          // Create a new mesh for this position
+          const distToCamera = camera.position.distanceTo(patchPos);
+          mesh = this.createMesh(distToCamera);
+          mesh.position.copy(patchPos);
+        }
+        
+        // Show the mesh
+        mesh.visible = true;
+        
+        // DEBUG: Log patch position for the first few patches
+        if (shouldLog && visiblePatches < 5) {
+          console.log(`Patch ${visiblePatches} position:`, patchPos, 
+            isNearPlayer ? "(near player)" : "(in frustum)");
+        }
+        
+        visiblePatches++;
+      }
+    }
+    
+    if (shouldLog) {
+      console.log(`Visible patches: ${visiblePatches} of ${this.grassGroup.children.length} total patches`);
+      console.log(`Player position: ${playerPos.x.toFixed(2)}, ${playerPos.z.toFixed(2)}`);
+    }
+  }
+
+  /**
+   * Get vertex shader code for grass
+   */
+  getGrassVertexShader() {
+    return `
       uniform float time;
-      uniform vec3 playerPos;
+      uniform vec3 playerPosition;
+      uniform float terrainSize;
+      uniform float maxHeight;
+      uniform float minHeight;
+      uniform float heightOffset;
+      uniform float lodDistance;
+      uniform float maxLodDistance;
+      uniform vec2 grassSize;
+      uniform vec4 grassParams;
       
-      varying vec2 vUv;
-      varying float vHeight;
-      varying vec3 vWorldPosition;
+      // Instanced attributes
+      attribute vec3 instancePosition;
+      attribute float instanceHeight;
+      attribute float instanceWidth;
+      attribute vec3 instanceColor;
+      attribute float instanceBend;
+      attribute float instanceRandom;
+      attribute float instanceDepth;
+      
+      // Varying variables to pass to fragment shader
+      varying vec3 vColor;
+      varying float vLod;
+      varying float vDistanceToCamera;
       varying vec3 vNormal;
+      varying vec3 vPosition;
       
-      // Noise functions for wind effect
-      float random(vec2 st) {
+      // Noise function for wind effect
+      float noise(vec2 st) {
         return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
       }
       
-      // Rotate vector around Y axis
-      vec3 rotateY(float angle, vec3 v) {
-        float c = cos(angle);
-        float s = sin(angle);
-        return vec3(c * v.x - s * v.z, v.y, s * v.x + c * v.z);
+      // Wind effect
+      vec3 applyWind(vec3 pos, float bendFactor, float heightPercent, vec3 worldPos) {
+        // Calculate wind strength based on time and position
+        float windStrength = 0.8; // Reduced from 1.8 to 0.8 for moderate wind
+        
+        // Wave propagation parameters
+        float waveSpeed = 3.2; // Increased from 1.8 to 3.2 for faster wind movement
+        float wavePeriod = 10.0; // Medium period for moderate gusts
+        
+        // Calculate moving wave patterns - this creates a sweeping motion across the terrain
+        // Primary wave moving along negative X axis
+        float wavePosition = worldPos.z + time * waveSpeed;
+        float windWave = sin(wavePosition / wavePeriod);
+        
+        // More moderate transitions for gentler gusts
+        windWave = smoothstep(-0.6, 0.6, windWave) * 1.2;
+        
+        // Secondary wave at different frequency and phase
+        float secondaryWavePosition = worldPos.z + time * waveSpeed * 0.9 + 10.0; // Faster secondary wave
+        float secondaryWindWave = sin(secondaryWavePosition / (wavePeriod * 0.7));
+        secondaryWindWave = smoothstep(-0.4, 0.6, secondaryWindWave) * 1.0;
+        
+        // Tertiary wave at different angle (diagonal movement)
+        float tertiaryWavePosition = worldPos.x * 0.6 + worldPos.z * 0.6 + time * waveSpeed * 1.5; // Faster tertiary wave
+        float tertiaryWindWave = sin(tertiaryWavePosition / (wavePeriod * 0.5));
+        tertiaryWindWave = smoothstep(-0.5, 0.5, tertiaryWindWave) * 1.0;
+        
+        // Combine waves with weights to create more complex motion with moderate grouping
+        float windIntensityVariation = 0.4 + 0.7 * windWave + 0.5 * secondaryWindWave + 0.3 * tertiaryWindWave;
+        
+        // Local position-based variation for subtle differences within groups
+        float localVariation = noise(worldPos.xz * 0.5);
+        
+        // Combine all factors into final wind strength with moderate grouping effect
+        float finalWindStrength = windStrength * windIntensityVariation * (0.85 + 0.15 * localVariation);
+        
+        // Apply wind to X direction with increased effect at the top
+        float heightFactor = heightPercent * heightPercent * heightPercent; // Cubic for stronger top movement
+        pos.x -= finalWindStrength * heightFactor * bendFactor * 1.0; // Reduced multiplier from 1.5 to 1.0
+        
+        // Add faster vertical motion
+        pos.y += sin(time * 2.5 + worldPos.x * 0.4) * 0.03 * heightFactor * bendFactor;
+        
+        // Add faster lateral z-movement
+        pos.z += sin(time * 3.0 + worldPos.x * 0.5) * 0.015 * heightFactor * bendFactor;
+        
+        return pos;
       }
       
-      void main() {
-        vUv = uv;
+      // Calculate player interaction (bending away from player)
+      vec3 applyPlayerInteraction(vec3 pos, vec3 worldPosition) {
+        float playerDistance = distance(worldPosition.xz, playerPosition.xz);
+        float influence = 1.0 - clamp(playerDistance / 3.0, 0.0, 1.0);
         
-        // Calculate position in model space
+        if (influence > 0.0) {
+          // Direction away from player
+          vec2 direction = normalize(worldPosition.xz - playerPosition.xz);
+          
+          // Bend the grass more at the top
+          float heightFactor = pos.y;
+          
+          // Apply bend
+          pos.x += direction.x * influence * heightFactor * 0.5;
+          pos.z += direction.y * influence * heightFactor * 0.5;
+        }
+        
+        return pos;
+      }
+      
+      // Calculate normal for lighting
+      // Use a more stable normal that doesn't change as much with camera movement
+      void main() {
+        // Scale the grass blade by instance attributes
         vec3 pos = position;
         
-        // Get instance matrix and extract position, rotation, scale
-        mat4 instanceMatrix = instanceMatrix;
-        vec4 worldPos = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        // Apply small z-offset based on instanceDepth to prevent z-fighting between grass blades
+        // This creates a small depth variation between blades
+        pos.z += (instanceDepth - 0.5) * 0.05;
         
-        // Pass world position to fragment shader for lighting
-        vWorldPosition = worldPos.xyz;
+        // Scale height and width
+        pos.y *= instanceHeight * maxHeight;
         
-        // Calculate normalized height (0 at bottom, 1 at top)
-        vHeight = position.y;
-        
-        // Apply wind effect - stronger at the top, none at the bottom
-        float windStrength = 0.06 * vHeight;
-        float windFrequency = 0.8;
-        float noise = random(vec2(worldPos.x * 0.1, worldPos.z * 0.1));
-        float windEffect = sin(time * windFrequency + noise * 6.28) * windStrength;
-        
-        // Apply bend away from player for interactive effect
-        float dist = distance(worldPos.xz, playerPos.xz);
-        float playerEffect = 0.0;
-        
-        if (dist < 2.0) {
-          playerEffect = (2.0 - dist) * 0.1 * vHeight;
-          vec2 direction = normalize(worldPos.xz - playerPos.xz);
-          pos.x += direction.x * playerEffect;
-          pos.z += direction.y * playerEffect;
+        // Scale width differently, preserving the cross shape
+        // For X and Z components, scale them but preserve the cross structure
+        if (abs(position.x) > 0.01) {
+          // Front-back plane 
+          pos.x *= instanceWidth * grassSize.x;
+        } else if (abs(position.z) > 0.01) {
+          // Left-right plane
+          pos.z *= instanceWidth * grassSize.x;
         }
         
-        // Apply wind effect (only to x-position for simplicity)
-        pos.x += windEffect;
+        // Calculate vertex height percentage along the blade
+        float heightPercent = position.y;
         
-        // Create rounded normals similar to the image technique
-        // Determine width percent (how far from center we are)
-        float widthPercent = abs(position.x / 0.075); // 0.075 is half blade width
+        // Get the mesh position from the model matrix (this is the patch position)
+        vec3 meshPosition = vec3(modelMatrix[3].x, modelMatrix[3].y, modelMatrix[3].z);
         
-        // Base normal for a flat plane facing forward (standard normal)
-        vec3 grassVertexNormal = normal;
+        // Calculate world position by combining:
+        // 1. The mesh position (patch center from model matrix)
+        // 2. The instance position (position within the patch)
+        // 3. The vertex position (position within the blade)
+        vec3 worldPos = meshPosition + instancePosition;
         
-        // Create two rotated normals by rotating slightly around Y
-        vec3 rotatedNormal1 = rotateY(3.14159 * 0.3, grassVertexNormal);
-        vec3 rotatedNormal2 = rotateY(3.14159 * -0.3, grassVertexNormal);
+        // Apply vertical bend based on instance attribute - using world position for wave effect
+        pos = applyWind(pos, instanceBend, heightPercent, worldPos);
         
-        // Mix the two rotated normals based on width percent
-        vec3 mixedNormal = mix(rotatedNormal1, rotatedNormal2, widthPercent);
+        // Calculate the full world position after wind
+        vec3 vertexWorldPosition = worldPos + pos;
         
-        // Normalize to ensure proper length
-        mixedNormal = normalize(mixedNormal);
+        // Store original local position before player interaction
+        vec3 posBeforeInteraction = pos;
         
-        // Pass the rounded normal to fragment shader
-        vNormal = normalMatrix * mixedNormal;
+        // Apply player interaction to local position
+        pos = applyPlayerInteraction(pos, worldPos);
         
-        // Transform with instance matrix
-        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(pos, 1.0);
+        // Recalculate world position by applying the delta from player interaction
+        vec3 positionDelta = pos - posBeforeInteraction;
+        vertexWorldPosition = vertexWorldPosition + positionDelta;
+        
+        // Transform to clip space using view and projection matrices
+        // (don't use model matrix again since we manually applied it)
+        vec4 viewPosition = viewMatrix * vec4(vertexWorldPosition, 1.0);
+        
+        // Calculate distance to camera for LOD
+        float distanceToCamera = length(viewPosition.xyz);
+        vDistanceToCamera = distanceToCamera;
+        
+        // LOD transition factor (0 = high detail, 1 = low detail)
+        vLod = smoothstep(lodDistance * 0.8, lodDistance * 1.2, distanceToCamera);
+        
+        // Pass color to fragment shader (without random jitter)
+        vColor = instanceColor;
+        
+        // Create very sharp tips for the blades
+        float tipSharpness = 6.0; // Higher value means even sharper tip
+        
+        // Only apply tip thinning to the top 40% of the blade
+        float tipStartHeight = 0.6;
+        float tipThinning = 1.0;
+        
+        if (heightPercent > tipStartHeight) {
+          // Calculate how far into the tip section we are (0 at start, 1 at very top)
+          float tipProgress = (heightPercent - tipStartHeight) / (1.0 - tipStartHeight);
+          // Apply progressive thinning
+          tipThinning = 1.0 - pow(tipProgress, tipSharpness);
+        }
+        
+        // Adjust width based on height (thinner at top to create a sharp point)
+        // Apply the thinning to whichever component is non-zero (to preserve the cross)
+        if (abs(position.x) > 0.01) {
+          pos.x *= tipThinning;
+        } else if (abs(position.z) > 0.01) {
+          pos.z *= tipThinning;
+        }
+        
+        // Make tip converge to a single point at the very top
+        if (heightPercent > 0.9) { // Start point convergence later for better shape
+          // Force blades to approach 0 at the very top (creating a point)
+          float pointFactor = (heightPercent - 0.9) / 0.1; // 0 at 0.9, 1 at 1.0
+          if (abs(position.x) > 0.01) {
+            pos.x *= (1.0 - pointFactor);
+          } else if (abs(position.z) > 0.01) {
+            pos.z *= (1.0 - pointFactor);
+          }
+        }
+        
+        // Pass the actual vertex normal for better lighting from all angles
+        // but still adjust it to be more consistent
+        vec3 adjustedNormal = normal;
+        // Blend with a fixed up-vector for more consistent lighting
+        vec3 upVector = vec3(0.0, 1.0, 0.0);
+        float blendFactor = 0.3; // How much to blend with up vector
+        adjustedNormal = normalize(mix(adjustedNormal, upVector, blendFactor * heightPercent));
+        vNormal = normalMatrix * adjustedNormal;
+        
+        // Pass position for effects
+        vPosition = vertexWorldPosition;
+        
+        // Final position
+        gl_Position = projectionMatrix * viewPosition;
       }
     `;
-    
-    // Fragment shader for grass with afternoon lighting (2-3 hours before sunset)
-    this.fragmentShader = `
+  }
+
+  /**
+   * Get fragment shader code for grass
+   */
+  getGrassFragmentShader() {
+    return `
       uniform float time;
+      uniform vec3 sunDirection;
+      uniform vec3 sunColor;
+      uniform float maxLodDistance;
       
-      varying vec2 vUv;
-      varying float vHeight;
-      varying vec3 vWorldPosition;
+      // Variables from vertex shader
+      varying vec3 vColor;
+      varying float vLod;
+      varying float vDistanceToCamera;
       varying vec3 vNormal;
+      varying vec3 vPosition;
       
       void main() {
-        // Define sun direction (from positive X, higher in the sky to match main.js)
-        vec3 sunDirection = normalize(vec3(1.0, 0.8, 0.2));
-        
-        // Brighter afternoon colors - less orange, more natural green
-        vec3 tipColor = vec3(0.5, 0.8, 0.15);    // Bright green tips in sunlight
-        vec3 midColor = vec3(0.4, 0.7, 0.1);     // Medium green
-        vec3 rootColor = vec3(0.25, 0.45, 0.05); // Darker base
-        
-        // Afternoon sunlight - brighter, less golden
-        vec3 sunlightColor = vec3(1.0, 0.95, 0.8); // Slightly warm but not orange
-        
-        // Use the varying normal that has the rounded effect
+        // Basic lighting calculation with sun direction
         vec3 normal = normalize(vNormal);
         
-        // Calculate sun contribution with height variation using rounded normal
-        float sunContribution = max(0.3, dot(normal, sunDirection));
+        // Ambient light - adjusted for early morning lighting
+        float ambientStrength = 0.5; // Slightly reduced for more pronounced directional light
+        vec3 ambient = ambientStrength * sunColor;
         
-        // Adjust sun contribution based on X position to match HDR sun from +X
-        float sunPositionFactor = smoothstep(-150.0, 150.0, vWorldPosition.x) * 0.3 + 0.7;
-        sunContribution *= sunPositionFactor;
+        // Add subtle blue tint to shadowed areas for morning atmosphere
+        vec3 skyColor = vec3(0.75, 0.85, 1.0);
+        vec3 morningAmbient = mix(skyColor, sunColor, 0.5) * 0.3;
+        ambient += morningAmbient;
         
-        // Base color interpolated by height
-        vec3 grassColor;
-        if (vHeight < 0.5) {
-            // Bottom half: root to mid
-            grassColor = mix(rootColor, midColor, vHeight * 2.0);
-        } else {
-            // Top half: mid to tip
-            grassColor = mix(midColor, tipColor, (vHeight - 0.5) * 2.0);
+        // Diffuse light with reduced view dependency
+        // Calculate diffuse lighting from sun direction for stronger morning rays
+        float mainDiff = max(dot(normal, normalize(sunDirection)), 0.0);
+        
+        // Add some light from above for more consistent illumination
+        float topDiff = max(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0) * 0.3;
+        
+        // Add a small amount of light from all directions
+        float hemisphereDiff = 0.5 + 0.5 * dot(normal, vec3(0.0, 1.0, 0.0));
+        
+        // Combine the different lighting sources with weights adjusted for morning light
+        vec3 diffuse = (mainDiff * 0.5 + topDiff * 0.2 + hemisphereDiff * 0.2) * sunColor;
+        
+        // Enhanced backlighting for morning sun rim effect
+        float backFactor = max(0.0, -dot(normal, normalize(sunDirection)));
+        float backlight = 0.25 * pow(backFactor, 2.0); // Stronger rim lighting
+        vec3 backlighting = backlight * vec3(1.0, 0.9, 0.7); // Warm backlight color
+        
+        // Apply lighting to color
+        vec3 color = vColor * (ambient + diffuse) + backlighting * 0.3;
+        
+        // Ensure minimum brightness to prevent grass from getting too dark
+        float luminance = dot(color, vec3(0.299, 0.587, 0.114));
+        float minLuminance = 0.2; // Darker shadows for morning
+        if (luminance < minLuminance) {
+          color *= minLuminance / max(0.001, luminance);
         }
         
-        // Add sunlight influence - brighter, less dramatic than sunset
-        vec3 litColor = mix(grassColor, grassColor * sunlightColor, sunContribution * 0.4);
+        // Darken the color more prominently near the ground to create better depth
+        // and a more realistic gradient from base to tip
+        float heightRatio = clamp(vPosition.y / 0.5, 0.0, 1.0);
+        // Even more pronounced darkening at the base (0.5 at base, 1.0 at middle/top)
+        // Using a steeper curve with pow() to create more dramatic gradient
+        color *= mix(0.5, 1.0, pow(heightRatio, 0.75));
         
-        // Add gentle swaying color variation
-        float colorNoise = sin(time * 0.3 + vWorldPosition.x * 0.05 + vWorldPosition.z * 0.05) * 0.03;
-        
-        // Final color with subtle noise
-        vec3 finalColor = litColor * (1.0 + colorNoise);
-        
-        gl_FragColor = vec4(finalColor, 1.0);
+        // Output final color
+        gl_FragColor = vec4(color, 1.0);
       }
     `;
-    
-    console.log('Shaders loaded successfully');
-    return true;
   }
-  
-  /**
-   * Create the shader material using loaded shaders
-   */
-  createMaterial() {
-    // Sun direction for sunset lighting (positive X, partially down)
-    const sunDirection = new THREE.Vector3(0.8, 0.4, 0.0).normalize();
-    
-    this.material = new THREE.ShaderMaterial({
-      vertexShader: this.vertexShader,
-      fragmentShader: this.fragmentShader,
-      uniforms: {
-        time: { value: 0 },
-        heightmap: { value: this.heightmap },
-        playerPosition: { value: new THREE.Vector3() },
-        terrainSize: { value: this.terrainSize },
-        maxHeight: { value: this.maxHeight },
-        minHeight: { value: this.minHeight },
-        heightOffset: { value: this.heightOffset },
-        lodDistance: { value: this.lodDistance },
-        maxLodDistance: { value: this.maxLodDistance },
-        sunDirection: { value: sunDirection },
-        sunColor: { value: new THREE.Color(1.0, 0.8, 0.4) } // Golden sunset color
-      },
-      side: THREE.DoubleSide,
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-    });
-  }
-  
-  /**
-   * Create grass blade geometries for different LOD levels
-   */
-  createGrassGeometries() {
-    console.log('Creating grass geometries');
-    
-    // Create a simple cross-shaped grass blade
-    this.grassGeometry = new THREE.BufferGeometry();
-    
-    // Define vertices for a cross shape (two quads at 90 degrees)
-    const vertices = new Float32Array([
-      // First quad (front-facing)
-      -0.5, 0.0, 0.0,   // bottom left
-       0.5, 0.0, 0.0,   // bottom right
-      -0.1, 1.0, 0.0,   // top left
-       0.1, 1.0, 0.0,   // top right
-      
-      // Second quad (side-facing)
-      0.0, 0.0, -0.5,   // bottom left
-      0.0, 0.0,  0.5,   // bottom right
-      0.0, 1.0, -0.1,   // top left
-      0.0, 1.0,  0.1    // top right
-    ]);
-    
-    // Define triangle indices
-    const indices = new Uint16Array([
-      // First quad
-      0, 1, 2,
-      2, 1, 3,
-      // Second quad
-      4, 5, 6,
-      6, 5, 7
-    ]);
-    
-    // UVs for texture mapping
-    const uvs = new Float32Array([
-      // First quad
-      0.0, 0.0,
-      1.0, 0.0,
-      0.0, 1.0,
-      1.0, 1.0,
-      // Second quad
-      0.0, 0.0,
-      1.0, 0.0,
-      0.0, 1.0,
-      1.0, 1.0
-    ]);
-    
-    // Set attributes
-    this.grassGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    this.grassGeometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-    this.grassGeometry.setIndex(new THREE.BufferAttribute(indices, 1));
-    
-    // Compute normals
-    this.grassGeometry.computeVertexNormals();
-    
-    console.log('Grass geometries created');
-  }
-  
-  /**
-   * Create a grass patch for a specific grid position
-   * @param {number} gridX X-coordinate in the grid
-   * @param {number} gridZ Z-coordinate in the grid
-   */
-  createPatch(gridX, gridZ) {
-    const key = `${gridX},${gridZ}`;
-    if (this.activePatches.has(key)) {
-      return this.activePatches.get(key);
-    }
 
-    try {
-      // Calculate world position
-      const worldX = (gridX * this.patchSize) - (this.terrainSize / 2);
-      const worldZ = (gridZ * this.patchSize) - (this.terrainSize / 2);
-      
-      console.log(`Creating grass patch at grid(${gridX},${gridZ}), world(${worldX.toFixed(2)},${worldZ.toFixed(2)})`);
-      
-      // Debug visualization - Create a small red cube to mark the center of the patch
-      const debugGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-      const debugMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-      const debugMarker = new THREE.Mesh(debugGeometry, debugMaterial);
-      
-      // Sample height for the debug marker
-      const patchCenterX = worldX + this.patchSize/2;
-      const patchCenterZ = worldZ + this.patchSize/2;
-      const sampleY = this.sampleHeight(patchCenterX, patchCenterZ);
-      debugMarker.position.set(patchCenterX, sampleY + 0.25, patchCenterZ);
-      // Only show debug markers in development mode
-      debugMarker.visible = false;
-      this.scene.add(debugMarker);
-      
-      // Calculate number of grass blades in this patch
-      const instanceCount = Math.floor(this.patchSize * this.patchSize * this.density);
-      
-      // Create grass blades using simple plane geometry with more segments for better bending
-      const bladeGeometry = new THREE.PlaneGeometry(0.15, 1.5, 1, 8); // Added more vertical segments for smoother taper
-      
-      // Adjust vertices to create a sharp pointed tip
-      const positions = bladeGeometry.attributes.position.array;
-      for (let i = 0; i < positions.length; i += 3) {
-        const y = positions[i + 1];
-        // Only modify vertices above the base
-        if (y > 0) {
-          const heightRatio = y / 1.5;
-          
-          // Make blade thinner as it gets higher, with sharper taper toward the tip
-          const taperFactor = Math.pow(1.0 - heightRatio, 0.5); // Adjusted power curve for sharper taper
-          positions[i] *= taperFactor;
-          
-          // Add a slight curve but maintain the sharp tip
-          if (heightRatio < 0.9) {
-            // Add curve to the lower 90% of the blade
-            positions[i] += 0.03 * Math.sin(heightRatio * Math.PI);
-          } else {
-            // Make the tip extremely thin and sharp
-            positions[i] *= (1.0 - heightRatio) * 5; // Gets very thin at the top
-          }
-        }
-      }
-      
-      // Create instance matrices for each grass blade
-      const matrix = new THREE.Matrix4();
-      const position = new THREE.Vector3();
-      const quaternion = new THREE.Quaternion();
-      const scale = new THREE.Vector3();
-      
-      // Create shader material with uniforms for afternoon lighting
-      const grassMaterial = new THREE.ShaderMaterial({
-        vertexShader: this.vertexShader,
-        fragmentShader: this.fragmentShader,
-        side: THREE.DoubleSide,
-        uniforms: {
-          time: { value: 0 },
-          playerPos: { value: new THREE.Vector3() },
-          sunDirection: { value: new THREE.Vector3(1.0, 0.8, 0.2).normalize() },
-          sunColor: { value: new THREE.Color(1.0, 0.95, 0.8) },
-          terrainSize: { value: this.terrainSize }
-        }
-      });
-      
-      // Create mesh with instanced geometry
-      const instancedGrass = new THREE.InstancedMesh(
-        bladeGeometry,
-        grassMaterial,
-        instanceCount
-      );
-      
-      // Windows XP-style green color variations for afternoon lighting
-      const grassColors = [
-        new THREE.Color(0.4, 0.75, 0.1),   // Bright green
-        new THREE.Color(0.45, 0.8, 0.15),  // Vibrant green
-        new THREE.Color(0.35, 0.65, 0.1),  // Medium green
-        new THREE.Color(0.3, 0.55, 0.05),  // Darker green
-      ];
-      
-      // Place grass blades
-      for (let i = 0; i < instanceCount; i++) {
-        // Random position within patch
-        const x = worldX + Math.random() * this.patchSize;
-        const z = worldZ + Math.random() * this.patchSize;
+  /**
+   * Log statistics about grass rendering
+   */
+  logRenderingStats() {
+    // Count visible patches
+    let visiblePatchCount = 0;
+    let visibleHighLOD = 0;
+    let visibleLowLOD = 0;
+    let totalBlades = 0;
+    let totalTriangles = 0;
+    
+    for (const mesh of this.grassGroup.children) {
+      if (mesh.visible) {
+        visiblePatchCount++;
         
-        // Get height at this position
-        const y = this.sampleHeight(x, z);
+        // Count blades based on LOD level
+        const bladeCount = NUM_GRASS;
+        totalBlades += bladeCount;
         
-        // Set position
-        position.set(x, y, z);
+        // Count triangles - each blade has different triangle count based on LOD
+        const trianglesPerBlade = mesh.userData.isLowDetail 
+          ? (GRASS_SEGMENTS_LOW * 4) // 4 triangles per segment (2 per side of the cross)
+          : (GRASS_SEGMENTS_HIGH * 4);
+        totalTriangles += bladeCount * trianglesPerBlade;
         
-        // Vary rotation to make blade faces different directions
-        // More blades facing the sunset (+X direction) will catch more light
-        let facingSunsetFactor = 0;
-        
-        // 60% of blades somewhat aligned toward sun for better light catching
-        if (Math.random() > 0.4) {
-          // Rotation that somewhat faces the sunset (positive X)
-          facingSunsetFactor = (Math.random() * 0.5) + 0.5; // 0.5 to 1.0
-          quaternion.setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0), 
-            Math.PI * (facingSunsetFactor + Math.random() * 0.3)
-          );
+        if (mesh.userData.isLowDetail) {
+          visibleLowLOD++;
         } else {
-          // Random rotation
-          quaternion.setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0), 
-            Math.random() * Math.PI * 2
-          );
-        }
-        
-        // Random scale with height variation based on sunset exposure
-        // Taller grass on areas exposed to sun (positive X side)
-        const sunExposureFactor = (x > 0) ? 0.2 : 0;
-        const height = 0.4 + Math.random() * 0.6 + sunExposureFactor; // Height between 0.4 and 1.0+
-        const width = 0.1 + Math.random() * 0.15; // Thinner width between 0.1 and 0.25
-        
-        scale.set(width, height, 1);
-        
-        // Randomly select a color from the array with bias for sunlit areas
-        let colorIndex;
-        if (x > 0 && Math.random() > 0.4) {
-          // Positive X (sunlit side) gets more yellow-green colors
-          colorIndex = Math.floor(Math.random() * 2); // Use first two colors (more yellow)
-        } else {
-          // Otherwise use full range with bias toward darker colors for negative X
-          colorIndex = Math.floor(Math.random() * grassColors.length);
-          if (x < 0 && Math.random() > 0.5) {
-            colorIndex = 3; // More dark green on shadowed side
-          }
-        }
-        
-        instancedGrass.setColorAt(i, grassColors[colorIndex]);
-        
-        // Compose matrix and set instance
-        matrix.compose(position, quaternion, scale);
-        instancedGrass.setMatrixAt(i, matrix);
-      }
-      
-      // Update instance matrices
-      instancedGrass.instanceMatrix.needsUpdate = true;
-      
-      // Add to scene
-      this.scene.add(instancedGrass);
-      
-      // Store the patch data
-      const patch = {
-        mesh: instancedGrass,
-        debugMarker,
-        gridX,
-        gridZ,
-        worldX,
-        worldZ
-      };
-      
-      this.activePatches.set(key, patch);
-      console.log(`Created grass patch with ${instanceCount} blades`);
-      
-      return patch;
-    } catch (error) {
-      console.error('Error creating grass patch:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Remove a grass patch
-   * @param {string} key Patch key (gridX,gridZ)
-   */
-  removePatch(key) {
-    const patch = this.activePatches.get(key);
-    if (patch) {
-      // Remove mesh
-      this.scene.remove(patch.mesh);
-      patch.mesh.geometry.dispose();
-      
-      // Remove debug marker if it exists
-      if (patch.debugMarker) {
-        this.scene.remove(patch.debugMarker);
-      }
-      
-      this.activePatches.delete(key);
-      console.log(`Removed grass patch at grid (${patch.gridX}, ${patch.gridZ})`);
-    }
-  }
-  
-  /**
-   * Update patches based on player position and camera field of view
-   */
-  updatePatches() {
-    if (!this.playerObject) return;
-    
-    // Get player position
-    const playerX = this.playerObject.position.x;
-    const playerZ = this.playerObject.position.z;
-    
-    // Calculate player grid position
-    const terrainHalfSize = this.terrainSize / 2;
-    // Convert from world coordinates to grid coordinates
-    const playerGridX = Math.floor((playerX + terrainHalfSize) / this.patchSize);
-    const playerGridZ = Math.floor((playerZ + terrainHalfSize) / this.patchSize);
-    
-    console.log(`Player at grid position: (${playerGridX}, ${playerGridZ})`);
-    
-    // Track which patches should be active
-    const shouldBeActive = new Set();
-    
-    // 1. ALWAYS create the four patches directly around the player (2x2 grid)
-    for (let dx = 0; dx <= 1; dx++) {
-      for (let dz = 0; dz <= 1; dz++) {
-        const gridX = playerGridX + dx;
-        const gridZ = playerGridZ + dz;
-        
-        // Make sure we stay within valid grid coordinates
-        if (gridX >= 0 && gridX < this.gridSize && gridZ >= 0 && gridZ < this.gridSize) {
-          const key = `${gridX},${gridZ}`;
-          shouldBeActive.add(key);
-          
-          // Create patch if it doesn't exist
-          if (!this.activePatches.has(key)) {
-            this.createPatch(gridX, gridZ);
-          }
+          visibleHighLOD++;
         }
       }
     }
     
-    // 2. Get camera for frustum calculations
-    const camera = window.CAMERA ? window.CAMERA.camera : null;
-    if (camera) {
-      // Create temporary frustum to check visibility
-      const frustum = new THREE.Frustum();
-      const projScreenMatrix = new THREE.Matrix4();
-      
-      // Update projection matrix with current camera settings
-      projScreenMatrix.multiplyMatrices(
-        camera.projectionMatrix, 
-        camera.matrixWorldInverse
-      );
-      
-      frustum.setFromProjectionMatrix(projScreenMatrix);
-      
-      // Extend render distance for patches within/near camera view
-      const viewDistance = 4; // How many patches to check around player
-      
-      // Check patches in a square around player for visibility
-      for (let dx = -viewDistance; dx <= viewDistance; dx++) {
-        for (let dz = -viewDistance; dz <= viewDistance; dz++) {
-          // Skip the 2x2 area around player (already added)
-          if (dx >= 0 && dx <= 1 && dz >= 0 && dz <= 1) continue;
-          
-          const gridX = playerGridX + dx;
-          const gridZ = playerGridZ + dz;
-          
-          // Make sure we stay within valid grid coordinates
-          if (gridX >= 0 && gridX < this.gridSize && gridZ >= 0 && gridZ < this.gridSize) {
-            // Calculate world position of patch center
-            const worldX = (gridX * this.patchSize) - (this.terrainSize / 2) + (this.patchSize / 2);
-            const worldZ = (gridZ * this.patchSize) - (this.terrainSize / 2) + (this.patchSize / 2);
-            const worldY = this.sampleHeight(worldX, worldZ);
-            
-            // Create a bounding sphere for the patch
-            const center = new THREE.Vector3(worldX, worldY, worldZ);
-            const radius = this.patchSize * Math.SQRT2 / 2; // Diagonal distance / 2
-            
-            // Check if patch or its immediate surroundings are in or near frustum
-            const sphere = new THREE.Sphere(center, radius * 1.5); // Slightly larger to catch nearby patches
-            
-            if (frustum.intersectsSphere(sphere)) {
-              const key = `${gridX},${gridZ}`;
-              shouldBeActive.add(key);
-              
-              // Create patch if it doesn't exist
-              if (!this.activePatches.has(key)) {
-                this.createPatch(gridX, gridZ);
-              }
-              
-              // Also add patches 1 grid cell away from visible patches
-              // This creates a buffer around the visible patches
-              for (let nx = -1; nx <= 1; nx++) {
-                for (let nz = -1; nz <= 1; nz++) {
-                  if (nx === 0 && nz === 0) continue; // Skip the patch itself
-                  
-                  const neighborX = gridX + nx;
-                  const neighborZ = gridZ + nz;
-                  
-                  if (neighborX >= 0 && neighborX < this.gridSize && 
-                      neighborZ >= 0 && neighborZ < this.gridSize) {
-                    const neighborKey = `${neighborX},${neighborZ}`;
-                    shouldBeActive.add(neighborKey);
-                    
-                    // Create neighbor patch if it doesn't exist
-                    if (!this.activePatches.has(neighborKey)) {
-                      this.createPatch(neighborX, neighborZ);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } else {
-      // Fallback if camera isn't accessible - just use a static render distance
-      const renderDistance = 2;
-      console.log(`Camera not found. Using fallback render distance: ${renderDistance} grid cells`);
-      
-      // Generate patches in a square around player
-      for (let dx = -renderDistance; dx <= renderDistance; dx++) {
-        for (let dz = -renderDistance; dz <= renderDistance; dz++) {
-          const gridX = playerGridX + dx;
-          const gridZ = playerGridZ + dz;
-          
-          // Make sure we stay within valid grid coordinates
-          if (gridX >= 0 && gridX < this.gridSize && gridZ >= 0 && gridZ < this.gridSize) {
-            const key = `${gridX},${gridZ}`;
-            shouldBeActive.add(key);
-            
-            // Create patch if it doesn't exist
-            if (!this.activePatches.has(key)) {
-              this.createPatch(gridX, gridZ);
-            }
-          }
-        }
-      }
-    }
+    // Format numbers with commas
+    const formatNumber = (num) => {
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
     
-    // Remove patches that are no longer needed
-    for (const key of this.activePatches.keys()) {
-      if (!shouldBeActive.has(key)) {
-        this.removePatch(key);
-      }
-    }
+    // Calculate percent change for patch count
+    const patchPercentChange = this.lastPatchCount > 0 ? 
+      ((visiblePatchCount - this.lastPatchCount) / this.lastPatchCount * 100).toFixed(1) + "%" : "N/A";
     
-    console.log(`Active patches: ${this.activePatches.size}`);
-  }
-  
-  /**
-   * Update the grass patches and animations
-   * @param {number} deltaTime Time since last update in seconds
-   */
-  update(deltaTime) {
-    // Update uniform time
-    const worldTime = performance.now() * 0.001; // Convert to seconds
+    // Calculate percent change for blade count
+    const bladePercentChange = this.lastBladeCount > 0 ? 
+      ((totalBlades - this.lastBladeCount) / this.lastBladeCount * 100).toFixed(1) + "%" : "N/A";
     
-    // Add periodic updates here if needed
-    setTimeout(() => {
-      this.updatePatches();
-    }, 500);
+    // Estimate memory usage (very rough approximation)
+    // Each vertex has position (3), normal (3), uv (2) = 8 floats * 4 bytes = 32 bytes per vertex
+    // Each instance has multiple attributes totaling roughly 10 floats * 4 bytes = 40 bytes
+    const bytesPerVertex = 32;
+    const bytesPerInstance = 40;
+    const verticesHighLOD = (GRASS_SEGMENTS_HIGH + 1) * 4; // 4 vertices per segment level
+    const verticesLowLOD = (GRASS_SEGMENTS_LOW + 1) * 4;
+    const memoryUsageMB = (
+      (visibleHighLOD * NUM_GRASS * bytesPerInstance) +
+      (visibleHighLOD * verticesHighLOD * bytesPerVertex) +
+      (visibleLowLOD * NUM_GRASS * bytesPerInstance) +
+      (visibleLowLOD * verticesLowLOD * bytesPerVertex)
+    ) / (1024 * 1024);
     
-    // Update uniforms for all active grass patches
-    this.activePatches.forEach(patch => {
-      if (patch.mesh && patch.mesh.material && patch.mesh.material.uniforms) {
-        // Update time uniform
-        if (patch.mesh.material.uniforms.time) {
-          patch.mesh.material.uniforms.time.value = worldTime;
-        }
-        
-        // Update player position for interaction
-        if (patch.mesh.material.uniforms.playerPos && this.playerObject) {
-          patch.mesh.material.uniforms.playerPos.value.copy(this.playerObject.position);
-        }
-      }
-    });
-  }
-  
-  /**
-   * Cleanup and dispose of resources
-   */
-  dispose() {
-    console.log('Disposing GrassComponent resources');
+    // Store current values for next comparison
+    this.lastPatchCount = visiblePatchCount;
+    this.lastBladeCount = totalBlades;
     
-    // Remove all active patches from the scene
-    for (const [key, patch] of this.activePatches.entries()) {
-      this.removePatch(key);
-    }
-    
-    // Clear active patches map
-    this.activePatches.clear();
-    
-    // Dispose of geometry
-    if (this.grassGeometry) {
-      this.grassGeometry.dispose();
-      this.grassGeometry = null;
-    }
-    
-    console.log('GrassComponent disposed');
-  }
-  
-  /**
-   * Sample height from heightmap at a given world position
-   * @param {number} worldX X position in world coordinates
-   * @param {number} worldZ Z position in world coordinates
-   * @returns {number} Height at the given position
-   */
-  sampleHeight(worldX, worldZ) {
-    if (!this.heightmap) {
-      console.warn('No heightmap available for sampling');
-      return this.heightOffset;
-    }
-    
-    try {
-      // Convert world coordinates to heightmap UV coordinates (0-1)
-      // For a terrain of size 100, world coords range from -50 to +50
-      const uvX = (worldX + (this.terrainSize / 2)) / this.terrainSize;
-      const uvZ = (worldZ + (this.terrainSize / 2)) / this.terrainSize;
-      
-      // Clamp UVs to 0-1 range to prevent sampling outside the heightmap
-      const clampedUvX = Math.max(0, Math.min(1, uvX));
-      const clampedUvZ = Math.max(0, Math.min(1, uvZ));
-      
-      if (uvX !== clampedUvX || uvZ !== clampedUvZ) {
-        // Position is outside terrain bounds
-        return this.minHeight + this.heightOffset;
-      }
-      
-      // Check if we can access heightmap data directly (preferred method)
-      if (this.heightmap.image && this.heightmap.image.data) {
-        // Get image dimensions
-        const width = this.heightmap.image.width || 256;
-        const height = this.heightmap.image.height || 256;
-        
-        // Convert UV to pixel coordinates
-        const pixelX = Math.floor(clampedUvX * (width - 1));
-        const pixelZ = Math.floor(clampedUvZ * (height - 1));
-        
-        // Calculate pixel index in the data array
-        const pixelIndex = pixelZ * width + pixelX;
-        
-        // Get height value (handle both Uint8 and Float32 formats)
-        let heightValue;
-        if (this.heightmap.image.data instanceof Float32Array) {
-          // If using float format (0-1 range)
-          heightValue = this.heightmap.image.data[pixelIndex];
-        } else {
-          // If using standard 8-bit format (0-255 range)
-          heightValue = this.heightmap.image.data[pixelIndex] / 255.0;
-        }
-        
-        // Scale by height range and add offset
-        const calculatedHeight = this.minHeight + (heightValue * (this.maxHeight - this.minHeight)) + this.heightOffset;
-        
-        return calculatedHeight;
-      } else {
-        // Fallback to noise-based height calculation if image data can't be accessed
-        // This gives us a wavy terrain for testing even if heightmap can't be accessed
-        const heightNoise = Math.sin(worldX * 0.2) * Math.cos(worldZ * 0.2) * 0.5 + 0.5;
-        const calculatedHeight = this.minHeight + heightNoise * (this.maxHeight - this.minHeight) + this.heightOffset;
-        
-        return calculatedHeight;
-      }
-    } catch (error) {
-      console.error('Error sampling height:', error);
-      return this.minHeight + this.heightOffset;
-    }
-  }
-  
-  /**
-   * Create some test patches for debugging
-   */
-  createTestPatches() {
-    console.log("Creating test patches at origin");
-    
-    // Create a patch at the center (0,0)
-    const centerX = Math.floor(this.gridSize / 2);
-    const centerZ = Math.floor(this.gridSize / 2);
-    this.createPatch(centerX, centerZ);
-    
-    // Create a few more patches around the center
-    this.createPatch(centerX + 1, centerZ);
-    this.createPatch(centerX, centerZ + 1);
-    this.createPatch(centerX + 1, centerZ + 1);
-    
-    console.log(`Created ${this.activePatches.size} test patches`);
+    // Create styled console output
+    console.log(
+      "%c 🌿 GRASS RENDERING STATS 🌿 ",
+      "background: #2c3e50; color: #2ecc71; font-weight: bold; padding: 4px 0;"
+    );
+    console.log(
+      `Patches: ${visiblePatchCount} (${patchPercentChange} change) | ` +
+      `High LOD: ${visibleHighLOD} | Low LOD: ${visibleLowLOD}`
+    );
+    console.log(
+      `Grass Blades: ${formatNumber(totalBlades)} (${bladePercentChange} change) | ` +
+      `Triangles: ${formatNumber(totalTriangles)}`
+    );
+    console.log(
+      `Memory: ~${memoryUsageMB.toFixed(2)} MB | Time: ${this.totalTime.toFixed(1)}s | ` +
+      `Position: x=${this.playerObject.model.position.x.toFixed(1)}, ` +
+      `z=${this.playerObject.model.position.z.toFixed(1)}`
+    );
   }
 }
 
