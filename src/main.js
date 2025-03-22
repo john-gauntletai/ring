@@ -2,7 +2,7 @@ import * as THREE from "three";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import { loadModel, addResizeEventListeners } from "./_lib/helpers.js";
 import PlayerEntity from "./entities/PlayerEntity.js";
-// import EnemyEntity from "./entities/EnemyEntity.js";
+import EnemyEntity from "./entities/EnemyEntity.js";
 import Camera from "./entities/Camera.js";
 import KEYS from "./_lib/keys";
 import GrassComponent from "./components/GrassComponent.js";
@@ -111,11 +111,11 @@ async function init() {
     player.mixer
   );
 
-  // const ENEMY = new EnemyEntity(
-  //   goldenKnight.model,
-  //   goldenKnight.animations,
-  //   goldenKnight.mixer
-  // );
+  const ENEMY = new EnemyEntity(
+    goldenKnight.model,
+    goldenKnight.animations,
+    goldenKnight.mixer
+  );
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
