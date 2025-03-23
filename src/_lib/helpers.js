@@ -95,11 +95,6 @@ export const removeBottomHalf = (model) => {
   // First identify meshes in the bottom half
   model.traverse((child) => {
     if (child instanceof THREE.Mesh) {
-      // Skip removing the Pozancos Church mesh
-      if (child.name === "Pozancos_Church_All_Data_Model_26001") {
-        console.log(`Keeping special mesh: ${child.name}`);
-        return;
-      }
       
       const meshBounds = new THREE.Box3().setFromObject(child);
       
@@ -108,7 +103,6 @@ export const removeBottomHalf = (model) => {
           (meshBounds.min.y < midHeight && meshBounds.max.y - meshBounds.min.y < modelHeight * 0.3)) {
         
         meshesToRemove.push(child);
-        console.log(`Removing mesh: ${child.name}`);
       }
     }
   });
@@ -129,9 +123,7 @@ export const removeBottomHalf = (model) => {
     if (mesh.parent) {
       mesh.parent.remove(mesh);
     }
-  });
-  
-  console.log(`Removed ${meshesToRemove.length} meshes from bottom half of model`);
+  });  
 };
 
 // Darken and blur the kingdom model

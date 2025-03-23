@@ -525,7 +525,7 @@ class GrassComponent {
     this.updateGrassPatches(camera, shouldLog);
 
     // Log stats at regular intervals
-    if (this.statsTimer >= this.statsInterval) {
+    if (this.statsTimer >= this.statsInterval && shouldLog) {
       this.logRenderingStats();
       this.statsTimer = 0; // Reset timer
     }

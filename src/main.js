@@ -4,6 +4,9 @@ import { loadModel, addResizeEventListeners, removeBottomHalf, applyKingdomEffec
 import PlayerEntity from "./entities/PlayerEntity.js";
 import EnemyEntity from "./entities/EnemyEntity.js";
 import Camera from "./entities/Camera.js";
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import KEYS from "./_lib/keys";
 import GrassComponent from "./components/GrassComponent.js";
 import FlatTerrain from "./components/FlatTerrain.js";
@@ -178,7 +181,6 @@ async function init() {
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
-    console.log(key);
     KEYS[key] = true;
 
     // Special key handling
@@ -198,6 +200,7 @@ async function init() {
 
   addResizeEventListeners(CAMERA.camera, renderer);
 
+
   let clock = new THREE.Clock();
   let logTimer = 0;
 
@@ -209,17 +212,18 @@ async function init() {
     PLAYER.update(delta);
     ENEMY.update(delta, PLAYER);
     CAMERA.update(delta, PLAYER);
+    
 
     // Update combat manager
     combatManager.update(delta);
 
     // Update grass animation and LOD
     // Only show log messages every 10 seconds to avoid console spam
-    const shouldLog = logTimer > 10.0;
+    const shouldLog = logTimer > 10000.0;
     if (shouldLog) {
       logTimer = 0;
     }
-    grass.update(delta, CAMERA.camera, shouldLog);
+    grass.update(delta, CAMERA.camera, false);
     renderer.render(scene, CAMERA.camera);
     stats.end();
   }
