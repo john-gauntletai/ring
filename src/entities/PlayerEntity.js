@@ -57,6 +57,10 @@ class PlayerEntity {
     this.staggerTime = 0;
     this.attackCooldown = 0;
 
+    // Collision properties
+    this.collisionRadius = 0.7; // Player collision radius (reduced from 0.8)
+    this.enemyEntities = []; // Will store references to enemies
+
     // References
     this.combatManager = null;
 
@@ -470,22 +474,29 @@ class PlayerEntity {
       if (this.stamina > 0) {
         this.stamina = Math.max(0, this.stamina - 10);
       }
+    } else {
+      // Not blocking, play impact animation
+      this.fadeToAction(this.animations.impact2.action, false);
+      console.log("Player hit! Playing impact animation");
     }
 
     this.health -= actualDamage;
     console.log(
       `Player took ${actualDamage} damage. Health: ${this.health}/${this.maxHealth}`
     );
-
+    
     // Check for death
     if (this.health <= 0) {
       this.health = 0;
       this.die();
       return;
     }
-
-    // Get staggered
-    this.getStaggered();
+    
+    // Get staggered if not blocking
+    if (this.currentState !== "BLOCKING") {
+      this.getStaggered();
+    }
+    
     this.updatePlayerUI();
   }
 
@@ -493,10 +504,9 @@ class PlayerEntity {
   getStaggered() {
     this.currentState = "STAGGERED";
     this.staggerTime = 0.5; // Staggered for 0.5 seconds
-
-    // Play stagger animation (e.g., flinch or hit reaction)
-    // For now we'll use the block animation as a placeholder
-    this.fadeToAction(this.animations.block.action, false);
+    
+    // Note: We don't play the animation here anymore since it's already played in takeDamage
+    // when the player is hit without blocking
   }
 
   // Die
@@ -693,17 +703,23 @@ class PlayerEntity {
         if (moveDirection.length() > 0) moveDirection.normalize();
 
         // Apply movement speed
-
         const velocity = this.getCurrentVelocity();
         const moveX = moveDirection.x * velocity * delta;
         const moveZ = moveDirection.z * velocity * delta;
 
-        // Update position
-        this.model.position.x += moveX;
-        this.model.position.z += moveZ;
+        // Calculate new position
+        const newX = this.model.position.x + moveX;
+        const newZ = this.model.position.z + moveZ;
+        
+        // Check for collisions before updating position
+        if (!this.checkCollisions(newX, newZ)) {
+          // Update position if no collision
+          this.model.position.x = newX;
+          this.model.position.z = newZ;
 
-        // Update camera position
-        this.updateCamera(moveX, moveZ, 0);
+          // Update camera position
+          this.updateCamera(moveX, moveZ, 0);
+        }
       }
     } else {
       // Regular movement (not locked on)
@@ -754,12 +770,15 @@ class PlayerEntity {
         const newX = this.model.position.x + moveX;
         const newZ = this.model.position.z + moveZ;
 
-        // Update X and Z position
-        this.model.position.x = newX;
-        this.model.position.z = newZ;
+        // Check for collisions before updating position
+        if (!this.checkCollisions(newX, newZ)) {
+          // Update X and Z position if no collision
+          this.model.position.x = newX;
+          this.model.position.z = newZ;
 
-        // Update camera position in X and Z
-        this.updateCamera(moveX, moveZ, 0);
+          // Update camera position in X and Z
+          this.updateCamera(moveX, moveZ, 0);
+        }
       }
     }
 
@@ -853,8 +872,8 @@ class PlayerEntity {
       // Set camera position behind player and to the right (over shoulder)
       const cameraPositionBehind = this.model.position
         .clone()
-        .add(playerBackward.multiplyScalar(DISTANCE_TO_PLAYER * 0.8)) // Move behind player
-        .add(playerRight.multiplyScalar(-2)) // Shift to right shoulder (increased offset)
+        .add(playerBackward.multiplyScalar(DISTANCE_TO_PLAYER * 0.7)) // Move behind player
+        .add(playerRight.multiplyScalar(-1.2)) // Shift to right shoulder (increased offset)
         .add(new THREE.Vector3(0, 1.7, 0)); // Raise camera slightly above player's head
 
       // Set camera position with slight smoothing
@@ -915,7 +934,24 @@ class PlayerEntity {
     // Determine roll direction based on input keys
     let direction = new THREE.Vector3();
     
-    if (KEYS.s) {
+    // Support diagonal rolls
+    if (KEYS.w && KEYS.a) {
+      // Forward + Left diagonal
+      direction.z = -0.707; // Forward (scaled for diagonal)
+      direction.x = -0.707; // Left (scaled for diagonal)
+    } else if (KEYS.w && KEYS.d) {
+      // Forward + Right diagonal
+      direction.z = -0.707; // Forward (scaled for diagonal)
+      direction.x = 0.707;  // Right (scaled for diagonal)
+    } else if (KEYS.s && KEYS.a) {
+      // Backward + Left diagonal
+      direction.z = 0.707;  // Backward (scaled for diagonal)
+      direction.x = -0.707; // Left (scaled for diagonal)
+    } else if (KEYS.s && KEYS.d) {
+      // Backward + Right diagonal
+      direction.z = 0.707;  // Backward (scaled for diagonal)
+      direction.x = 0.707;  // Right (scaled for diagonal)
+    } else if (KEYS.s) {
       // Roll backward
       direction.z = 1; // Backward is positive Z when player faces -Z
     } else if (KEYS.a) {
@@ -948,11 +984,32 @@ class PlayerEntity {
       // Reset direction
       direction = new THREE.Vector3(0, 0, 0);
       
-      // Apply direction based on keys
-      if (KEYS.w || (!KEYS.w && !KEYS.s && !KEYS.a && !KEYS.d)) direction.add(directionToTarget);
-      if (KEYS.s) direction.sub(directionToTarget);
-      if (KEYS.a) direction.add(perpLeft);
-      if (KEYS.d) direction.add(perpRight);
+      // Apply direction based on keys - supporting diagonals for lock-on
+      if (KEYS.w && KEYS.a) {
+        // Diagonal forward-left
+        direction.add(directionToTarget.clone().multiplyScalar(0.707));
+        direction.add(perpLeft.clone().multiplyScalar(0.707));
+      } else if (KEYS.w && KEYS.d) {
+        // Diagonal forward-right
+        direction.add(directionToTarget.clone().multiplyScalar(0.707));
+        direction.add(perpRight.clone().multiplyScalar(0.707));
+      } else if (KEYS.s && KEYS.a) {
+        // Diagonal backward-left
+        direction.sub(directionToTarget.clone().multiplyScalar(0.707));
+        direction.add(perpLeft.clone().multiplyScalar(0.707));
+      } else if (KEYS.s && KEYS.d) {
+        // Diagonal backward-right
+        direction.sub(directionToTarget.clone().multiplyScalar(0.707));
+        direction.add(perpRight.clone().multiplyScalar(0.707));
+      } else if (KEYS.w || (!KEYS.w && !KEYS.s && !KEYS.a && !KEYS.d)) {
+        direction.add(directionToTarget);
+      } else if (KEYS.s) {
+        direction.sub(directionToTarget);
+      } else if (KEYS.a) {
+        direction.add(perpLeft);
+      } else if (KEYS.d) {
+        direction.add(perpRight);
+      }
     } else {
       // Not locked on, apply model's rotation to direction
       direction.applyQuaternion(this.model.quaternion);
@@ -961,12 +1018,15 @@ class PlayerEntity {
     // Normalize the direction
     if (direction.length() > 0) direction.normalize();
     
+    // Check if roll direction would cause collision and adjust if necessary
+    this.adjustRollDirection(direction);
+    
     // Apply invincibility frames after a short delay (mid-roll)
     this.invulnerable = true;
     console.log("Roll invulnerability activated");
     
     // Roll distance and duration
-    const rollDistance = 2; // Units to roll (reduced by 1/3 from 5)
+    const rollDistance = 2; // Units to roll
     const rollDuration = 0.6; // Seconds
     
     // Set cooldown
@@ -1034,6 +1094,109 @@ class PlayerEntity {
   }
 
   /**
+   * Adjust roll direction to avoid collisions
+   * @param {THREE.Vector3} direction - The current roll direction vector (will be modified)
+   */
+  adjustRollDirection(direction) {
+    const rollDistance = 2; // Same as in roll()
+    
+    // Create a temporary position at the end of the roll
+    const tempPosition = this.model.position.clone().add(
+      direction.clone().multiplyScalar(rollDistance)
+    );
+    
+    // Check if this position would collide with any enemy
+    let willCollide = false;
+    let closestEnemy = null;
+    let closestDistance = Infinity;
+    
+    for (const enemy of this.enemyEntities) {
+      // Skip if enemy is dead
+      if (enemy.currentState === "DEAD") {
+        continue;
+      }
+      
+      const enemyPosition = enemy.model.position;
+      const distance = tempPosition.distanceTo(enemyPosition);
+      
+      // Collision radius is sum of player radius and enemy radius (approx 1.0)
+      const collisionDistance = this.collisionRadius + 1.0;
+      
+      if (distance < collisionDistance) {
+        willCollide = true;
+        // Track the closest enemy for later use
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestEnemy = enemy;
+        }
+      }
+    }
+    
+    // If a collision would occur, adjust the roll direction
+    if (willCollide && closestEnemy) {
+      console.log("Adjusting roll direction to avoid collision");
+      
+      // Get vector from player to enemy
+      const toEnemy = new THREE.Vector3().subVectors(
+        closestEnemy.model.position,
+        this.model.position
+      ).normalize();
+      
+      // Calculate dot product to see if we're rolling toward enemy
+      const dot = direction.dot(toEnemy);
+      
+      if (dot > 0) {
+        // We're rolling toward the enemy, so we need to roll around them
+        
+        // Get perpendicular directions (left and right of enemy)
+        const perpRight = new THREE.Vector3(-toEnemy.z, 0, toEnemy.x).normalize();
+        const perpLeft = perpRight.clone().negate();
+        
+        // Choose the direction that's most similar to our original roll direction
+        const dotRight = direction.dot(perpRight);
+        const dotLeft = direction.dot(perpLeft);
+        
+        // For diagonal rolls, bias slightly more towards original intent
+        const originalDirection = direction.clone();
+        
+        if (dotRight > dotLeft) {
+          // Roll to the right of the enemy
+          direction.copy(perpRight);
+          
+          // For diagonal rolls, we want to bias the direction more towards original intent
+          if (Math.abs(originalDirection.x) > 0.2 && Math.abs(originalDirection.z) > 0.2) {
+            direction.lerp(originalDirection, 0.2); // Add 20% of original direction
+            direction.normalize();
+          }
+        } else {
+          // Roll to the left of the enemy
+          direction.copy(perpLeft);
+          
+          // For diagonal rolls, we want to bias the direction more towards original intent
+          if (Math.abs(originalDirection.x) > 0.2 && Math.abs(originalDirection.z) > 0.2) {
+            direction.lerp(originalDirection, 0.2); // Add 20% of original direction
+            direction.normalize();
+          }
+        }
+      } else {
+        // We're rolling away from the enemy, which is fine
+        // Just make sure we don't roll directly through them
+        const perpendicular = new THREE.Vector3(-toEnemy.z, 0, toEnemy.x).normalize();
+        
+        // Add a slight adjustment to the direction
+        // For diagonal rolls, we'll use a different bias
+        if (Math.abs(direction.x) > 0.2 && Math.abs(direction.z) > 0.2) {
+          // Diagonal roll - use a smaller adjustment
+          direction.add(perpendicular.multiplyScalar(0.2)).normalize();
+        } else {
+          // Regular roll
+          direction.add(perpendicular.multiplyScalar(0.3)).normalize();
+        }
+      }
+    }
+  }
+
+  /**
    * Enter blocking state
    */
   block() {
@@ -1074,6 +1237,53 @@ class PlayerEntity {
       moveZ = 1;
     }
     return moveZ;
+  }
+  /**
+   * Check for collisions with enemies at the given position
+   * @param {number} newX - New X position to check
+   * @param {number} newZ - New Z position to check
+   * @returns {boolean} True if there is a collision, false otherwise
+   */
+  checkCollisions(newX, newZ) {
+    // Skip collision detection during roll since we now handle collision avoidance in the roll logic
+    if (this.isRolling) {
+      return false;
+    }
+    
+    // Create a temporary point for the proposed position
+    const proposedPosition = new THREE.Vector3(newX, this.model.position.y, newZ);
+    
+    // Check collision with each enemy
+    for (const enemy of this.enemyEntities) {
+      // Skip if enemy is dead
+      if (enemy.currentState === "DEAD") {
+        continue;
+      }
+      
+      // Check distance between proposed position and enemy
+      const enemyPosition = enemy.model.position;
+      const distance = proposedPosition.distanceTo(enemyPosition);
+      
+      // Collision radius is sum of player radius and enemy radius (approx 1.0)
+      const collisionDistance = this.collisionRadius + 1.0;
+      
+      if (distance < collisionDistance) {
+        // Collision detected
+        return true;
+      }
+    }
+    
+    // No collision detected
+    return false;
+  }
+
+  /**
+   * Set the list of enemies for collision detection
+   * @param {Array} enemies - Array of enemy entities
+   */
+  setEnemies(enemies) {
+    this.enemyEntities = enemies;
+    console.log(`Player tracking ${enemies.length} enemies for collision detection`);
   }
 }
 

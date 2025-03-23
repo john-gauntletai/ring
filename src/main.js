@@ -173,6 +173,9 @@ async function init() {
   // Set references to combat manager in entities
   PLAYER.combatManager = combatManager;
   ENEMY.combatManager = combatManager;
+  
+  // Set up enemy references for player collision detection
+  PLAYER.setEnemies([ENEMY]);
 
   // Enable debug mode with the ` (backtick) key
   window.addEventListener("keydown", (e) => {

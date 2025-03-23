@@ -414,15 +414,33 @@ class EnemyEntity {
 
     if (this.currentAction === newAction) return;
 
-    // Don't interrupt attack animations unless this is another attack or higher priority
-    if (
-      this.isAttacking &&
-      !["comboAttack", "slash", "kick", "spinAttack", "jumpAttack"].includes(
-        name
-      ) &&
-      priority < 1
-    ) {
+    // Special case: If the current animation is "death", don't interrupt it with anything
+    if (this.currentAction && 
+        this.currentAction === this.animations.death?.action &&
+        name !== "death") {
+      console.log("Death animation cannot be interrupted");
       return;
+    }
+    
+    // Set special priorities for certain animations
+    if (name === "death") {
+      // Death animation gets highest priority (3.0)
+      priority = 3.0;
+    }
+
+    // Handle interruption logic:
+    // 1. Death animation (priority 3.0) always interrupts
+    // 2. High priority animations (impact, priority 2.0) interrupt most animations
+    // 3. Don't interrupt attack animations with low priority animations
+    if (priority < 2.0 && this.isAttacking && 
+        !["comboAttack", "slash", "kick", "spinAttack", "jumpAttack"].includes(name)) {
+      // Low priority animation during attack - don't interrupt
+      return;
+    }
+    
+    // For high priority animations, log the interruption
+    if (priority >= 2.0) {
+      console.log(`High priority animation '${name}' interrupting current animation`);
     }
 
     if (this.currentAction) {
@@ -435,7 +453,7 @@ class EnemyEntity {
 
     // For attack animations, ensure they complete
     if (
-      ["comboAttack", "slash", "kick", "spinAttack", "jumpAttack"].includes(
+      ["comboAttack", "slash", "kick", "spinAttack", "jumpAttack", "impact", "death"].includes(
         name
       )
     ) {
@@ -510,18 +528,24 @@ class EnemyEntity {
       }
     }, 200);
 
-    // Check for death
+    // Check for death first - this takes highest priority
     if (this.data.health <= 0) {
-      this.die();
+      this.data.health = 0; // Ensure health doesn't go negative
+      this.die(); // This will play the death animation with highest priority
       return;
     }
 
-    // Get staggered if damage is significant
+    // Reset attack state completely
+    this.isAttacking = false;
+    this.attackCooldown = 0.5; // Add a small cooldown before next attack
+    this.currentAttackType = null;
+    
+    // Interrupt current animation and force play the impact animation with high priority
+    this.playAnimation("impact", 0.1, 2.0); // Fast crossfade (0.1s) and high priority (2.0)
+
+    // Get staggered only if damage is significant
     if (damage >= 20) {
       this.setState("STAGGERED");
-
-      // Play stagger animation
-      this.playAnimation("hit");
 
       // Return to chase after stagger time
       setTimeout(() => {
@@ -541,8 +565,13 @@ class EnemyEntity {
   die() {
     this.setState("DEAD");
 
-    // Play death animation
-    this.playAnimation("death");
+    // Cancel any attack state
+    this.isAttacking = false;
+    this.currentAttackType = null;
+    
+    // Play death animation with highest priority
+    // The priority is set to 3.0 in the playAnimation method
+    this.playAnimation("death", 0.2, 3.0);
 
     // Change material to indicate death
     this.model.material = this.materials.dead;
@@ -639,9 +668,10 @@ class EnemyEntity {
 
   /**
    * Face the target
+   * @returns {boolean} Whether the enemy is now fully facing the target
    */
   faceTarget() {
-    if (!this.targetEntity || !this.targetEntity.model) return;
+    if (!this.targetEntity || !this.targetEntity.model) return true;
 
     const direction = new THREE.Vector3()
       .subVectors(this.targetEntity.model.position, this.model.position)
@@ -650,12 +680,41 @@ class EnemyEntity {
     // Calculate target rotation
     const targetRotation = Math.atan2(direction.x, direction.z);
 
-    // Smooth rotation
-    const rotationSpeed = 0.1;
+    // Smooth rotation with slower speed for more natural turning
+    const rotationSpeed = 0.05; // Reduced from 0.1 for smoother turning
     const angleDiff =
       ((targetRotation - this.model.rotation.y + Math.PI * 3) % (Math.PI * 2)) -
       Math.PI;
+    
+    // Apply rotation step
     this.model.rotation.y += angleDiff * rotationSpeed;
+    
+    // Return whether we're close enough to target rotation
+    return Math.abs(angleDiff) < 0.1; // Consider "facing" if within ~5.7 degrees
+  }
+
+  /**
+   * Check if the enemy is facing the target within an acceptable threshold
+   * @returns {boolean} Whether the enemy is properly facing the target
+   */
+  isFacingTarget() {
+    if (!this.targetEntity || !this.targetEntity.model) return true;
+
+    const direction = new THREE.Vector3()
+      .subVectors(this.targetEntity.model.position, this.model.position)
+      .normalize();
+
+    // Calculate target rotation
+    const targetRotation = Math.atan2(direction.x, direction.z);
+    
+    // Calculate angle difference
+    const angleDiff = Math.abs(
+      ((targetRotation - this.model.rotation.y + Math.PI * 3) % (Math.PI * 2)) -
+      Math.PI
+    );
+    
+    // Consider "facing" if within ~11.5 degrees (0.2 radians)
+    return angleDiff < 0.2;
   }
 
   /**
@@ -674,14 +733,18 @@ class EnemyEntity {
       return;
     }
 
-    // Face the player
-    this.faceTarget();
-
     // Check if we're currently attacking or in cooldown
     if (this.isAttacking) {
       // Let the attack animation finish - handled by animation callback
       return;
     } else if (this.attackCooldown <= 0) {
+      // Before attacking, make sure we're facing the target
+      // Keep turning until properly facing the target
+      if (!this.isFacingTarget()) {
+        this.faceTarget();
+        return; // Wait until next frame when we're facing the target
+      }
+      
       // Start a new attack
       this.isAttacking = true;
 
