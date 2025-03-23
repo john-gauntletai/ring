@@ -17,7 +17,7 @@ class PlayerUI {
       flex-direction: column;
       align-items: flex-start;
       transition: opacity 0.8s ease;
-      z-index: 1000;
+      z-index: 10;
     `;
 
     // Create player name element
