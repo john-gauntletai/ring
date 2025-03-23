@@ -357,6 +357,9 @@ class BossUI {
     
     // Listen for boss health change events
     document.addEventListener('boss_health_changed', this.handleHealthChanged.bind(this));
+    
+    // Listen for boss defeated event
+    document.addEventListener('boss_defeated', this.handleBossDefeated.bind(this));
   }
 
   /**
@@ -394,6 +397,22 @@ class BossUI {
       this.bossData.health = health;
       this.updateHealthBar(health, maxHealth);
     }
+  }
+
+  /**
+   * Handle boss defeated event
+   * @param {CustomEvent} event - The boss defeated event
+   */
+  handleBossDefeated(event) {
+    const { name } = event.detail;
+    
+    console.log(`Boss defeated: ${name}`);
+    
+    // Hide the UI
+    this.hide();
+    
+    // Clear boss data
+    this.bossData = null;
   }
 
   /**

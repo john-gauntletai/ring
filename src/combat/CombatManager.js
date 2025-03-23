@@ -106,6 +106,10 @@ class CombatManager {
         
         if (this.timeRemaining <= 0) {
           this.active = false;
+          // Remove debug mesh when hitbox expires
+          if (this.debugMesh && this.debugMesh.parent) {
+            this.debugMesh.parent.remove(this.debugMesh);
+          }
           return;
         }
         
@@ -135,18 +139,52 @@ class CombatManager {
     // Create debug visualization if in debug mode
     if (this.debugMode) {
       const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
-      const material = new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.5
-      });
-      hitbox.debugMesh = new THREE.Mesh(geometry, material);
       
-      // Add to scene if parent has a parent (which should be the scene)
-      if (parent.parent) {
+      // Set different colors for player vs enemy hitboxes
+      let hitboxColor, opacity;
+      
+      if (options.owner && options.owner.constructor.name === "PlayerEntity") {
+        // Blue for player hitboxes
+        hitboxColor = 0x00aaff;
+        opacity = 0.4;
+      } else {
+        // Red for enemy hitboxes
+        hitboxColor = 0xff3333;
+        opacity = 0.4;
+      }
+      
+      // Create wireframe material for outline
+      const wireframeMaterial = new THREE.MeshBasicMaterial({
+        color: hitboxColor,
+        wireframe: true,
+        wireframeLinewidth: 2
+      });
+      
+      // Create solid material with transparency
+      const solidMaterial = new THREE.MeshBasicMaterial({
+        color: hitboxColor,
+        transparent: true,
+        opacity: opacity
+      });
+      
+      // Create main mesh with solid material
+      hitbox.debugMesh = new THREE.Mesh(geometry, solidMaterial);
+      
+      // Create wireframe mesh and add as child
+      const wireframe = new THREE.Mesh(geometry, wireframeMaterial);
+      hitbox.debugMesh.add(wireframe);
+      
+      // Scale the wireframe slightly to avoid z-fighting
+      wireframe.scale.multiplyScalar(1.01);
+      
+      // Add to scene
+      if (this.scene) {
+        this.scene.add(hitbox.debugMesh);
+      } else if (parent.parent) {
         parent.parent.add(hitbox.debugMesh);
       }
+      
+      console.log(`Debug hitbox created for ${options.owner ? options.owner.constructor.name : 'unknown'}`);
     }
     
     this.hitboxes.push(hitbox);
@@ -298,29 +336,75 @@ class CombatManager {
   }
   
   /**
-   * Toggle debug mode
+   * Set debug visualization mode on or off
    * @param {boolean} enabled - Whether debug mode should be enabled
    */
   setDebugMode(enabled) {
     this.debugMode = enabled;
     
-    // Update debug visualization on registered entities
-    this.entities.forEach(entity => {
-      if (entity.setDebugVisualization) {
-        entity.setDebugVisualization(enabled);
-      }
-    });
-    
-    // Toggle debug objects visibility
-    if (this.debugObjects && this.scene) {
-      if (this.debugMode && !this.scene.getObjectByName('combat-debug')) {
+    if (enabled) {
+      console.log("Combat debug mode enabled");
+      
+      // Add debug objects to scene if we have a scene reference
+      if (this.scene) {
         this.scene.add(this.debugObjects);
-      } else if (!this.debugMode && this.scene.getObjectByName('combat-debug')) {
+      }
+      
+      // Create debug visualizations for all registered entities
+      this.entities.forEach(entity => {
+        if (entity.setDebugVisualization) {
+          entity.setDebugVisualization(true);
+        }
+      });
+      
+      // Display hitbox helper message
+      const hitboxInfo = document.createElement('div');
+      hitboxInfo.id = 'hitbox-debug-info';
+      hitboxInfo.style.cssText = `
+        position: fixed;
+        top: 50px;
+        left: 10px;
+        color: white;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        z-index: 1000;
+      `;
+      hitboxInfo.innerHTML = `
+        <p>Debug Mode: ON</p>
+        <p>Blue hitboxes: Player attacks</p>
+        <p>Red hitboxes: Enemy attacks</p>
+      `;
+      document.body.appendChild(hitboxInfo);
+    } else {
+      console.log("Combat debug mode disabled");
+      
+      // Remove debug objects from scene
+      if (this.scene && this.debugObjects.parent) {
         this.scene.remove(this.debugObjects);
       }
+      
+      // Remove entity debug visualizations
+      this.entities.forEach(entity => {
+        if (entity.setDebugVisualization) {
+          entity.setDebugVisualization(false);
+        }
+      });
+      
+      // Clean up any existing hitbox debug meshes
+      this.hitboxes.forEach(hitbox => {
+        if (hitbox.debugMesh && hitbox.debugMesh.parent) {
+          hitbox.debugMesh.parent.remove(hitbox.debugMesh);
+        }
+      });
+      
+      // Remove hitbox helper message
+      const hitboxInfo = document.getElementById('hitbox-debug-info');
+      if (hitboxInfo) {
+        hitboxInfo.remove();
+      }
     }
-    
-    console.log(`Combat debug mode: ${enabled ? 'enabled' : 'disabled'}`);
   }
   
   /**
