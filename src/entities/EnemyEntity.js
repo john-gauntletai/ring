@@ -33,7 +33,7 @@ class EnemyEntity {
     this.attackCooldown = 0; // current cooldown timer
     this.attackCallbackSet = false;
     // this.availableAttacks = ["comboAttack", "slash", "kick", "spinAttack", "jumpAttack"];
-    this.availableAttacks = ["comboAttack"];
+    this.availableAttacks = ["comboAttack", "spinAttack", "jumpAttack"];
     this.currentAttackType = "comboAttack"; // Default attack
 
     // Animation properties
@@ -144,19 +144,6 @@ class EnemyEntity {
         ) {
           animationData.action.loop = THREE.LoopOnce;
           animationData.action.clampWhenFinished = true;
-
-          // For animations that require movement (like comboAttack), don't reset position
-          if (animationName === "comboAttack") {
-            // Make sure the animation doesn't affect the root motion
-            if (animationData.action.getRoot) {
-              // Some animation systems have root motion that needs to be disabled
-              try {
-                animationData.action.getRoot().preventTranslation = true;
-              } catch (e) {
-                // Ignore if this property isn't available
-              }
-            }
-          }
         } else {
           animationData.action.loop = THREE.LoopRepeat;
         }
@@ -569,7 +556,7 @@ class EnemyEntity {
    */
   attack(delta) {
     if (!this.targetEntity) return;
-
+    
     // If not in attack range, chase instead
     const distance = this.model.position.distanceTo(
       this.targetEntity.model.position
@@ -578,35 +565,34 @@ class EnemyEntity {
       this.setState("CHASE");
       return;
     }
-
+    
     // Face the player
     this.faceTarget();
-
+    
     // Check if we're currently attacking or in cooldown
     if (this.isAttacking) {
       // Let the attack animation finish - handled by animation callback
-
       return;
     } else if (this.attackCooldown <= 0) {
       // Start a new attack
       this.isAttacking = true;
-
+      
       // Track the starting position for animations that move the enemy
       this.attackStartPosition = this.model.position.clone();
-
+      
       // Randomly select an attack type from available attacks
       // First filter to only include attacks that have animations
       const validAttacks = this.availableAttacks.filter(
         (attackType) =>
           this.animations[attackType] && this.animations[attackType].action
       );
-
+      
       if (validAttacks.length > 0) {
         // Choose a random attack from valid attacks
         this.currentAttackType =
           validAttacks[Math.floor(Math.random() * validAttacks.length)];
         console.log(`Enemy using ${this.currentAttackType} attack`);
-
+        
         // Log starting position for combo attack
         if (this.currentAttackType === "comboAttack") {
           console.log(
@@ -617,10 +603,10 @@ class EnemyEntity {
             )}, ${this.model.position.z.toFixed(2)})`
           );
         }
-
+        
         // Play the selected attack animation with high priority to prevent interruption
         this.playAnimation(this.currentAttackType, 0.2, 1.0); // Fast crossfade, high priority
-
+        
         // For comboAttack, reset the animation time to ensure consistent movement
         if (
           this.currentAttackType === "comboAttack" &&
@@ -628,7 +614,7 @@ class EnemyEntity {
         ) {
           this.animations.comboAttack.action.time = 0;
         }
-
+        
         // Create hitbox after a delay to match animation
         if (this.combatManager) {
           // Different hitbox configurations based on attack type
@@ -637,7 +623,7 @@ class EnemyEntity {
           let hitboxSize = new THREE.Vector3(1.2, 1, 1.5); // Default size
           let damage = this.data.attackDamage;
           let knockback = 1;
-
+          
           // Customize hitbox based on attack type
           switch (this.currentAttackType) {
             case "slash":
@@ -655,6 +641,7 @@ class EnemyEntity {
               hitboxDelay = 500;
               hitboxOffset = new THREE.Vector3(0, 1, 0);
               hitboxSize = new THREE.Vector3(2.5, 1, 2.5); // Wider area
+              damage = Math.floor(this.data.attackDamage * 1.2); // More damage for spin attack
               break;
             case "jumpAttack":
               hitboxDelay = 700; // Longer delay for jump attack
@@ -669,7 +656,7 @@ class EnemyEntity {
               hitboxDelay = 500; // Increased delay to match with further movement
               break;
           }
-
+          
           setTimeout(() => {
             // Only create hitbox if still in attack state
             if (this.currentState === "ATTACK" && this.isAttacking) {
@@ -679,17 +666,15 @@ class EnemyEntity {
                 hitboxSize,
                 damage,
                 0.2,
-                {
-                  owner: this,
+                { 
+                  owner: this, 
                   knockback: knockback,
                   // Flag to indicate this hitbox should not interrupt animations
-                  preserveAnimation: true,
+                  preserveAnimation: true 
                 }
               );
-
-              console.log(
-                `Created enemy ${this.currentAttackType} attack hitbox`
-              );
+              
+              console.log(`Created enemy ${this.currentAttackType} attack hitbox`);
             }
           }, hitboxDelay); // Delay hitbox creation to match animation timing
         }

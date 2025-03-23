@@ -104,10 +104,9 @@ async function init() {
 
   // Load models
   const [player, goldenKnight, kingdom] = await Promise.all([
-    loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/austen2.glb", scene, LOADING_MANAGER),
     loadModel("/assets/models/golden-knight-out2.glb", scene, LOADING_MANAGER),
-    // loadModel("/assets/models/kingdom.glb", scene, LOADING_MANAGER),
-    loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
+    // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
@@ -124,27 +123,25 @@ async function init() {
   );
 
   // Position the kingdom model
-  kingdom.model.position.set(700, -110, 50);
-  kingdom.model.rotation.y = Math.PI * 1.01;
+  // kingdom.model.position.set(0, -50, 0);
+  // kingdom.model.rotation.y = Math.PI * 2/3;
+  // // kingdom.model.rotation.y = Math.PI * 1.02;
   
-  // Remove any existing blur effects
-  kingdom.model.traverse((child) => {
-    if (child.name === "kingdomBlurEffect" && child.parent) {
-      child.parent.remove(child);
-      if (child.material) child.material.dispose();
-      if (child.geometry) child.geometry.dispose();
-      console.log("Removed existing blur effect");
-    }
-  });
+  // // Remove any existing blur effects
+  // kingdom.model.traverse((child) => {
+  //   if (child.name === "kingdomBlurEffect" && child.parent) {
+  //     child.parent.remove(child);
+  //     if (child.material) child.material.dispose();
+  //     if (child.geometry) child.geometry.dispose();
+  //     console.log("Removed existing blur effect");
+  //   }
+  // });
   
-  // Apply optimization to the kingdom model
-  removeBottomHalf(kingdom.model);
+  // // Apply optimization to the kingdom model
+  // removeBottomHalf(kingdom.model);
   
   // Apply darkening effects to the kingdom (no blur)
-  applyKingdomEffects(kingdom.model);
-  
-  // Add the kingdom model to the scene
-  scene.add(kingdom.model);
+  // applyKingdomEffects(kingdom.model);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -190,6 +187,12 @@ async function init() {
     } else if (key === "q") {
       // Heavy attack with Q key
       PLAYER.heavyAttack();
+    } else if (key === "h") {
+      // Player spin attack with H key
+      PLAYER.spinAttack();
+    } else if (key === "j") {
+      // Player jump attack with J key
+      PLAYER.jumpAttack();
     }
   });
 

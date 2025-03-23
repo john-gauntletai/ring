@@ -51,7 +51,8 @@ class PlayerEntity {
 
   init() {
     this.markAsLoopOnce(this.animations.slash.action);
-    this.markAsLoopOnce(this.animations.jumpAttack.action);
+    this.markAsLoopOnce(this.animations.jumpAttack?.action || this.animations["jump attack"]?.action);
+    this.markAsLoopOnce(this.animations.spinAttack?.action || this.animations["spin attack"]?.action);
     this.markAsLoopOnce(this.animations.block.action);
     this.markAsLoopOnce(this.animations.death.action);
     
@@ -80,6 +81,31 @@ class PlayerEntity {
     if (this.animations["jump attack"]) {
       this.animations["jump attack"].action.getMixer().addEventListener('finished', (e) => {
         if (e.action === this.animations["jump attack"].action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+    
+    // Add listeners for the new attack animations
+    if (this.animations.jumpAttack) {
+      this.animations.jumpAttack.action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations.jumpAttack.action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+    
+    if (this.animations.spinAttack) {
+      this.animations.spinAttack.action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations.spinAttack.action) {
+          this.onAttackComplete();
+        }
+      });
+    }
+    
+    if (this.animations["spin attack"]) {
+      this.animations["spin attack"].action.getMixer().addEventListener('finished', (e) => {
+        if (e.action === this.animations["spin attack"].action) {
           this.onAttackComplete();
         }
       });
@@ -189,6 +215,99 @@ class PlayerEntity {
     
     // Set attack cooldown (longer for heavy attack)
     this.attackCooldown = 1.2; // 1.2 seconds before next attack
+  }
+  
+  // Perform a spin attack (wide area attack)
+  spinAttack() {
+    if (this.isAttacking || this.currentState === "STAGGERED" || this.currentState === "DEAD" || this.attackCooldown > 0) {
+      return;
+    }
+    
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "spin";
+    
+    // Play spin attack animation (using jump attack animation as fallback if spinAttack not available)
+    const animationAction = this.animations.spinAttack?.action || this.animations["spin attack"]?.action;
+    if (!animationAction) {
+      console.warn("Spin attack animation not found, falling back to slash animation");
+      this.fadeToAction(this.animations.slash.action, false);
+    } else {
+      this.fadeToAction(animationAction, false);
+    }
+    
+    // Create 360-degree hitbox around player after a delay
+    if (this.combatManager) {
+      setTimeout(() => {
+        const hitboxOffset = new THREE.Vector3(0, 1, 0); // Centered on player
+        const hitboxSize = new THREE.Vector3(4, 1.2, 4); // Large circular area
+        
+        this.combatManager.createHitbox(
+          this.model,           // Parent object
+          hitboxOffset,         // Position offset
+          hitboxSize,           // Size
+          this.attackPower * 1.2, // Medium damage
+          0.3,                 // Duration in seconds
+          { owner: this, knockback: 3 }  // Medium knockback
+        );
+        
+        console.log("Created player spin attack hitbox");
+      }, 400); // 400ms into the animation
+    }
+    
+    // Set attack cooldown
+    this.attackCooldown = 1.5; // 1.5 seconds before next attack (longer cooldown for powerful attack)
+  }
+  
+  // Perform a jump attack (high damage, forward leap)
+  jumpAttack() {
+    if (this.isAttacking || this.currentState === "STAGGERED" || this.currentState === "DEAD" || this.attackCooldown > 0) {
+      return;
+    }
+    
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "jump";
+    
+    // Play jump attack animation
+    const animationAction = this.animations.jumpAttack?.action || this.animations["jump attack"]?.action;
+    if (!animationAction) {
+      console.warn("Jump attack animation not found, falling back to slash animation");
+      this.fadeToAction(this.animations.slash.action, false);
+    } else {
+      this.fadeToAction(animationAction, false);
+    }
+    
+    // Move player forward during animation
+    const initialPosition = this.model.position.clone();
+    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(this.model.quaternion);
+    
+    // Create hitbox in front of player after a delay
+    if (this.combatManager) {
+      setTimeout(() => {
+        // Move player forward by 3 units for the jump attack
+        this.model.position.add(direction.multiplyScalar(3));
+        
+        const hitboxOffset = new THREE.Vector3(0, 1, -2); // In front of player
+        const hitboxSize = new THREE.Vector3(2, 1.5, 3); // Elongated forward
+        
+        this.combatManager.createHitbox(
+          this.model,           // Parent object
+          hitboxOffset,         // Position offset
+          hitboxSize,           // Size
+          this.attackPower * 2, // High damage
+          0.4,                 // Duration in seconds
+          { owner: this, knockback: 5 }  // High knockback
+        );
+        
+        console.log("Created player jump attack hitbox");
+      }, 600); // 600ms into the animation (jump has longer windup)
+    }
+    
+    // Set attack cooldown
+    this.attackCooldown = 2.0; // 2 seconds before next attack (longest cooldown for strongest attack)
   }
   
   // Take damage from an attack
