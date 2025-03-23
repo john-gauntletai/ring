@@ -705,17 +705,23 @@ class PlayerEntity {
     }
 
     if (this.lockOnEntity) {
-      // Calculate camera position behind the player based on player's facing direction
-      // Get the direction vector that player is facing (opposite of lookAt direction)
+      // Calculate camera position behind and to the right of the player (over right shoulder)
+      // Get the direction vectors that player is facing
       const playerForward = new THREE.Vector3(0, 0, 1).applyQuaternion(
         this.model.quaternion
       );
       const playerBackward = playerForward.clone().negate();
-
-      // Set camera position behind player
+      
+      // Get right vector for positioning over the shoulder
+      const playerRight = new THREE.Vector3(1, 0, 0).applyQuaternion(
+        this.model.quaternion
+      );
+      
+      // Set camera position behind player and to the right (over shoulder)
       const cameraPositionBehind = this.model.position
         .clone()
-        .add(playerBackward.multiplyScalar(DISTANCE_TO_PLAYER)) // Move DISTANCE_TO_PLAYER units behind player
+        .add(playerBackward.multiplyScalar(DISTANCE_TO_PLAYER * 0.8)) // Move behind player
+        .add(playerRight.multiplyScalar(-2)) // Shift to right shoulder (increased offset)
         .add(new THREE.Vector3(0, 1.7, 0)); // Raise camera slightly above player's head
 
       // Set camera position with slight smoothing
@@ -723,19 +729,15 @@ class PlayerEntity {
         cameraPositionBehind.x,
         cameraPositionBehind.y,
         cameraPositionBehind.z,
-        true // Use smooth transition
+        false // Use smooth transition
       );
 
-      // Make camera look at the point the player is looking at (direction player is facing)
-      const lookTarget = this.model.position
-        .clone()
-        .add(playerForward.normalize().multiplyScalar(10)); // Look 10 units ahead of player
-
+      // Make camera look directly at the locked entity instead of a point ahead
       CAMERA.controls.setTarget(
-        lookTarget.x,
-        this.model.position.y + 1, // Slightly above player height
-        lookTarget.z,
-        true // Use smooth transition
+        this.lockOnEntity.model.position.x,
+        this.lockOnEntity.model.position.y + 1, // Target slightly above enemy's base
+        this.lockOnEntity.model.position.z,
+        false // Use smooth transition
       );
     } else {
       CAMERA.lookAtEntity(this);
