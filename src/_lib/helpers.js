@@ -82,3 +82,110 @@ export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
     mixer,
   };
 };
+
+// Remove all meshes in bottom half of the kingdom model
+export const removeBottomHalf = (model) => {
+  const modelBounds = new THREE.Box3().setFromObject(model);
+  const modelHeight = modelBounds.max.y - modelBounds.min.y;
+  const midHeight = modelBounds.min.y + modelHeight / 2;
+  
+  // Store meshes to remove
+  const meshesToRemove = [];
+  
+  // First identify meshes in the bottom half
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      // Skip removing the Pozancos Church mesh
+      if (child.name === "Pozancos_Church_All_Data_Model_26001") {
+        console.log(`Keeping special mesh: ${child.name}`);
+        return;
+      }
+      
+      const meshBounds = new THREE.Box3().setFromObject(child);
+      
+      // Check if this mesh is primarily in the bottom half
+      if (meshBounds.max.y < midHeight || 
+          (meshBounds.min.y < midHeight && meshBounds.max.y - meshBounds.min.y < modelHeight * 0.3)) {
+        
+        meshesToRemove.push(child);
+        console.log(`Removing mesh: ${child.name}`);
+      }
+    }
+  });
+  
+  // Then remove them (can't remove while traversing)
+  meshesToRemove.forEach(mesh => {
+    // Dispose of geometry and materials to prevent memory leaks
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.material) {
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach(material => material.dispose());
+      } else {
+        mesh.material.dispose();
+      }
+    }
+    
+    // Remove from parent
+    if (mesh.parent) {
+      mesh.parent.remove(mesh);
+    }
+  });
+  
+  console.log(`Removed ${meshesToRemove.length} meshes from bottom half of model`);
+};
+
+// Darken and blur the kingdom model
+export const applyKingdomEffects = (model) => {
+  // Calculate distance to position the blur plane
+  const modelBounds = new THREE.Box3().setFromObject(model);
+  const modelCenter = new THREE.Vector3();
+  modelBounds.getCenter(modelCenter);
+  
+  console.log("Applying enhanced darkening effects to kingdom model");
+  
+  // Traverse model and modify all materials
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.material) {
+      // Handle both single materials and material arrays
+      if (Array.isArray(child.material)) {
+        child.material.forEach((mat, index) => {
+          // Create a new material that inherits from the original
+          const newMat = mat.clone();
+          
+          // Darken the material significantly more
+          newMat.color.multiplyScalar(0.4); // Darkened from 0.7 to 0.4
+          newMat.emissive = new THREE.Color(0x000000); // No emissive
+          if (newMat.roughness !== undefined) newMat.roughness = Math.min(1.0, newMat.roughness * 1.5); // Increased roughness from 1.3 to 1.5
+          if (newMat.metalness !== undefined) newMat.metalness = Math.min(0.9, newMat.metalness * 1.4); // Increased metalness from 1.2 to 1.4
+          
+          // Reduce any reflectivity
+          if (newMat.envMapIntensity !== undefined) {
+            newMat.envMapIntensity *= 0.3; // Significantly reduce environment map reflections
+          }
+          
+          // Apply modified material
+          child.material[index] = newMat;
+        });
+      } else {
+        // Create a new material that inherits from the original
+        const newMat = child.material.clone();
+        
+        // Darken the material significantly more
+        newMat.color.multiplyScalar(0.4); // Darkened from 0.7 to 0.4
+        newMat.emissive = new THREE.Color(0x000000); // No emissive
+        if (newMat.roughness !== undefined) newMat.roughness = Math.min(1.0, newMat.roughness * 1.5); // Increased roughness
+        if (newMat.metalness !== undefined) newMat.metalness = Math.min(0.9, newMat.metalness * 1.4); // Increased metalness
+        
+        // Reduce any reflectivity
+        if (newMat.envMapIntensity !== undefined) {
+          newMat.envMapIntensity *= 0.3; // Significantly reduce environment map reflections
+        }
+        
+        // Apply modified material
+        child.material = newMat;
+      }
+    }
+  });
+  
+  // No blur plane effect
+};

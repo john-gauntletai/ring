@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-import { loadModel, addResizeEventListeners } from "./_lib/helpers.js";
+import { loadModel, addResizeEventListeners, removeBottomHalf, applyKingdomEffects } from "./_lib/helpers.js";
 import PlayerEntity from "./entities/PlayerEntity.js";
 import EnemyEntity from "./entities/EnemyEntity.js";
 import Camera from "./entities/Camera.js";
@@ -100,10 +100,11 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, goldenKnight] = await Promise.all([
+  const [player, goldenKnight, kingdom] = await Promise.all([
     loadModel("/assets/models/austen-out.glb", scene, LOADING_MANAGER),
     loadModel("/assets/models/golden-knight-out2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/kingdom.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
@@ -112,15 +113,35 @@ async function init() {
     player.animations,
     player.mixer
   );
-
+  window.PLAYER = PLAYER;
   const ENEMY = new EnemyEntity(
     goldenKnight.model,
     goldenKnight.animations,
     goldenKnight.mixer
   );
 
-  // kingdom.model.position.set(30, -60, 0);
-  // kingdom.model.rotation.y = Math.PI;
+  // Position the kingdom model
+  kingdom.model.position.set(700, -110, 50);
+  kingdom.model.rotation.y = Math.PI * 1.01;
+  
+  // Remove any existing blur effects
+  kingdom.model.traverse((child) => {
+    if (child.name === "kingdomBlurEffect" && child.parent) {
+      child.parent.remove(child);
+      if (child.material) child.material.dispose();
+      if (child.geometry) child.geometry.dispose();
+      console.log("Removed existing blur effect");
+    }
+  });
+  
+  // Apply optimization to the kingdom model
+  removeBottomHalf(kingdom.model);
+  
+  // Apply darkening effects to the kingdom (no blur)
+  applyKingdomEffects(kingdom.model);
+  
+  // Add the kingdom model to the scene
+  scene.add(kingdom.model);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -157,6 +178,7 @@ async function init() {
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
+    console.log(key);
     KEYS[key] = true;
 
     // Special key handling

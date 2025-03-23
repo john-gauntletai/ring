@@ -56,7 +56,7 @@ class EnemyEntity {
    */
   init() {
     // Position the golden-knight at initial coordinates (150, 0, 0)
-    this.model.position.set(100, 0, 0);
+    this.model.position.set(0, 0, -100);
     this.model.rotation.y = Math.PI * 0.5;
 
     // Clone and store default material
