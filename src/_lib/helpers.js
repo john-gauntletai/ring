@@ -46,8 +46,9 @@ export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
 
   const loader = new GLTFLoader(LOADING_MANAGER);
   const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath("three/examples/jsm/libs/draco/");
-  dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
+  dracoLoader.setDecoderPath("/assets/draco/");
+  // dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
+  
   loader.setDRACOLoader(dracoLoader);
   const gltfData = await loader.loadAsync(filePath);
 

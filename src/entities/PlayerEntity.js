@@ -23,6 +23,10 @@ class PlayerEntity {
     this.currentAttack = null;
     this.attackAnimationComplete = true;
 
+    // Track roll states
+    this.isRolling = false;
+    this.rollCooldown = 0;
+
     // Track currently playing actions for animation completion
     this.activeAction = null;
 
@@ -70,20 +74,21 @@ class PlayerEntity {
   // Set up callbacks for animation completion
   setupAnimationCallbacks() {
     this.mixer.addEventListener("finished", (e) => {
+      console.log("Animation finished", e.action);
       if (
         e.action === this.animations.slash.action ||
         e.action === this.animations.slash2.action ||
-        e.action === this.animations.jumpAttack.action ||
         e.action === this.animations.spinAttack.action ||
         e.action === this.animations.block.action ||
         e.action === this.animations.death.action ||
         e.action === this.animations.powerUp.action ||
         e.action === this.animations.kick.action ||
         e.action === this.animations.impact.action ||
-        e.action === this.animations.impact2.action ||
-        e.action === this.animations.roll.action
+        e.action === this.animations.impact2.action
       ) {
         this.onAttackComplete();
+      } else if (e.action === this.animations.roll.action) {
+        this.onRollComplete();
       }
     });
   }
@@ -140,8 +145,48 @@ class PlayerEntity {
     this.isAttacking = false;
     this.currentAttack = null;
     this.attackAnimationComplete = true;
+    
+    // Reset state to IDLE (for attacks and blocks)
+    if (this.currentState === "ATTACKING" || this.currentState === "BLOCKING") {
+      this.currentState = "IDLE";
+    }
+    
+    console.log("Attack or block complete");
+  }
+
+  // Called when roll animation completes
+  onRollComplete() {
+    this.isRolling = false;
     this.currentState = "IDLE";
-    console.log("Attack complete");
+    this.invulnerable = false;
+    
+    // Reset camera position if not locked on
+    if (!this.lockOnEntity) {
+      // Get the current facing direction
+      const forwardDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.model.quaternion);
+      const backwardDirection = forwardDirection.clone().negate();
+      
+      // Position camera behind player
+      const cameraPos = this.model.position.clone()
+        .add(backwardDirection.multiplyScalar(DISTANCE_TO_PLAYER))
+        .add(new THREE.Vector3(0, 2, 0)); // Slightly above player
+        
+      // Update CAMERA.locations.behindPlayer to match
+      CAMERA.locations.behindPlayer.position.copy(cameraPos);
+        
+      // Set camera position with smooth transition
+      CAMERA.controls.setPosition(
+        cameraPos.x,
+        cameraPos.y,
+        cameraPos.z,
+        true // Smooth transition
+      );
+      
+      // Make camera look at player
+      CAMERA.lookAtEntity(this);
+    }
+    
+    console.log("Roll animation complete");
   }
 
   markAsLoopOnce(action) {
@@ -167,6 +212,7 @@ class PlayerEntity {
   isUnableToAttack() {
     return (
       this.isAttacking ||
+      this.isRolling ||
       this.currentState === "STAGGERED" ||
       this.currentState === "DEAD" ||
       this.attackCooldown > 0
@@ -191,8 +237,8 @@ class PlayerEntity {
     if (this.combatManager) {
       // Schedule hitbox creation
       setTimeout(() => {
-        const hitboxOffset = new THREE.Vector3(0, 1, -1.5); // In front of player (player faces -Z)
-        const hitboxSize = new THREE.Vector3(1.5, 1, 2); // Size of the hitbox
+        const hitboxOffset = new THREE.Vector3(0, 1, -1.2); // In front of player (player faces -Z)
+        const hitboxSize = new THREE.Vector3(1.0, 0.8, 1.5); // Reduced size of the hitbox
 
         this.combatManager.createHitbox(
           this.model, // Parent object
@@ -229,8 +275,8 @@ class PlayerEntity {
     if (this.combatManager) {
       // Schedule hitbox creation
       setTimeout(() => {
-        const hitboxOffset = new THREE.Vector3(0, 1, -2); // Further in front for heavy attack
-        const hitboxSize = new THREE.Vector3(2.5, 1.2, 2.5); // Larger size for heavy attack
+        const hitboxOffset = new THREE.Vector3(0, 1, -1.7); // Further in front for heavy attack
+        const hitboxSize = new THREE.Vector3(1.8, 1.0, 2.0); // Reduced size for heavy attack
 
         this.combatManager.createHitbox(
           this.model, // Parent object
@@ -267,8 +313,8 @@ class PlayerEntity {
     if (this.combatManager) {
       // Schedule hitbox creation
       setTimeout(() => {
-        const hitboxOffset = new THREE.Vector3(0, 1, -1.5); // In front of player (player faces -Z)
-        const hitboxSize = new THREE.Vector3(1.5, 1, 2); // Size of the hitbox
+        const hitboxOffset = new THREE.Vector3(0, 0.7, -1.2); // Lower position for kick
+        const hitboxSize = new THREE.Vector3(0.8, 0.6, 1.3); // Smaller size for kick hitbox
 
         this.combatManager.createHitbox(
           this.model, // Parent object
@@ -315,7 +361,7 @@ class PlayerEntity {
     if (this.combatManager) {
       setTimeout(() => {
         const hitboxOffset = new THREE.Vector3(0, 1, 0); // Centered on player
-        const hitboxSize = new THREE.Vector3(4, 1.2, 4); // Large circular area
+        const hitboxSize = new THREE.Vector3(2.5, 0.9, 2.5); // Reduced circular area
 
         this.combatManager.createHitbox(
           this.model, // Parent object
@@ -334,71 +380,41 @@ class PlayerEntity {
     this.attackCooldown = 1.5; // 1.5 seconds before next attack (longer cooldown for powerful attack)
   }
 
-  // Perform a jump attack (high damage, forward leap)
-  jumpAttack() {
-    if (this.isUnableToAttack()) {
-      return;
-    }
-
-    this.isAttacking = true;
-    this.attackAnimationComplete = false;
-    this.currentState = "ATTACKING";
-    this.currentAttack = "jumpAttack";
-
-    // Play jump attack animation
-    const animationAction =
-      this.animations.jumpAttack?.action ||
-      this.animations["jump attack"]?.action;
-    if (!animationAction) {
-      console.warn(
-        "Jump attack animation not found, falling back to slash animation"
-      );
-      this.fadeToAction(this.animations.slash.action, false);
-    } else {
-      this.fadeToAction(animationAction, false);
-    }
-
-    // Move player forward during animation
-    const initialPosition = this.model.position.clone();
-    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(
-      this.model.quaternion
-    );
-
-    // Create hitbox in front of player after a delay
-    if (this.combatManager) {
-      setTimeout(() => {
-        // Move player forward by 3 units for the jump attack
-        this.model.position.add(direction.multiplyScalar(3));
-
-        const hitboxOffset = new THREE.Vector3(0, 1, -2); // In front of player
-        const hitboxSize = new THREE.Vector3(2, 1.5, 3); // Elongated forward
-
-        this.combatManager.createHitbox(
-          this.model, // Parent object
-          hitboxOffset, // Position offset
-          hitboxSize, // Size
-          this.attackPower * 2, // High damage
-          0.4, // Duration in seconds
-          { owner: this, knockback: 5 } // High knockback
-        );
-
-        console.log("Created player jump attack hitbox");
-      }, 600); // 600ms into the animation (jump has longer windup)
-    }
-
-    // Set attack cooldown
-    this.attackCooldown = 2.0; // 2 seconds before next attack (longest cooldown for strongest attack)
-  }
-
   // Take damage from an attack
   takeDamage(damage) {
+    // Check invulnerability first
     if (this.invulnerable || this.currentState === "DEAD") {
+      console.log("Attack avoided! Player is invulnerable");
       return;
     }
+    
+    // Reduce damage if blocking
+    let actualDamage = damage;
+    if (this.currentState === "BLOCKING") {
+      // Reduce damage by 70% when blocking
+      actualDamage = Math.floor(damage * 0.3);
+      console.log(`Blocked attack! Damage reduced from ${damage} to ${actualDamage}`);
+      
+      // Emit block success event
+      document.dispatchEvent(
+        new CustomEvent('block_success', {
+          detail: {
+            player: this,
+            originalDamage: damage,
+            reducedDamage: actualDamage
+          }
+        })
+      );
+      
+      // Consume stamina when blocking (if implemented)
+      if (this.stamina > 0) {
+        this.stamina = Math.max(0, this.stamina - 10);
+      }
+    }
 
-    this.health -= damage;
+    this.health -= actualDamage;
     console.log(
-      `Player took ${damage} damage. Health: ${this.health}/${this.maxHealth}`
+      `Player took ${actualDamage} damage. Health: ${this.health}/${this.maxHealth}`
     );
 
     // Check for death
@@ -408,8 +424,10 @@ class PlayerEntity {
       return;
     }
 
-    // Get staggered
-    this.getStaggered();
+    // Get staggered only if not blocking
+    if (this.currentState !== "BLOCKING") {
+      this.getStaggered();
+    }
   }
 
   // Enter staggered state
@@ -431,7 +449,43 @@ class PlayerEntity {
 
   // Set debug visualization mode
   setDebugVisualization(enabled) {
-    // No specific debug visualization for player currently
+    // Create debug visuals when enabled
+    if (enabled) {
+      // Create attack range visualization if it doesn't exist
+      if (!this.debugAttackRange) {
+        // Create a group to hold all debug visualizations
+        this.debugAttackRange = new THREE.Group();
+        this.debugAttackRange.name = 'player-debug';
+        
+        // Create a cone to represent the forward attack range
+        const coneGeometry = new THREE.ConeGeometry(2, 4, 8);
+        coneGeometry.rotateX(Math.PI / 2); // Rotate to point forward
+        const coneMaterial = new THREE.MeshBasicMaterial({
+          color: 0x00aaff,
+          transparent: true,
+          opacity: 0.25,
+          wireframe: true
+        });
+        
+        const attackCone = new THREE.Mesh(coneGeometry, coneMaterial);
+        attackCone.position.set(0, 1, -2); // Position in front of player
+        
+        // Add to debug group
+        this.debugAttackRange.add(attackCone);
+        
+        // Add debug group to player model
+        this.model.add(this.debugAttackRange);
+      }
+      
+      // Show debug visuals
+      this.debugAttackRange.visible = true;
+    } else {
+      // Hide debug visuals
+      if (this.debugAttackRange) {
+        this.debugAttackRange.visible = false;
+      }
+    }
+    
     console.log(
       `Player debug visualization: ${enabled ? "enabled" : "disabled"}`
     );
@@ -453,6 +507,11 @@ class PlayerEntity {
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
+    
+    // Update roll cooldown
+    if (this.rollCooldown > 0) {
+      this.rollCooldown -= delta;
+    }
 
     // Handle staggered state
     if (this.currentState === "STAGGERED") {
@@ -465,8 +524,8 @@ class PlayerEntity {
       return;
     }
 
-    // Skip remaining logic if dead or attacking
-    if (this.currentState === "DEAD" || this.isAttacking) {
+    // Skip remaining logic if dead, attacking or rolling
+    if (this.currentState === "DEAD" || this.isAttacking || this.isRolling) {
       // Update the mixer
       if (this.mixer) {
         this.mixer.update(delta);
@@ -671,7 +730,14 @@ class PlayerEntity {
     this.model.lookAt(targetAtSameHeight);
   }
 
-  updateCamera(moveX, moveZ, moveY) {
+  updateCamera(moveX, moveZ, moveY, isRollUpdate = false) {
+    // For rolls without lock-on, limit camera movement to prevent excessive displacement
+    if (isRollUpdate && !this.lockOnEntity) {
+      // Only move camera a fraction of the player's movement for smoother following
+      moveX *= 0.5;
+      moveZ *= 0.5;
+    }
+    
     // move camera
     CAMERA.locations.behindPlayer.position.x += moveX;
     CAMERA.locations.behindPlayer.position.z += moveZ;
@@ -742,6 +808,172 @@ class PlayerEntity {
     } else {
       CAMERA.lookAtEntity(this);
     }
+  }
+
+  /**
+   * Perform a dodge roll with temporary invincibility
+   */
+  roll() {
+    // Don't allow rolling if staggered, or dead
+    if (this.currentState === "STAGGERED" || this.currentState === "DEAD") {
+      return;
+    }
+    
+    // Check cooldown (prevent roll spam)
+    if (this.rollCooldown > 0) {
+      return;
+    }
+    
+    this.currentState = "ROLLING";
+    this.isRolling = true;
+    
+    // Store current position for roll calculation
+    const startPosition = this.model.position.clone();
+    
+    // Play roll animation
+    console.log(this.activeAction);
+    this.fadeToAction(this.animations.roll.action, false);
+    
+    // Determine roll direction based on input keys
+    let direction = new THREE.Vector3();
+    
+    if (KEYS.s) {
+      // Roll backward
+      direction.z = 1; // Backward is positive Z when player faces -Z
+    } else if (KEYS.a) {
+      // Roll left
+      direction.x = -1;
+    } else if (KEYS.d) {
+      // Roll right
+      direction.x = 1;
+    } else {
+      // Default: roll forward
+      direction.z = -1;
+    }
+    
+    // If locked on, roll direction should be relative to the target
+    if (this.lockOnEntity && this.lockOnEntity.model) {
+      // Calculate direction to locked entity
+      const targetPosition = this.lockOnEntity.model.position.clone();
+      const directionToTarget = new THREE.Vector3()
+        .subVectors(targetPosition, this.model.position)
+        .normalize();
+      
+      // Create perpendicular vectors for strafing
+      const perpRight = new THREE.Vector3(
+        -directionToTarget.z,
+        0,
+        directionToTarget.x
+      ).normalize();
+      const perpLeft = perpRight.clone().negate();
+      
+      // Reset direction
+      direction = new THREE.Vector3(0, 0, 0);
+      
+      // Apply direction based on keys
+      if (KEYS.w || (!KEYS.w && !KEYS.s && !KEYS.a && !KEYS.d)) direction.add(directionToTarget);
+      if (KEYS.s) direction.sub(directionToTarget);
+      if (KEYS.a) direction.add(perpLeft);
+      if (KEYS.d) direction.add(perpRight);
+    } else {
+      // Not locked on, apply model's rotation to direction
+      direction.applyQuaternion(this.model.quaternion);
+    }
+    
+    // Normalize the direction
+    if (direction.length() > 0) direction.normalize();
+    
+    // Apply invincibility frames after a short delay (mid-roll)
+    this.invulnerable = true;
+    console.log("Roll invulnerability activated");
+    
+    // Roll distance and duration
+    const rollDistance = 2; // Units to roll (reduced by 1/3 from 5)
+    const rollDuration = 0.6; // Seconds
+    
+    // Set cooldown
+    this.rollCooldown = 1.0; // 1 second cooldown
+    
+    // Perform the roll movement and restore state after completion
+    let rollTime = 0;
+    const rollInterval = setInterval(() => {
+      // Update roll progress
+      rollTime += 0.016; // ~60fps
+      
+      // Apply movement based on cubic ease-in-out curve for smooth roll
+      if (rollTime <= rollDuration) {
+        // Calculate progress (0 to 1)
+        const t = rollTime / rollDuration;
+        
+        // Cubic ease-in-out curve: acceleration, then deceleration
+        let progress;
+        if (t < 0.5) {
+          progress = 4 * t * t * t;
+        } else {
+          progress = 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+        
+        // Calculate new position
+        const newPos = startPosition.clone().add(
+          direction.clone().multiplyScalar(rollDistance * progress)
+        );
+        
+        // Apply movement
+        this.model.position.copy(newPos);
+        
+        // Update camera
+        const moveX = this.model.position.x - startPosition.x;
+        const moveZ = this.model.position.z - startPosition.z;
+        this.updateCamera(moveX, moveZ, 0, true);
+      }
+      
+      // End the roll
+      if (rollTime >= rollDuration) {
+        clearInterval(rollInterval);
+        
+        // End states (invulnerability now handled in onRollComplete)
+        this.isRolling = false;
+        this.currentState = "IDLE";
+        
+        // The camera position reset is now handled in onRollComplete
+      }
+    }, 16);
+    
+    // If not locked on, prevent camera from getting too far by triggering immediate camera adjustment
+    if (!this.lockOnEntity) {
+      // Initialize camera at good position as soon as roll starts
+      const forwardDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.model.quaternion);
+      const backwardDirection = forwardDirection.clone().negate();
+      
+      // Set higher follow speed during roll
+      CAMERA.controls.followSpeed = 2; // Temporarily increase follow speed
+      
+      // Schedule reset of follow speed
+      setTimeout(() => {
+        CAMERA.controls.followSpeed = 1; // Reset to normal follow speed
+      }, rollDuration * 1000);
+    }
+  }
+
+  /**
+   * Enter blocking state
+   */
+  block() {
+    // Don't allow blocking if attacking, rolling, staggered, or dead
+    if (this.isAttacking || this.isRolling || this.currentState === "STAGGERED" || this.currentState === "DEAD") {
+      return;
+    }
+    
+    // Set state to blocking
+    this.currentState = "BLOCKING";
+    
+    // Play block animation
+    this.fadeToAction(this.animations.block.action, false);
+    
+    console.log("Player blocking");
+    
+    // Block remains active until animation completes
+    // The animation completion is handled in the setupAnimationCallbacks method
   }
 }
 

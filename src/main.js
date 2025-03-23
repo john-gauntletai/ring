@@ -111,7 +111,11 @@ async function init() {
   // Load models
   const [player, goldenKnight, kingdom] = await Promise.all([
     loadModel("/assets/models/austen2.glb", scene, LOADING_MANAGER),
-    loadModel("/assets/models/move golden knight-out2.glb", scene, LOADING_MANAGER),
+    loadModel(
+      "/assets/models/move golden knight-out2.glb",
+      scene,
+      LOADING_MANAGER
+    ),
     // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
@@ -178,7 +182,7 @@ async function init() {
 
   // Position grass group at ground level
   grass.grassGroup.position.y = 0;
-  
+
   // Initialize Boss UI
   const bossUI = new BossUI();
   window.BOSS_UI = bossUI;
@@ -188,20 +192,16 @@ async function init() {
     KEYS[key] = true;
 
     // Special key handling
-    if (key === "y") {
-      // Light attack with E key
+    if (key === "u") {
       PLAYER.slash();
-    } else if (key === "u") {
-      // Heavy attack with Q key
-      PLAYER.slash2();
     } else if (key === "i") {
-      PLAYER.kick();
-    } else if (key === "h") {
-      // Player spin attack with H key
-      PLAYER.spinAttack();
+      PLAYER.slash2();
+    } else if (key === "o") { // "o" or spacebar for roll
+      PLAYER.roll();
     } else if (key === "j") {
-      // Player jump attack with J key
-      PLAYER.jumpAttack();
+      PLAYER.spinAttack();
+    } else if (key === "k") {
+      PLAYER.kick();
     } else if (key === "b") {
       PLAYER.block();
     } else if (key === "l") {
@@ -234,7 +234,7 @@ async function init() {
 
     // Update combat manager
     combatManager.update(delta);
-    
+
     // Update UI
     if (window.BOSS_UI) {
       window.BOSS_UI.update();

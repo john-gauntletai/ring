@@ -33,7 +33,13 @@ class EnemyEntity {
     this.attackCooldown = 0; // current cooldown timer
     this.attackCallbackSet = false;
     // this.availableAttacks = ["comboAttack", "slash", "kick", "spinAttack", "jumpAttack"];
-    this.availableAttacks = ["comboAttack", "spinAttack", "jumpAttack"];
+    this.availableAttacks = [
+      "comboAttack",
+      "spinAttack",
+      "jumpAttack",
+      "slash",
+      "kick",
+    ];
     this.currentAttackType = "comboAttack"; // Default attack
 
     // Animation properties
@@ -282,11 +288,7 @@ class EnemyEntity {
         // Aware but not yet chasing - face player and prepare
         this.faceTarget();
         this.playAnimation("idle");
-
-        // Transition to chase if player moves closer or after delay
-        if (distanceToPlayer < this.data.detectionRadius * 0.7) {
-          this.setState("CHASE");
-        }
+        this.setState("CHASE");
         break;
 
       case "CHASE":
@@ -354,7 +356,7 @@ class EnemyEntity {
 
       // Trigger the boss UI to show health bar
       this.triggerBossUI();
-      
+
       // Transition to aware state first
       this.setState("AWARE");
     }
@@ -507,6 +509,19 @@ class EnemyEntity {
     if (this.detectionSphere) {
       this.detectionSphere.visible = false;
     }
+
+    // Hide the boss UI after 3 seconds
+    setTimeout(() => {
+      // Dispatch custom event to hide the UI
+      document.dispatchEvent(
+        new CustomEvent("boss_defeated", {
+          detail: {
+            name: this.data.name,
+          },
+        })
+      );
+      console.log("Boss UI hidden after death");
+    }, 3000);
   }
 
   /**
@@ -534,9 +549,44 @@ class EnemyEntity {
   setDebugVisualization(enabled) {
     if (this.detectionSphere) {
       this.detectionSphere.visible = enabled;
-    }
 
-    // Add more debug visualizations here as needed
+      // Update the detection sphere material to be more visible
+      if (enabled) {
+        this.detectionSphere.material.color.set(0xff3333);
+        this.detectionSphere.material.opacity = 0.15;
+        this.detectionSphere.material.wireframe = true;
+        this.detectionSphere.material.wireframeLinewidth = 2;
+
+        // Add attack range visualization
+        if (!this.attackRangeSphere) {
+          const attackGeometry = new THREE.SphereGeometry(
+            this.data.attackRange,
+            16,
+            16
+          );
+          const attackMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff8800,
+            transparent: true,
+            opacity: 0.2,
+            wireframe: true,
+          });
+
+          this.attackRangeSphere = new THREE.Mesh(
+            attackGeometry,
+            attackMaterial
+          );
+          this.attackRangeSphere.position.set(0, 0, 0);
+          this.model.add(this.attackRangeSphere);
+        }
+
+        this.attackRangeSphere.visible = true;
+      } else {
+        // Hide attack range visualization
+        if (this.attackRangeSphere) {
+          this.attackRangeSphere.visible = false;
+        }
+      }
+    }
 
     console.log(
       `Enemy debug visualization ${enabled ? "enabled" : "disabled"}`
@@ -570,7 +620,7 @@ class EnemyEntity {
    */
   attack(delta) {
     if (!this.targetEntity) return;
-    
+
     // If not in attack range, chase instead
     const distance = this.model.position.distanceTo(
       this.targetEntity.model.position
@@ -579,10 +629,10 @@ class EnemyEntity {
       this.setState("CHASE");
       return;
     }
-    
+
     // Face the player
     this.faceTarget();
-    
+
     // Check if we're currently attacking or in cooldown
     if (this.isAttacking) {
       // Let the attack animation finish - handled by animation callback
@@ -590,23 +640,23 @@ class EnemyEntity {
     } else if (this.attackCooldown <= 0) {
       // Start a new attack
       this.isAttacking = true;
-      
+
       // Track the starting position for animations that move the enemy
       this.attackStartPosition = this.model.position.clone();
-      
+
       // Randomly select an attack type from available attacks
       // First filter to only include attacks that have animations
       const validAttacks = this.availableAttacks.filter(
         (attackType) =>
           this.animations[attackType] && this.animations[attackType].action
       );
-      
+
       if (validAttacks.length > 0) {
         // Choose a random attack from valid attacks
         this.currentAttackType =
           validAttacks[Math.floor(Math.random() * validAttacks.length)];
         console.log(`Enemy using ${this.currentAttackType} attack`);
-        
+
         // Log starting position for combo attack
         if (this.currentAttackType === "comboAttack") {
           console.log(
@@ -617,10 +667,10 @@ class EnemyEntity {
             )}, ${this.model.position.z.toFixed(2)})`
           );
         }
-        
+
         // Play the selected attack animation with high priority to prevent interruption
         this.playAnimation(this.currentAttackType, 0.2, 1.0); // Fast crossfade, high priority
-        
+
         // For comboAttack, reset the animation time to ensure consistent movement
         if (
           this.currentAttackType === "comboAttack" &&
@@ -628,7 +678,7 @@ class EnemyEntity {
         ) {
           this.animations.comboAttack.action.time = 0;
         }
-        
+
         // Create hitbox after a delay to match animation
         if (this.combatManager) {
           // Different hitbox configurations based on attack type
@@ -637,7 +687,7 @@ class EnemyEntity {
           let hitboxSize = new THREE.Vector3(1.2, 1, 1.5); // Default size
           let damage = this.data.attackDamage;
           let knockback = 1;
-          
+
           // Customize hitbox based on attack type
           switch (this.currentAttackType) {
             case "slash":
@@ -670,7 +720,7 @@ class EnemyEntity {
               hitboxDelay = 500; // Increased delay to match with further movement
               break;
           }
-          
+
           setTimeout(() => {
             // Only create hitbox if still in attack state
             if (this.currentState === "ATTACK" && this.isAttacking) {
@@ -680,15 +730,17 @@ class EnemyEntity {
                 hitboxSize,
                 damage,
                 0.2,
-                { 
-                  owner: this, 
+                {
+                  owner: this,
                   knockback: knockback,
                   // Flag to indicate this hitbox should not interrupt animations
-                  preserveAnimation: true 
+                  preserveAnimation: true,
                 }
               );
-              
-              console.log(`Created enemy ${this.currentAttackType} attack hitbox`);
+
+              console.log(
+                `Created enemy ${this.currentAttackType} attack hitbox`
+              );
             }
           }, hitboxDelay); // Delay hitbox creation to match animation timing
         }
