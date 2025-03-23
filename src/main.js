@@ -17,6 +17,7 @@ import GrassComponent from "./components/GrassComponent.js";
 import FlatTerrain from "./components/FlatTerrain.js";
 import CombatManager from "./combat/CombatManager.js";
 import BossUI from "./components/BossUI.js";
+import PlayerUI from "./components/PlayerUI.js";
 
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 
@@ -182,6 +183,10 @@ async function init() {
   // Initialize Boss UI
   const bossUI = new BossUI();
   window.BOSS_UI = bossUI;
+  
+  // Initialize Player UI
+  const playerUI = new PlayerUI();
+  window.PLAYER_UI = playerUI;
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
@@ -238,6 +243,10 @@ async function init() {
     // Update UI
     if (window.BOSS_UI) {
       window.BOSS_UI.update();
+    }
+    
+    if (window.PLAYER_UI) {
+      window.PLAYER_UI.update();
     }
 
     // Update grass animation and LOD
