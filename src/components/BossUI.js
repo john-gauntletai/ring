@@ -9,7 +9,7 @@ class BossUI {
     this.container.className = 'boss-ui-container';
     this.container.style.cssText = `
       position: fixed;
-      bottom: 40px;
+      bottom: 100px;
       left: 50%;
       transform: translateX(-50%);
       width: 60%;
@@ -26,23 +26,249 @@ class BossUI {
     this.nameElement.className = 'boss-name';
     this.nameElement.style.cssText = `
       color: #ffffff;
-      font-family: 'Arial', sans-serif;
-      font-size: 16px;
+      font-family: 'CormorantGaramond', serif;
+      font-size: 20px;
       margin-bottom: 5px;
       text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
+      font-weight: 600;
     `;
 
-    // Create health bar container
+    // Create a wrapper for the health bar and frame
+    this.healthBarWrapper = document.createElement('div');
+    this.healthBarWrapper.className = 'boss-health-bar-wrapper';
+    this.healthBarWrapper.style.cssText = `
+      position: relative;
+      width: 100%;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    // Create the frame container
+    this.frameContainer = document.createElement('div');
+    this.frameContainer.className = 'boss-health-frame';
+    this.frameContainer.style.cssText = `
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    `;
+
+    // Create left diamond ornament
+    this.leftDiamond = document.createElement('div');
+    this.leftDiamond.className = 'boss-health-diamond left';
+    this.leftDiamond.style.cssText = `
+      position: absolute;
+      left: -6px;
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(135deg, #9d8234 10%, #e9d083 40%, #c8a951 60%, #e9d083 80%);
+      transform: rotate(45deg);
+      box-shadow: 0 0 6px #dab846, inset 0 0 2px rgba(0,0,0,0.7);
+      z-index: 2;
+      border: 0.5px solid #b69d43;
+      opacity: 0.95;
+      animation: diamond-glow 3s infinite alternate;
+      background-image:
+        linear-gradient(135deg, #9d8234 10%, #e9d083 40%, #c8a951 60%, #e9d083 80%),
+        url("data:image/svg+xml,%3Csvg width='8' height='8' viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h4v4H0V0zm4 4h4v4H4V4z' fill='%23000000' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E");
+    `;
+
+    // Create right diamond ornament
+    this.rightDiamond = document.createElement('div');
+    this.rightDiamond.className = 'boss-health-diamond right';
+    this.rightDiamond.style.cssText = `
+      position: absolute;
+      right: -6px;
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(135deg, #9d8234 10%, #e9d083 40%, #c8a951 60%, #e9d083 80%);
+      transform: rotate(45deg);
+      box-shadow: 0 0 6px #dab846, inset 0 0 2px rgba(0,0,0,0.7);
+      z-index: 2;
+      border: 0.5px solid #b69d43;
+      opacity: 0.95;
+      animation: diamond-glow 3s infinite alternate;
+      background-image:
+        linear-gradient(135deg, #9d8234 10%, #e9d083 40%, #c8a951 60%, #e9d083 80%),
+        url("data:image/svg+xml,%3Csvg width='8' height='8' viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h4v4H0V0zm4 4h4v4H4V4z' fill='%23000000' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E");
+    `;
+
+    // Create the top frame
+    this.topFrame = document.createElement('div');
+    this.topFrame.className = 'boss-health-frame-top';
+    this.topFrame.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 2%, #a89548 10%, #e9d083 35%, #f5e7b8 50%, #e9d083 65%, #a89548 90%, transparent 98%);
+      z-index: 1;
+      box-shadow: 0 0 4px #dab846;
+      background-image:
+        linear-gradient(90deg, transparent 2%, #a89548 10%, #e9d083 35%, #f5e7b8 50%, #e9d083 65%, #a89548 90%, transparent 98%),
+        url("data:image/svg+xml,%3Csvg width='40' height='1' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h5v1H0zm10 0h5v1h-5zm10 0h5v1h-5zm10 0h5v1h-5zm10 0h5v1h-5z' fill='%23000000' fill-opacity='0.1'/%3E%3C/svg%3E");
+    `;
+
+    // Create the bottom frame
+    this.bottomFrame = document.createElement('div');
+    this.bottomFrame.className = 'boss-health-frame-bottom';
+    this.bottomFrame.style.cssText = `
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 2%, #a89548 10%, #e9d083 35%, #f5e7b8 50%, #e9d083 65%, #a89548 90%, transparent 98%);
+      z-index: 1;
+      box-shadow: 0 0 4px #dab846;
+      background-image:
+        linear-gradient(90deg, transparent 2%, #a89548 10%, #e9d083 35%, #f5e7b8 50%, #e9d083 65%, #a89548 90%, transparent 98%),
+        url("data:image/svg+xml,%3Csvg width='40' height='1' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h5v1H0zm10 0h5v1h-5zm10 0h5v1h-5zm10 0h5v1h-5zm10 0h5v1h-5z' fill='%23000000' fill-opacity='0.1'/%3E%3C/svg%3E");
+    `;
+
+    // Create decorative filigree designs
+    this.topFiligree = document.createElement('div');
+    this.topFiligree.className = 'boss-health-filigree top';
+    this.topFiligree.style.cssText = `
+      position: absolute;
+      top: -3px;
+      left: calc(50% - 50px);
+      width: 100px;
+      height: 6px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='6' viewBox='0 0 100 6'%3E%3Cpath d='M0,3 C10,0 15,6 25,3 C35,0 40,6 50,3 C60,0 65,6 75,3 C85,0 90,6 100,3' stroke='%23e9d083' stroke-width='1' fill='none' /%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.8;
+      z-index: 3;
+      filter: drop-shadow(0 0 2px #dab846);
+    `;
+
+    this.bottomFiligree = document.createElement('div');
+    this.bottomFiligree.className = 'boss-health-filigree bottom';
+    this.bottomFiligree.style.cssText = `
+      position: absolute;
+      bottom: -3px;
+      left: calc(50% - 50px);
+      width: 100px;
+      height: 6px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='6' viewBox='0 0 100 6'%3E%3Cpath d='M0,3 C10,6 15,0 25,3 C35,6 40,0 50,3 C60,6 65,0 75,3 C85,6 90,0 100,3' stroke='%23e9d083' stroke-width='1' fill='none' /%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.8;
+      z-index: 3;
+      filter: drop-shadow(0 0 2px #dab846);
+    `;
+
+    // Create the left frame
+    this.leftFrame = document.createElement('div');
+    this.leftFrame.className = 'boss-health-frame-left';
+    this.leftFrame.style.cssText = `
+      position: absolute;
+      top: 2px;
+      left: 0;
+      width: 2px;
+      height: calc(100% - 4px);
+      background: linear-gradient(to bottom, #a89548 10%, #e9d083 40%, #f5e7b8 50%, #e9d083 60%, #a89548 90%);
+      z-index: 1;
+      box-shadow: 0 0 4px #dab846;
+      background-image:
+        linear-gradient(to bottom, #a89548 10%, #e9d083 40%, #f5e7b8 50%, #e9d083 60%, #a89548 90%),
+        url("data:image/svg+xml,%3Csvg width='2' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h2v2H0zm0 5h2v2H0zm0 5h2v2H0zm0 5h2v2H0zm0 5h2v2H0z' fill='%23000000' fill-opacity='0.1'/%3E%3C/svg%3E");
+    `;
+
+    // Create the right frame
+    this.rightFrame = document.createElement('div');
+    this.rightFrame.className = 'boss-health-frame-right';
+    this.rightFrame.style.cssText = `
+      position: absolute;
+      top: 2px;
+      right: 0;
+      width: 2px;
+      height: calc(100% - 4px);
+      background: linear-gradient(to bottom, #a89548 10%, #e9d083 40%, #f5e7b8 50%, #e9d083 60%, #a89548 90%);
+      z-index: 1;
+      box-shadow: 0 0 4px #dab846;
+      background-image:
+        linear-gradient(to bottom, #a89548 10%, #e9d083 40%, #f5e7b8 50%, #e9d083 60%, #a89548 90%),
+        url("data:image/svg+xml,%3Csvg width='2' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h2v2H0zm0 5h2v2H0zm0 5h2v2H0zm0 5h2v2H0zm0 5h2v2H0z' fill='%23000000' fill-opacity='0.1'/%3E%3C/svg%3E");
+    `;
+
+    // Add corner decorations for the frame
+    this.topLeftCorner = document.createElement('div');
+    this.topLeftCorner.className = 'boss-health-corner top-left';
+    this.topLeftCorner.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 4px;
+      background: #e9d083;
+      z-index: 3;
+      box-shadow: 0 0 3px #dab846;
+      border-radius: 0 0 100% 0;
+    `;
+
+    this.topRightCorner = document.createElement('div');
+    this.topRightCorner.className = 'boss-health-corner top-right';
+    this.topRightCorner.style.cssText = `
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 4px;
+      height: 4px;
+      background: #e9d083;
+      z-index: 3;
+      box-shadow: 0 0 3px #dab846;
+      border-radius: 0 0 0 100%;
+    `;
+
+    this.bottomLeftCorner = document.createElement('div');
+    this.bottomLeftCorner.className = 'boss-health-corner bottom-left';
+    this.bottomLeftCorner.style.cssText = `
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 4px;
+      height: 4px;
+      background: #e9d083;
+      z-index: 3;
+      box-shadow: 0 0 3px #dab846;
+      border-radius: 0 100% 0 0;
+    `;
+
+    this.bottomRightCorner = document.createElement('div');
+    this.bottomRightCorner.className = 'boss-health-corner bottom-right';
+    this.bottomRightCorner.style.cssText = `
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 4px;
+      height: 4px;
+      background: #e9d083;
+      z-index: 3;
+      box-shadow: 0 0 3px #dab846;
+      border-radius: 100% 0 0 0;
+    `;
+    
+    // Create health bar container with a subtle pattern
     this.healthBarContainer = document.createElement('div');
     this.healthBarContainer.className = 'boss-health-bar-container';
     this.healthBarContainer.style.cssText = `
-      width: 100%;
-      height: 12px;
-      background-color: rgba(0, 0, 0, 0.6);
-      border: 2px solid #666;
-      border-radius: 6px;
+      width: calc(100% - 4px);
+      height: 22px;
+      background-color: #0f1b36;
+      border-radius: 0;
       overflow: hidden;
       position: relative;
+      border: none;
+      box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.7);
+      background-image: 
+        url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H20v-1.5zM0 20h2v20H0V20zm4 0h2v20H4V20zm4 0h2v20H8V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20z' fill='%23131f38' fill-opacity='0.15' fill-rule='evenodd'/%3E%3C/svg%3E");
     `;
 
     // Create health bar
@@ -51,7 +277,7 @@ class BossUI {
     this.healthBar.style.cssText = `
       width: 100%;
       height: 100%;
-      background: linear-gradient(to right, #ff3838, #ff6b6b);
+      background: linear-gradient(to right, #6b0000, #8B0000);
       transition: width 0.4s ease;
     `;
 
@@ -73,8 +299,25 @@ class BossUI {
     // Add elements to DOM
     this.healthBarContainer.appendChild(this.healthBar);
     this.healthBarContainer.appendChild(this.damageOverlay);
+    
+    this.frameContainer.appendChild(this.topFrame);
+    this.frameContainer.appendChild(this.bottomFrame);
+    this.frameContainer.appendChild(this.leftFrame);
+    this.frameContainer.appendChild(this.rightFrame);
+    this.frameContainer.appendChild(this.leftDiamond);
+    this.frameContainer.appendChild(this.rightDiamond);
+    this.frameContainer.appendChild(this.topFiligree);
+    this.frameContainer.appendChild(this.bottomFiligree);
+    this.frameContainer.appendChild(this.topLeftCorner);
+    this.frameContainer.appendChild(this.topRightCorner);
+    this.frameContainer.appendChild(this.bottomLeftCorner);
+    this.frameContainer.appendChild(this.bottomRightCorner);
+    
+    this.healthBarWrapper.appendChild(this.healthBarContainer);
+    this.healthBarWrapper.appendChild(this.frameContainer);
+    
     this.container.appendChild(this.nameElement);
-    this.container.appendChild(this.healthBarContainer);
+    this.container.appendChild(this.healthBarWrapper);
     document.body.appendChild(this.container);
 
     // Set up event listeners
@@ -82,6 +325,17 @@ class BossUI {
 
     // Boss data
     this.bossData = null;
+
+    // Create animation style for the glowing effect
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
+      @keyframes diamond-glow {
+        0% { box-shadow: 0 0 4px 1px #dab846; }
+        50% { box-shadow: 0 0 7px 2px #e9d083; }
+        100% { box-shadow: 0 0 5px 1px #dab846; }
+      }
+    `;
+    document.head.appendChild(styleElement);
   }
 
   /**
