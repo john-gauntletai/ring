@@ -3,10 +3,23 @@ class SoundManager {
     this.sounds = {};
     this.activeLoops = {};
     this.footstepIndex = 0; // Track which footstep sound to play next
+    this.footstepInterval = null; // For interval-based footsteps
+    this.lastFootstepTime = 0; // Track when the last footstep was played
+    this.currentMovementType = null; // Track current movement type
+    this.currentSurfaceType = 'grass'; // Default surface type
     
     // Preload common sounds
     this.preloadSound('grassWalk1', '/assets/sounds/grassWalk1.MP3');
     this.preloadSound('grassWalk2', '/assets/sounds/grassWalk2.MP3');
+    
+    // Define sound sets for different surfaces
+    this.surfaceSounds = {
+      grass: ['grassWalk1', 'grassWalk2'],
+      // Add more surface types when assets are available
+      // stone: ['stoneWalk1', 'stoneWalk2'],
+      // wood: ['woodWalk1', 'woodWalk2'],
+      // water: ['waterWalk1', 'waterWalk2'],
+    };
   }
   
   preloadSound(id, url) {
@@ -65,77 +78,131 @@ class SoundManager {
     });
   }
   
-  // New method for alternating footstep sounds
-  startFootsteps(options = {}, forceNext = false) {
-    // Check if any footstep sound is already playing
-    const activeSoundId = this.activeLoops['grassWalk1'] ? 'grassWalk1' : 
-                          this.activeLoops['grassWalk2'] ? 'grassWalk2' : null;
-    
-    // If a sound is playing and playback rate has changed, update it
-    if (activeSoundId && !forceNext && options.playbackRate !== undefined) {
-      const activeSound = this.activeLoops[activeSoundId];
-      if (activeSound && activeSound.playbackRate !== options.playbackRate) {
-        activeSound.playbackRate = options.playbackRate;
-      }
-      return activeSound;
+  // New method to set the current surface type
+  setSurfaceType(surfaceType) {
+    if (this.surfaceSounds[surfaceType]) {
+      this.currentSurfaceType = surfaceType;
+    } else {
+      console.warn(`Unknown surface type: ${surfaceType}, defaulting to grass`);
+      this.currentSurfaceType = 'grass';
     }
-    
-    // If already playing a footstep sound and not forcing a new one, don't start another
-    if (activeSoundId && !forceNext) {
-      return this.activeLoops[activeSoundId];
-    }
-    
-    // Stop any currently playing footsteps if forcing a new sound
-    if (forceNext) {
-      this.stopFootsteps();
-    }
-    
-    // Alternate between footstep sounds
-    const soundId = this.footstepIndex % 2 === 0 ? 'grassWalk1' : 'grassWalk2';
-    this.footstepIndex++;
-    
-    return this.startLoop(soundId, options);
   }
   
-  // Force a new footstep sound based on speed/intensity
-  startFootstepsForMovementType(movementType, options = {}) {
-    if (!movementType) {
-      return this.startFootsteps(options, false);
+  // Play a single footstep sound
+  playFootstep(options = {}) {
+    // Get the sound set for the current surface
+    const soundSet = this.surfaceSounds[this.currentSurfaceType];
+    
+    // Choose footstep sound with randomization but tendency to alternate
+    let soundIndex;
+    
+    if (Math.random() < 0.8) {
+      // 80% chance to follow the natural alternating pattern
+      soundIndex = this.footstepIndex % 2;
+    } else {
+      // 20% chance to repeat the same sound as last time (breaks the pattern for more natural feel)
+      soundIndex = (this.footstepIndex + 1) % 2;
     }
     
-    // Check movement animation type to determine playback rate
-    let playbackRate = 1.0;
-    let forceNewSound = false;
+    const soundId = soundSet[soundIndex];
+    this.footstepIndex++;
     
-    const movementTypeLower = movementType.toLowerCase();
+    // Randomize volume slightly for more natural variation
+    const baseVolume = options.volume || 0.5;
+    const volumeVariation = 0.15; // ±15% volume variation
+    const randomizedVolume = baseVolume * (1 - volumeVariation + Math.random() * volumeVariation * 2);
     
-    // For running animations, use faster playback rate
-    if (movementTypeLower.includes('run')) {
-      playbackRate = 1.8; // Make run footsteps significantly faster
-      forceNewSound = true;
-    }
-    // For strafing animations, use slightly faster playback
-    else if (movementTypeLower.includes('strafe')) {
-      // Regular strafing
-      if (!movementTypeLower.includes('run')) {
-        playbackRate = 1.2; // Make strafe slightly faster than regular walk
-      }
-      // Strafe running animations are already handled by the 'run' check above
-    }
-    
-    // Apply playback rate to options
-    const soundOptions = { 
+    // Use consistent playback rate but randomized volume
+    const soundOptions = {
       ...options,
-      playbackRate: playbackRate
+      volume: randomizedVolume,
+      playbackRate: 1.0 // Consistent playback rate for all footsteps
     };
     
-    // Return the started footstep sound
-    return this.startFootsteps(soundOptions, forceNewSound);
+    return this.playSound(soundId, soundOptions);
+  }
+  
+  // Start playing footstep sounds at intervals based on velocity
+  startFootstepsForMovementType(movementType, options = {}, velocity = null) {
+    // Clear any existing footstep interval
+    this.stopFootsteps();
+    
+    // Store current movement type
+    this.currentMovementType = movementType;
+    
+    // Determine the interval based on velocity or movement type
+    let interval = 500; // Default interval in ms (2 steps per second)
+    
+    if (velocity !== null) {
+      // If velocity is provided, calculate the interval directly
+      // Higher velocity = shorter interval = more frequent steps
+      interval = 1000 / (velocity * 0.333); // Scale factor can be adjusted
+      interval = Math.max(200, Math.min(800, interval)); // Clamp between 200ms and 800ms
+    } else {
+      // Fallback to using movement type if velocity not provided
+      const movementTypeLower = movementType.toLowerCase();
+      
+      if (movementTypeLower.includes('run')) {
+        interval = 250; // 4 steps per second for running
+      } else if (movementTypeLower.includes('strafe')) {
+        interval = 400; // 2.5 steps per second for strafing
+      } else if (movementTypeLower.includes('walk')) {
+        interval = 600; // Slower for walking
+      }
+    }
+    
+    // Play first footstep immediately
+    this.playFootstep(options);
+    this.lastFootstepTime = Date.now();
+    
+    // Set up interval for subsequent footsteps
+    this.footstepInterval = setInterval(() => {
+      this.playFootstep(options);
+    }, interval);
+    
+    return true;
   }
   
   stopFootsteps() {
+    // Clear the footstep interval
+    if (this.footstepInterval) {
+      clearInterval(this.footstepInterval);
+      this.footstepInterval = null;
+    }
+    
+    // Stop any ongoing looped footstep sounds (from old implementation)
     this.stopLoop('grassWalk1');
     this.stopLoop('grassWalk2');
+    
+    this.currentMovementType = null;
+  }
+  
+  // Update footstep frequency based on current velocity
+  updateFootstepFrequency(velocity) {
+    if (!this.currentMovementType || !this.footstepInterval) return;
+    
+    // Calculate new interval based on velocity
+    let newInterval = 1000 / (velocity * 0.333); // Scale factor can be adjusted
+    newInterval = Math.max(200, Math.min(800, newInterval)); // Clamp between 200ms and 800ms
+    
+    // Only update if the interval has changed significantly (avoid constant changes)
+    const timeSinceLastStep = Date.now() - this.lastFootstepTime;
+    
+    // If it's been long enough since the last step (75% of the new interval) and 
+    // the new interval is significantly different from the old one
+    if (timeSinceLastStep >= newInterval * 0.75) {
+      // Clear existing interval
+      clearInterval(this.footstepInterval);
+      
+      // Play a step immediately
+      this.playFootstep({ volume: 0.5 });
+      this.lastFootstepTime = Date.now();
+      
+      // Set new interval
+      this.footstepInterval = setInterval(() => {
+        this.playFootstep({ volume: 0.5 });
+      }, newInterval);
+    }
   }
 }
 

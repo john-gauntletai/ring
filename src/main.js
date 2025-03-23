@@ -133,6 +133,10 @@ async function init() {
     soundManager
   );
   window.PLAYER = PLAYER;
+  
+  // Set the terrain reference for the player
+  PLAYER.setTerrain(terrain);
+  
   const ENEMY = new EnemyEntity(
     goldenKnight.model,
     goldenKnight.animations,

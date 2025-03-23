@@ -480,7 +480,10 @@ class EnemyEntity {
    */
   startMovementSound(movementType) {
     if (this.soundManager) {
-      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.4 });
+      // For enemy, use a constant velocity based on their movement speed
+      // The enemy has a constant movement speed of 1 unit per second defined in moveTowardsPlayer
+      const velocity = 1.0; 
+      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.4 }, velocity);
     }
   }
   

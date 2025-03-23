@@ -64,6 +64,12 @@ class PlayerEntity {
     // References
     this.combatManager = null;
 
+    // References to world objects
+    this.terrain = null;
+    this.currentSurfaceType = 'grass';
+    this.lastSurfaceCheck = 0;
+    this.surfaceCheckInterval = 500; // Check surface type every 500ms
+
     console.log("this.animations", this.animations);
     this.init();
     this.updatePlayerUI();
@@ -263,13 +269,23 @@ class PlayerEntity {
 
   startMovementSound(movementType) {
     if (this.soundManager) {
-      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.5 });
+      // Pass the current velocity to the sound manager
+      const velocity = this.getCurrentVelocity();
+      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.5 }, velocity);
     }
   }
 
   stopMovementSound() {
     if (this.soundManager) {
       this.soundManager.stopFootsteps();
+    }
+  }
+
+  updateMovementSound() {
+    // If moving, update the footstep frequency based on current velocity
+    if (this.isMoving && this.soundManager) {
+      const velocity = this.getCurrentVelocity();
+      this.soundManager.updateFootstepFrequency(velocity);
     }
   }
 
@@ -599,12 +615,34 @@ class PlayerEntity {
       if (this.mixer) {
         this.mixer.update(delta);
       }
+      
+      // Also stop movement sounds if they're playing
+      if (this.isMoving) {
+        this.isMoving = false;
+        this.stopMovementSound();
+        this.currentMovementType = null;
+      }
+      
       return;
     }
+
+    // Detect current surface type for footstep sounds
+    this.detectSurfaceType();
 
     // Movement and rotation logic
     const isMoving = KEYS.w || KEYS.s || KEYS.a || KEYS.d;
     const isWalking = KEYS.shift;
+
+    // Track movement state changes for sound
+    if (isMoving && !this.isMoving) {
+      // Just started moving
+      this.isMoving = true;
+    } else if (!isMoving && this.isMoving) {
+      // Just stopped moving
+      this.isMoving = false;
+      this.stopMovementSound();
+      this.currentMovementType = null;
+    }
 
     // Handle animations and movement differently when locked onto a target
     if (this.lockOnEntity && this.lockOnEntity.model) {
@@ -613,58 +651,41 @@ class PlayerEntity {
 
       if (isMoving) {
         // Choose appropriate animation based on direction and walking/running
+        let currentAnimName = 'idle';
+        
         if (KEYS.w) {
           // Moving towards target - forward
-          if (isWalking) {
-            this.fadeToAction(this.animations.walkForward.action);
-          } else {
-            this.fadeToAction(this.animations.runForward.action);
-          }
+          currentAnimName = isWalking ? 'walkForward' : 'runForward';
         } else if (KEYS.s) {
           // Moving away from target - backward
-          if (isWalking) {
-            this.fadeToAction(
-              this.animations.walkBackward
-                ? this.animations.walkBackward.action
-                : this.animations.walkForward.action
-            );
-          } else {
-            this.fadeToAction(
-              this.animations.runBackward
-                ? this.animations.runBackward.action
-                : this.animations.runForward.action
-            );
+          currentAnimName = isWalking ? 'walkBackward' : 'runBackward';
+          if (!this.animations[currentAnimName]) {
+            currentAnimName = isWalking ? 'walkForward' : 'runForward';
           }
         } else if (KEYS.a) {
           // Strafing left
-          if (isWalking) {
-            this.fadeToAction(
-              this.animations.strafeLeft
-                ? this.animations.strafeLeft.action
-                : this.animations.walkForward.action
-            );
-          } else {
-            this.fadeToAction(
-              this.animations.strafeRunLeft
-                ? this.animations.strafeRunLeft.action
-                : this.animations.runForward.action
-            );
+          currentAnimName = isWalking ? 'strafeLeft' : 'strafeRunLeft';
+          if (!this.animations[currentAnimName]) {
+            currentAnimName = isWalking ? 'walkForward' : 'runForward';
           }
         } else if (KEYS.d) {
           // Strafing right
-          if (isWalking) {
-            this.fadeToAction(
-              this.animations.strafeRight
-                ? this.animations.strafeRight.action
-                : this.animations.walkForward.action
-            );
-          } else {
-            this.fadeToAction(
-              this.animations.strafeRunRight
-                ? this.animations.strafeRunRight.action
-                : this.animations.runForward.action
-            );
+          currentAnimName = isWalking ? 'strafeRight' : 'strafeRunRight';
+          if (!this.animations[currentAnimName]) {
+            currentAnimName = isWalking ? 'walkForward' : 'runForward';
           }
+        }
+        
+        // Play the appropriate animation
+        this.fadeToAction(this.animations[currentAnimName].action);
+        
+        // Handle movement sound - start if not already playing with this type
+        if (this.currentMovementType !== currentAnimName) {
+          this.currentMovementType = currentAnimName;
+          this.startMovementSound(currentAnimName);
+        } else {
+          // Update the frequency based on current velocity
+          this.updateMovementSound();
         }
       } else {
         this.fadeToAction(this.animations.idle.action);
@@ -724,10 +745,17 @@ class PlayerEntity {
     } else {
       // Regular movement (not locked on)
       if (isMoving) {
-        if (isWalking) {
-          this.fadeToAction(this.animations.walkForward.action);
+        // Determine animation based on walking/running
+        const currentAnimName = isWalking ? 'walkForward' : 'runForward';
+        this.fadeToAction(this.animations[currentAnimName].action);
+        
+        // Handle movement sound - start if not already playing with this type
+        if (this.currentMovementType !== currentAnimName) {
+          this.currentMovementType = currentAnimName;
+          this.startMovementSound(currentAnimName);
         } else {
-          this.fadeToAction(this.animations.runForward.action);
+          // Update the frequency based on current velocity
+          this.updateMovementSound();
         }
       } else {
         this.fadeToAction(this.animations.idle.action);
@@ -765,29 +793,21 @@ class PlayerEntity {
         // move model & camera
         const moveX = this.moveDirection.x * velocity * delta;
         const moveZ = this.moveDirection.z * velocity * delta;
-
+        
         // Calculate new position
         const newX = this.model.position.x + moveX;
         const newZ = this.model.position.z + moveZ;
-
+        
         // Check for collisions before updating position
         if (!this.checkCollisions(newX, newZ)) {
           // Update X and Z position if no collision
           this.model.position.x = newX;
           this.model.position.z = newZ;
-
+          
           // Update camera position in X and Z
           this.updateCamera(moveX, moveZ, 0);
         }
       }
-    }
-
-    // At the end of the update method, check if we should be playing movement sounds
-    if (!isMoving && this.isMoving) {
-      // We've stopped moving but the sound is still playing
-      this.stopMovementSound();
-      this.isMoving = false;
-      this.currentMovementType = null;
     }
   }
 
@@ -1284,6 +1304,48 @@ class PlayerEntity {
   setEnemies(enemies) {
     this.enemyEntities = enemies;
     console.log(`Player tracking ${enemies.length} enemies for collision detection`);
+  }
+
+  /**
+   * Set the terrain reference for surface detection
+   */
+  setTerrain(terrain) {
+    this.terrain = terrain;
+  }
+  
+  /**
+   * Detect the surface type at the player's current position
+   * In a more complex game, this would use raycasting or texture detection
+   * For now, we'll use a simple distance-based approach for demonstration
+   */
+  detectSurfaceType() {
+    // Only check periodically to avoid excessive calculations
+    const now = Date.now();
+    if (now - this.lastSurfaceCheck < this.surfaceCheckInterval) return;
+    this.lastSurfaceCheck = now;
+    
+    if (!this.terrain) return;
+    
+    // Simple detection based on position
+    // This is a placeholder - in a real game you'd use raycasting or terrain texture data
+    const distance = Math.sqrt(
+      this.model.position.x * this.model.position.x + 
+      this.model.position.z * this.model.position.z
+    );
+    
+    // Simple rule: grass in the center, transitions to other surfaces further out
+    let surfaceType = 'grass';
+    if (distance > 100) {
+      // Would transition to different surfaces based on game world design
+      // For now, we only have grass implemented in SoundManager
+      surfaceType = 'grass';
+    }
+    
+    // Update the sound manager if surface type changed
+    if (this.currentSurfaceType !== surfaceType) {
+      this.currentSurfaceType = surfaceType;
+      this.soundManager.setSurfaceType(surfaceType);
+    }
   }
 }
 
