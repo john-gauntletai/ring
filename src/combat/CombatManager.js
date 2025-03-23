@@ -234,15 +234,8 @@ class CombatManager {
       entity.takeDamage(hitbox.damage);
     }
     
-    // Apply knockback if any
-    if (hitbox.knockback > 0 && entity.model) {
-      const knockbackDirection = new THREE.Vector3()
-        .subVectors(entity.model.position, hitbox.parent.position)
-        .normalize()
-        .multiplyScalar(hitbox.knockback);
-      
-      entity.model.position.add(knockbackDirection);
-    }
+    // We no longer apply knockback to ensure enemies don't get pushed back
+    // The impact animation will still play through the takeDamage method
     
     // Create hit effect
     this.createHitEffect(entity.model.position.clone());
