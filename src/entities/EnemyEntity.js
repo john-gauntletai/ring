@@ -14,7 +14,7 @@ class EnemyEntity {
     this.data = {
       health: 500,
       maxHealth: 500,
-      name: "The Golden Knight",
+      name: "Golden Guard of the King",
       isHostile: false,
       detectionRadius: 20,
       attackRange: 3,
@@ -352,6 +352,9 @@ class EnemyEntity {
       this.data.isHostile = true;
       console.log(`${this.data.name} has become hostile!`);
 
+      // Trigger the boss UI to show health bar
+      this.triggerBossUI();
+      
       // Transition to aware state first
       this.setState("AWARE");
     }
@@ -440,6 +443,17 @@ class EnemyEntity {
     this.data.health -= damage;
     console.log(
       `Enemy took ${damage} damage. Health: ${this.data.health}/${this.data.maxHealth}`
+    );
+
+    // Update boss health UI
+    document.dispatchEvent(
+      new CustomEvent("boss_health_changed", {
+        detail: {
+          name: this.data.name,
+          health: this.data.health,
+          maxHealth: this.data.maxHealth,
+        },
+      })
     );
 
     // Visual feedback

@@ -16,6 +16,7 @@ import KEYS from "./_lib/keys";
 import GrassComponent from "./components/GrassComponent.js";
 import FlatTerrain from "./components/FlatTerrain.js";
 import CombatManager from "./combat/CombatManager.js";
+import BossUI from "./components/BossUI.js";
 
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 
@@ -177,6 +178,10 @@ async function init() {
 
   // Position grass group at ground level
   grass.grassGroup.position.y = 0;
+  
+  // Initialize Boss UI
+  const bossUI = new BossUI();
+  window.BOSS_UI = bossUI;
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
@@ -229,6 +234,11 @@ async function init() {
 
     // Update combat manager
     combatManager.update(delta);
+    
+    // Update UI
+    if (window.BOSS_UI) {
+      window.BOSS_UI.update();
+    }
 
     // Update grass animation and LOD
     // Only show log messages every 10 seconds to avoid console spam
