@@ -53,6 +53,7 @@ class PlayerEntity {
 
     console.log("this.animations", this.animations);
     this.init();
+    this.updatePlayerUI();
   }
 
   init() {
@@ -424,10 +425,9 @@ class PlayerEntity {
       return;
     }
 
-    // Get staggered only if not blocking
-    if (this.currentState !== "BLOCKING") {
-      this.getStaggered();
-    }
+    // Get staggered
+    this.getStaggered();
+    this.updatePlayerUI();
   }
 
   // Enter staggered state
@@ -808,6 +808,17 @@ class PlayerEntity {
     } else {
       CAMERA.lookAtEntity(this);
     }
+  }
+
+  updatePlayerUI() {
+    // Dispatch event that PlayerUI is listening for
+    const event = new CustomEvent('player_health_changed', {
+      detail: {
+        health: this.health,
+        maxHealth: this.maxHealth
+      }
+    });
+    document.dispatchEvent(event);
   }
 
   /**
