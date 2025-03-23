@@ -13,7 +13,7 @@ class Camera {
     this.controls = new CameraControls(this.camera, renderer.domElement);
     this.currentTarget = playerEntity;
 
-    this.controls.smoothTime = 0.05; // Smooth movement
+    this.controls.smoothTime = 0.1; // Smooth movement
     this.controls.draggingSmoothTime = 0.1; // Smoothness during mouse drag
     this.controls.maxPolarAngle = Math.PI / 2;
     this.controls.minPolarAngle = Math.PI / 3;

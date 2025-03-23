@@ -700,7 +700,7 @@ class PlayerEntity {
         newCameraPos.x,
         newCameraPos.y,
         newCameraPos.z,
-        false
+        true
       );
     }
 
@@ -729,7 +729,7 @@ class PlayerEntity {
         cameraPositionBehind.x,
         cameraPositionBehind.y,
         cameraPositionBehind.z,
-        false // Use smooth transition
+        true // Use smooth transition
       );
 
       // Make camera look directly at the locked entity instead of a point ahead
@@ -737,7 +737,7 @@ class PlayerEntity {
         this.lockOnEntity.model.position.x,
         this.lockOnEntity.model.position.y + 1, // Target slightly above enemy's base
         this.lockOnEntity.model.position.z,
-        false // Use smooth transition
+        true // Use smooth transition
       );
     } else {
       CAMERA.lookAtEntity(this);
