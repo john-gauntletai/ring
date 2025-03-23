@@ -1,12 +1,17 @@
 import * as THREE from "three";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-import { loadModel, addResizeEventListeners, removeBottomHalf, applyKingdomEffects } from "./_lib/helpers.js";
+import {
+  loadModel,
+  addResizeEventListeners,
+  removeBottomHalf,
+  applyKingdomEffects,
+} from "./_lib/helpers.js";
 import PlayerEntity from "./entities/PlayerEntity.js";
 import EnemyEntity from "./entities/EnemyEntity.js";
 import Camera from "./entities/Camera.js";
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 import KEYS from "./_lib/keys";
 import GrassComponent from "./components/GrassComponent.js";
 import FlatTerrain from "./components/FlatTerrain.js";
@@ -105,7 +110,7 @@ async function init() {
   // Load models
   const [player, goldenKnight, kingdom] = await Promise.all([
     loadModel("/assets/models/austen2.glb", scene, LOADING_MANAGER),
-    loadModel("/assets/models/golden-knight-out2.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/move golden knight-out2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
@@ -126,7 +131,7 @@ async function init() {
   // kingdom.model.position.set(0, -50, 0);
   // kingdom.model.rotation.y = Math.PI * 2/3;
   // // kingdom.model.rotation.y = Math.PI * 1.02;
-  
+
   // // Remove any existing blur effects
   // kingdom.model.traverse((child) => {
   //   if (child.name === "kingdomBlurEffect" && child.parent) {
@@ -136,19 +141,16 @@ async function init() {
   //     console.log("Removed existing blur effect");
   //   }
   // });
-  
+
   // // Apply optimization to the kingdom model
   // removeBottomHalf(kingdom.model);
-  
+
   // Apply darkening effects to the kingdom (no blur)
   // applyKingdomEffects(kingdom.model);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
   scene.add(CAMERA.camera);
-  // Add axes helper to player
-  const axesHelperPlayer = new THREE.AxesHelper(5);
-  PLAYER.model.add(axesHelperPlayer);
 
   // Initialize combat manager
   const combatManager = new CombatManager();
@@ -181,18 +183,28 @@ async function init() {
     KEYS[key] = true;
 
     // Special key handling
-    if (key === "e") {
+    if (key === "y") {
       // Light attack with E key
-      PLAYER.attack();
-    } else if (key === "q") {
+      PLAYER.slash();
+    } else if (key === "u") {
       // Heavy attack with Q key
-      PLAYER.heavyAttack();
+      PLAYER.slash2();
+    } else if (key === "i") {
+      PLAYER.kick();
     } else if (key === "h") {
       // Player spin attack with H key
       PLAYER.spinAttack();
     } else if (key === "j") {
       // Player jump attack with J key
       PLAYER.jumpAttack();
+    } else if (key === "b") {
+      PLAYER.block();
+    } else if (key === "l") {
+      if (PLAYER.lockOnEntity === ENEMY) {
+        PLAYER.toggleLockOn();
+      } else {
+        PLAYER.toggleLockOn(ENEMY);
+      }
     }
   });
 
@@ -202,7 +214,6 @@ async function init() {
   });
 
   addResizeEventListeners(CAMERA.camera, renderer);
-
 
   let clock = new THREE.Clock();
   let logTimer = 0;
@@ -215,7 +226,6 @@ async function init() {
     PLAYER.update(delta);
     ENEMY.update(delta, PLAYER);
     CAMERA.update(delta, PLAYER);
-    
 
     // Update combat manager
     combatManager.update(delta);

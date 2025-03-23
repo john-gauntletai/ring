@@ -1,19 +1,17 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import CameraControls from 'camera-controls';
-
+import CameraControls from "camera-controls";
+import { DISTANCE_TO_PLAYER } from "./_constants";
 import KEYS from "../_lib/keys";
 
-CameraControls.install( { THREE: THREE } );
+CameraControls.install({ THREE: THREE });
 
 const ORBIT_SPEED = 0.8;
-const OVER_SHOULDER_DISTANCE = 3;
-const DISTANCE_TO_PLAYER = 5;
 
 class Camera {
   constructor(playerEntity, renderer) {
     this.camera = this.initializeCamera();
     this.controls = new CameraControls(this.camera, renderer.domElement);
+    this.currentTarget = playerEntity;
 
     this.controls.smoothTime = 0.05; // Smooth movement
     this.controls.draggingSmoothTime = 0.1; // Smoothness during mouse drag
@@ -23,9 +21,30 @@ class Camera {
     this.locations = {
       behindPlayer: new THREE.Object3D(),
       startScreen: new THREE.Object3D(),
-      overShoulder: new THREE.Object3D(),
     };
 
+    this.resetLocations(playerEntity);
+
+    this.activeLocation = "behindPlayer";
+
+    this.controls.moveTo(
+      this.locations[this.activeLocation].position.x,
+      this.locations[this.activeLocation].position.y,
+      this.locations[this.activeLocation].position.z
+    );
+    this.lookAtEntity(this.currentTarget);
+  }
+
+  initializeCamera() {
+    return new THREE.PerspectiveCamera(
+      40,
+      window.innerWidth / window.innerHeight,
+      1,
+      20000
+    );
+  }
+
+  resetLocations(playerEntity) {
     this.locations.behindPlayer.position.set(
       playerEntity.model.position.x,
       playerEntity.model.position.y + 1,
@@ -37,38 +56,18 @@ class Camera {
       playerEntity.model.position.y + 1,
       playerEntity.model.position.z + DISTANCE_TO_PLAYER
     );
-
-    this.activeLocation = "behindPlayer";
-
-    this.controls.moveTo(
-      this.locations[this.activeLocation].position.x,
-      this.locations[this.activeLocation].position.y,
-      this.locations[this.activeLocation].position.z
-    );
-    this.lookAtPlayer(playerEntity);
   }
 
-  initializeCamera() {
-    return new THREE.PerspectiveCamera(
-      40,
-      window.innerWidth / window.innerHeight,
-      1,
-      30000
+  lookAtEntity(entity, smooth = true) {
+    this.controls.setTarget(
+      entity.model.position.x,
+      entity.model.position.y + 1.7,
+      entity.model.position.z,
+      smooth
     );
   }
 
-  lookAtPlayer(playerEntity, smooth = true) {
-    if (this.activeLocation === "behindPlayer") {
-      this.controls.setTarget(
-        playerEntity.model.position.x,
-        playerEntity.model.position.y + 1.7,
-        playerEntity.model.position.z,
-        smooth
-      );
-    }
-  }
-
-  update(delta, playerEntity) {
+  update(delta) {
     if (!window.GAME_STARTED) {
       return;
     }

@@ -1,0 +1,1 @@
+export const DISTANCE_TO_PLAYER = 5;
