@@ -4,12 +4,13 @@ import { getDirectionOffset } from "../_lib/helpers";
 import KEYS from "../_lib/keys";
 
 class PlayerEntity {
-  constructor(model, animations, mixer) {
+  constructor(model, animations, mixer, soundManager) {
     this.model = model;
     // rotate model 180 degrees
     this.model.rotation.y = Math.PI;
     this.animations = animations;
     this.mixer = mixer;
+    this.soundManager = soundManager;
 
     this.runVelocity = 6;
     this.lockedOnRunVelocity = 4.5;
@@ -29,6 +30,14 @@ class PlayerEntity {
 
     // Track currently playing actions for animation completion
     this.activeAction = null;
+    
+    // Track movement for footstep sounds
+    this.isMoving = false;
+    this.currentMovementType = null;
+    this.movementAnimations = [
+      'walkForward', 'walkBack', 'runForward', 'runBack',
+      'strafeLeft', 'strafeRight', 'strafeRunLeft', 'strafeRunRight'
+    ];
 
     // Terrain following
     this.heightmap = null;
@@ -206,8 +215,58 @@ class PlayerEntity {
         true
       );
       action.play();
+      
+      // Get the animation name from the action
+      let currentAnimName = null;
+      Object.keys(this.animations).forEach(animName => {
+        if (this.animations[animName].action === action) {
+          currentAnimName = animName;
+        }
+      });
+      
+      // Check if this is a movement animation
+      const isMovementAnimation = currentAnimName && this.movementAnimations.includes(currentAnimName);
+      
+      // Handle movement sound transitions
+      if (isMovementAnimation) {
+        // Determine if the animation type has changed (e.g., walk to run)
+        const previousWasRun = this.currentMovementType && this.currentMovementType.toLowerCase().includes('run');
+        const currentIsRun = currentAnimName && currentAnimName.toLowerCase().includes('run');
+        
+        // Start/update sound if:
+        // 1. We weren't moving before
+        // 2. We changed movement types completely
+        // 3. We switched between walking and running
+        if (!this.isMoving || 
+            this.currentMovementType !== currentAnimName ||
+            previousWasRun !== currentIsRun) {
+          this.startMovementSound(currentAnimName);
+        }
+        
+        this.isMoving = true;
+        this.currentMovementType = currentAnimName;
+      } else {
+        // Stop footstep sound if was moving
+        if (this.isMoving) {
+          this.stopMovementSound();
+        }
+        this.isMoving = false;
+        this.currentMovementType = null;
+      }
     }
     this.activeAction = action;
+  }
+
+  startMovementSound(movementType) {
+    if (this.soundManager) {
+      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.5 });
+    }
+  }
+
+  stopMovementSound() {
+    if (this.soundManager) {
+      this.soundManager.stopFootsteps();
+    }
   }
 
   isUnableToAttack() {
@@ -703,6 +762,14 @@ class PlayerEntity {
         this.updateCamera(moveX, moveZ, 0);
       }
     }
+
+    // At the end of the update method, check if we should be playing movement sounds
+    if (!isMoving && this.isMoving) {
+      // We've stopped moving but the sound is still playing
+      this.stopMovementSound();
+      this.isMoving = false;
+      this.currentMovementType = null;
+    }
   }
 
   /**
@@ -985,6 +1052,28 @@ class PlayerEntity {
     
     // Block remains active until animation completes
     // The animation completion is handled in the setupAnimationCallbacks method
+  }
+
+  // Helper method to determine movement X
+  getMovementX() {
+    let moveX = 0;
+    if (KEYS.a || KEYS.arrowleft) {
+      moveX = -1;
+    } else if (KEYS.d || KEYS.arrowright) {
+      moveX = 1;
+    }
+    return moveX;
+  }
+  
+  // Helper method to determine movement Z
+  getMovementZ() {
+    let moveZ = 0;
+    if (KEYS.w || KEYS.arrowup) {
+      moveZ = -1;
+    } else if (KEYS.s || KEYS.arrowdown) {
+      moveZ = 1;
+    }
+    return moveZ;
   }
 }
 

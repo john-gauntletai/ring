@@ -18,10 +18,15 @@ import FlatTerrain from "./components/FlatTerrain.js";
 import CombatManager from "./combat/CombatManager.js";
 import BossUI from "./components/BossUI.js";
 import PlayerUI from "./components/PlayerUI.js";
+import SoundManager from "./_lib/SoundManager.js";
 
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 
 window.GAME_STARTED = true;
+
+// Initialize global sound manager
+const soundManager = new SoundManager();
+window.SOUND_MANAGER = soundManager;
 
 const LOADING_MANAGER = new THREE.LoadingManager();
 const TERRAIN_SIZE = 300;
@@ -124,13 +129,15 @@ async function init() {
   const PLAYER = new PlayerEntity(
     player.model,
     player.animations,
-    player.mixer
+    player.mixer,
+    soundManager
   );
   window.PLAYER = PLAYER;
   const ENEMY = new EnemyEntity(
     goldenKnight.model,
     goldenKnight.animations,
-    goldenKnight.mixer
+    goldenKnight.mixer,
+    soundManager
   );
 
   // Position the kingdom model

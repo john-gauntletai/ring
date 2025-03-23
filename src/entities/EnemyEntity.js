@@ -5,10 +5,11 @@ import * as THREE from "three";
  * Handles state transitions, combat, and animations
  */
 class EnemyEntity {
-  constructor(model, animations, mixer) {
+  constructor(model, animations, mixer, soundManager) {
     this.model = model;
     this.animations = animations;
     this.mixer = mixer;
+    this.soundManager = soundManager;
     console.log("Golden Knight animations:", this.animations);
     // Enemy data based on COMBAT_TODO.md
     this.data = {
@@ -45,6 +46,10 @@ class EnemyEntity {
     // Animation properties
     this.currentAction = null;
     this.previousAction = null;
+
+    // Movement sound tracking
+    this.isMoving = false;
+    this.currentMovementType = null;
 
     // Materials for different states
     this.materials = {
@@ -270,6 +275,13 @@ class EnemyEntity {
       // Update behavior based on current state
       this.updateStateBehavior(delta, distance);
     }
+
+    // If the current state is not CHASE and we're still playing movement sounds, stop them
+    if (this.currentState !== 'CHASE' && this.isMoving) {
+      this.stopMovementSound();
+      this.isMoving = false;
+      this.currentMovementType = null;
+    }
   }
 
   /**
@@ -384,10 +396,10 @@ class EnemyEntity {
   }
 
   /**
-   * Play the specified animation
-   * @param {string} name - Name of the animation to play
-   * @param {number} crossFadeDuration - Duration of crossfade between animations
-   * @param {number} priority - Priority of this animation (higher = less likely to be interrupted)
+   * Play an animation with optional crossfade
+   * @param {string} name - The name of the animation to play
+   * @param {number} crossFadeDuration - Duration of crossfade in seconds
+   * @param {number} priority - Higher priority animations interrupt lower ones
    */
   playAnimation(name, crossFadeDuration = 0.3, priority = 0) {
     if (!this.animations || !this.animations[name]) {
@@ -396,6 +408,9 @@ class EnemyEntity {
     }
 
     const newAction = this.animations[name].action;
+    
+    // For movement sound management
+    const isWalkingAnimation = name === 'walk';
 
     if (this.currentAction === newAction) return;
 
@@ -428,6 +443,35 @@ class EnemyEntity {
       newAction.clampWhenFinished = true;
       newAction.zeroSlopeAtEnd = false; // Ensures smooth end of animation
       newAction.loop = THREE.LoopOnce;
+    }
+    
+    // Handle movement sounds
+    if (isWalkingAnimation) {
+      this.startMovementSound('walk');
+      this.isMoving = true;
+      this.currentMovementType = 'walk';
+    } else if (this.isMoving) {
+      this.stopMovementSound();
+      this.isMoving = false;
+      this.currentMovementType = null;
+    }
+  }
+  
+  /**
+   * Start playing movement sound
+   */
+  startMovementSound(movementType) {
+    if (this.soundManager) {
+      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.4 });
+    }
+  }
+  
+  /**
+   * Stop playing movement sound
+   */
+  stopMovementSound() {
+    if (this.soundManager) {
+      this.soundManager.stopFootsteps();
     }
   }
 
