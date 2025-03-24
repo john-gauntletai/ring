@@ -7,14 +7,14 @@ const GRASS_SEGMENTS_HIGH = 4; // Reduced high LOD segments for better performan
 const GRASS_VERTICES_LOW = (GRASS_SEGMENTS_LOW + 1) * 2;
 const GRASS_VERTICES_HIGH = (GRASS_SEGMENTS_HIGH + 1) * 2;
 const GRASS_LOD_DIST = 7; // Increased LOD distance for better performance
-const GRASS_MAX_DIST = 150; // Reduced max distance to avoid unnecessary rendering
+const GRASS_MAX_DIST = 100; // Reduced max distance to avoid unnecessary rendering
 const GRASS_PATCH_SIZE = 5; // Size of each grass patch
 const GRASS_WIDTH = 0.04; // Increased width from 0.02 to 0.03 for slightly thicker blades
 const GRASS_HEIGHT = 1; // Increased grass blade height from 0.9 to 1.1 for taller grass
 // More reasonable patch radius for performance while ensuring coverage
 const PATCH_RADIUS = 9; // Standard patch radius for areas in front of player
 const BEHIND_PATCH_RADIUS = 3; // Reduced patch radius for areas behind player
-const TERRAIN_SIZE = 300; // Match the terrain size for full coverage
+const TERRAIN_SIZE = 150; // Match the terrain size for full coverage
 
 class GrassComponent {
   constructor(scene, playerObject) {
@@ -573,10 +573,6 @@ class GrassComponent {
         lodSwitches++;
       }
     }
-
-    if (shouldLog && lodSwitches > 0) {
-      console.log(`LOD updates: ${lodSwitches}`);
-    }
   }
 
   /**
@@ -729,12 +725,6 @@ class GrassComponent {
 
         visiblePatches++;
       }
-    }
-
-    if (shouldLog) {
-      console.log(
-        `Visible patches: ${visiblePatches} of ${this.grassGroup.children.length} total patches`
-      );
     }
   }
 
@@ -1427,7 +1417,7 @@ class GrassComponent {
       "background: #2c3e50; color: #2ecc71; font-weight: bold; padding: 4px 0;"
     );
     console.log(
-      `Patches: ${visiblePatchCount} (${patchPercentChange} change) | ` +
+      `Patches: ${visiblePatchCount} of ${this.grassGroup.children.length} total patches: (${patchPercentChange} change) | ` +
         `High LOD: ${visibleHighLOD} | Low LOD: ${visibleLowLOD}`
     );
     console.log(

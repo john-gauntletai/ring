@@ -29,7 +29,7 @@ const soundManager = new SoundManager();
 window.SOUND_MANAGER = soundManager;
 
 const LOADING_MANAGER = new THREE.LoadingManager();
-const TERRAIN_SIZE = 300;
+const TERRAIN_SIZE = 150;
 
 LOADING_MANAGER.onProgress = (url, itemsLoaded, itemsTotal) => {
   // console.log(url, itemsLoaded, itemsTotal);
