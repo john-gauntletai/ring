@@ -317,6 +317,11 @@ class PlayerEntity {
     // Play attack animation
     this.fadeToAction(this.animations.slash.action, false);
     
+    // Play sword swoosh sound regardless of hit
+    if (this.soundManager) {
+      this.soundManager.playSound('swordSwoosh', { volume: 0.6 });
+    }
+    
     // Create hitbox in front of player after a slight delay (mid animation)
     if (this.combatManager) {
       // Schedule hitbox creation
@@ -392,6 +397,11 @@ class PlayerEntity {
 
     // Play attack animation
     this.fadeToAction(this.animations.kick.action, false);
+    
+    // Play kick sound
+    if (this.soundManager) {
+      this.soundManager.playSound('austen-ha', { volume: 0.3 });
+    }
 
     // Create hitbox in front of player after a slight delay (mid animation)
     if (this.combatManager) {
@@ -406,7 +416,7 @@ class PlayerEntity {
           hitboxSize, // Size
           this.attackPower, // Damage
           0.2, // Duration in seconds
-          { owner: this, knockback: 2 } // Additional options
+          { owner: this, knockback: 2, attackType: 'kick' } // Added attackType for determining hit sound
         );
 
         console.log("Created player attack hitbox");
@@ -439,6 +449,11 @@ class PlayerEntity {
       this.fadeToAction(this.animations.slash.action, false);
     } else {
       this.fadeToAction(animationAction, false);
+    }
+
+    // Play spin attack sound regardless of hit
+    if (this.soundManager) {
+      this.soundManager.playSound('spinAttackSound', { volume: 0.8 });
     }
 
     // Create 360-degree hitbox around player after a delay
@@ -747,7 +762,7 @@ class PlayerEntity {
   }
   
   // Take damage from an attack
-  takeDamage(damage) {
+  takeDamage(damage, options = {}) {
     // Check invulnerability first
     if (this.invulnerable || this.currentState === "DEAD") {
       console.log("Attack avoided! Player is invulnerable");
@@ -777,10 +792,16 @@ class PlayerEntity {
         this.stamina = Math.max(0, this.stamina - 10);
       }
     } else {
-      // Not blocking, play impact animation and sword slash sound
+      // Not blocking, play impact animation and appropriate sound for attack type
       this.fadeToAction(this.animations.impact2.action, false);
       if (this.soundManager) {
-        this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+        if (options && options.attackType === 'kick') {
+          // Play kick sound for kick attacks
+          this.soundManager.playSound('kickSound', { volume: 0.4 });
+        } else {
+          // Play sword slash sound for other attacks
+          this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+        }
       }
       console.log("Player hit! Playing impact animation");
     }

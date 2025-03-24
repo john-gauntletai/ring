@@ -91,6 +91,7 @@ class CombatManager {
       size: size,
       damage: damageValue,
       knockback: options.knockback || 0,
+      attackType: options.attackType || 'slash', // Store attack type for sound selection
       duration: duration,
       timeRemaining: duration,
       collider: new THREE.Box3(),
@@ -231,7 +232,12 @@ class CombatManager {
     
     // Apply damage to the entity
     if (entity.takeDamage) {
-      entity.takeDamage(hitbox.damage);
+      // Pass options to takeDamage to support different attack types with different sounds
+      entity.takeDamage(hitbox.damage, {
+        attackType: hitbox.attackType || 'slash', // Default to slash if no type specified
+        knockback: hitbox.knockback,
+        attacker: hitbox.owner
+      });
     }
     
     // We no longer apply knockback to ensure enemies don't get pushed back
@@ -247,7 +253,8 @@ class CombatManager {
           attacker: hitbox.owner,
           target: entity,
           damage: hitbox.damage,
-          position: entity.model.position.clone()
+          position: entity.model.position.clone(),
+          attackType: hitbox.attackType
         }
       })
     );

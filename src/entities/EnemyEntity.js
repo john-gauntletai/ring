@@ -524,8 +524,9 @@ class EnemyEntity {
   /**
    * Take damage from an attack
    * @param {number} damage - Amount of damage to take
+   * @param {object} options - Additional options
    */
-  takeDamage(damage) {
+  takeDamage(damage, options = {}) {
     // Don't take damage if already dead
     if (this.currentState === "DEAD") {
       return;
@@ -556,9 +557,15 @@ class EnemyEntity {
       }
     }, 200);
 
-    // Play sword slash sound
+    // Play appropriate sound for the attack type
     if (this.soundManager) {
-      this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+      if (options && options.attackType === 'kick') {
+        // Play kick sound for kick attacks
+        this.soundManager.playSound('kickSound', { volume: 0.5 });
+      } else {
+        // Play sword slash sound for other attacks
+        this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+      }
     }
 
     // Check for death first - this takes highest priority
