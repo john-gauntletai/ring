@@ -460,6 +460,33 @@ class PlayerEntity {
     this.attackCooldown = 1.5; // 1.5 seconds before next attack (longer cooldown for powerful attack)
   }
 
+  // Perform a power-up animation
+  powerUp() {
+    // Don't allow power-up if attacking, rolling, staggered, or dead
+    if (this.isUnableToAttack()) {
+      return;
+    }
+
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "powerUp";
+
+    // Play power-up animation
+    this.fadeToAction(this.animations.powerUp.action, false);
+
+    // Play power-up sounds
+    if (this.soundManager) {
+      this.soundManager.playSound('powerUp', { volume: 0.5 });
+      // Play the scream slightly delayed to sync better with the animation
+      setTimeout(() => {
+        this.soundManager.playSound('powerUpScream', { volume: 0.2 });
+      }, 100);
+    }
+
+    console.log("Player powering up!");
+  }
+
   // Take damage from an attack
   takeDamage(damage) {
     // Check invulnerability first

@@ -264,6 +264,21 @@ class EnemyEntity {
     // Track the player as target
     this.targetEntity = player;
 
+    // If player is dead, return to idle state
+    if (player && player.currentState === "DEAD") {
+      // Stop any ongoing movement sounds
+      if (this.isMoving) {
+        this.stopMovementSound();
+        this.isMoving = false;
+        this.currentMovementType = null;
+      }
+      
+      // Reset hostility and return to idle state
+      this.data.isHostile = false;
+      this.setState("IDLE");
+      return;
+    }
+
     // Check if player is within detection radius
     if (player && player.model) {
       const distance = this.model.position.distanceTo(player.model.position);
@@ -355,8 +370,9 @@ class EnemyEntity {
     const targetAngle = Math.atan2(direction.x, direction.z);
     this.model.rotation.y = targetAngle;
 
-    // Play run/chase animation
+    // Play run/chase animation and update movement sounds
     this.playAnimation("walk");
+    this.updateMovementSound();
   }
 
   /**
@@ -481,8 +497,7 @@ class EnemyEntity {
    */
   startMovementSound(movementType) {
     if (this.soundManager) {
-      // For enemy, use a constant velocity based on their movement speed
-      // The enemy has a constant movement speed of 1 unit per second defined in moveTowardsPlayer
+      // Pass the enemy's velocity to the sound manager for footstep timing
       this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.4 }, this.data.velocity);
     }
   }
@@ -493,6 +508,16 @@ class EnemyEntity {
   stopMovementSound() {
     if (this.soundManager) {
       this.soundManager.stopFootsteps();
+    }
+  }
+
+  /**
+   * Update movement sound frequency based on current velocity
+   */
+  updateMovementSound() {
+    // If moving, update the footstep frequency based on current velocity
+    if (this.isMoving && this.soundManager) {
+      this.soundManager.updateFootstepFrequency(this.data.velocity);
     }
   }
 
