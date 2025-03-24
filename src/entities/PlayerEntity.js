@@ -491,8 +491,11 @@ class PlayerEntity {
         this.stamina = Math.max(0, this.stamina - 10);
       }
     } else {
-      // Not blocking, play impact animation
+      // Not blocking, play impact animation and sword slash sound
       this.fadeToAction(this.animations.impact2.action, false);
+      if (this.soundManager) {
+        this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+      }
       console.log("Player hit! Playing impact animation");
     }
 

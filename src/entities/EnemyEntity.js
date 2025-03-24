@@ -531,6 +531,11 @@ class EnemyEntity {
       }
     }, 200);
 
+    // Play sword slash sound
+    if (this.soundManager) {
+      this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+    }
+
     // Check for death first - this takes highest priority
     if (this.data.health <= 0) {
       this.data.health = 0; // Ensure health doesn't go negative

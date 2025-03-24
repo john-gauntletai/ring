@@ -19,6 +19,11 @@ class SoundManager {
     // Preload action sounds
     this.preloadSound('roll', '/assets/sounds/roll.mp3');
     
+    // Preload sword slash sounds
+    this.preloadSound('swordSlash1', '/assets/sounds/swordSlash1.MP3');
+    this.preloadSound('swordSlash2', '/assets/sounds/swordSlash2.MP3');
+    this.preloadSound('swordSlash3', '/assets/sounds/swordSlash3.MP3');
+    
     // Preload ambient sounds
     this.preloadAmbientSounds();
     
@@ -231,6 +236,24 @@ class SoundManager {
         this.playFootstep({ volume: 0.2 });
       }, newInterval);
     }
+  }
+  
+  /**
+   * Play a random sword slash sound
+   * @param {Object} options - Sound options (volume, etc.)
+   */
+  playRandomSwordSlash(options = {}) {
+    // Choose a random sword slash sound
+    const slashSounds = ['swordSlash1', 'swordSlash2', 'swordSlash3'];
+    const randomIndex = Math.floor(Math.random() * slashSounds.length);
+    const soundId = slashSounds[randomIndex];
+    
+    // Randomize volume slightly for more natural variation
+    const baseVolume = options.volume || 0.5;
+    const volumeVariation = 0.15; // ±15% volume variation
+    const randomizedVolume = baseVolume * (1 - volumeVariation + Math.random() * volumeVariation * 2);
+    
+    return this.playSound(soundId, { ...options, volume: randomizedVolume });
   }
 }
 
