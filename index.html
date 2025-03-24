@@ -126,6 +126,56 @@
 				
 				let firstKeyPressed = false;
 				
+				// Function to clean up video element to free memory
+				function cleanupVideo() {
+					// Stop video playback
+					introVideo.pause();
+					
+					// Remove source and clear any buffered data
+					introVideo.removeAttribute('src');
+					introVideo.load();
+					
+					// Remove the video element from the DOM
+					if (introVideo.parentNode) {
+						introVideo.parentNode.removeChild(introVideo);
+					}
+					
+					// Hide the video container
+					videoScreen.style.display = 'none';
+					
+					// Clear any reference to the video in the global scope
+					document.getElementById('intro-video') === null;
+					
+					// Force garbage collection if browser supports it
+					if (window.gc) {
+						window.gc();
+					}
+					
+					console.log('Video element cleaned up and removed from memory');
+				}
+				
+				// Function to start the ambient wind sound using the game's sound manager
+				function startAmbientWind() {
+					// Wait until the game has loaded and the sound manager is available
+					const checkForSoundManager = () => {
+						if (window.SOUND_MANAGER) {
+							// Preload the wind sound if it wasn't already
+							if (!window.SOUND_MANAGER.sounds['ambientWind']) {
+								window.SOUND_MANAGER.preloadSound('ambientWind', '/assets/sounds/windBlowing.mp3');
+							}
+							
+							// Start the wind sound loop
+							window.SOUND_MANAGER.startLoop('ambientWind', { volume: 0.9 });
+							console.log('Started ambient wind sound');
+						} else {
+							// If sound manager isn't available yet, check again in 100ms
+							setTimeout(checkForSoundManager, 100);
+						}
+					};
+					
+					checkForSoundManager();
+				}
+				
 				// Listen for any key press on the start screen
 				document.addEventListener('keydown', function(event) {
 					if (startScreen.style.display !== 'none' && !firstKeyPressed) {
@@ -156,15 +206,16 @@
 						skipMessage.style.opacity = '0';
 					}, 3000);
 					
-					// When video ends, hide the video screen
+					// When video ends, clean up and start wind sound
 					introVideo.addEventListener('ended', () => {
-						videoScreen.style.display = 'none';
+						cleanupVideo();
+						startAmbientWind();
 					});
 				}
 				
 				function skipVideo() {
-					introVideo.pause();
-					videoScreen.style.display = 'none';
+					cleanupVideo();
+					startAmbientWind();
 				}
 			});
 		</script>

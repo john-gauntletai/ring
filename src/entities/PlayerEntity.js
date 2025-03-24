@@ -946,7 +946,7 @@ class PlayerEntity {
     
     // Play roll sound effect
     if (this.soundManager) {
-      this.soundManager.playSound('roll', { volume: 0.5 });
+      this.soundManager.playSound('roll', { volume: 0.3 });
     }
     
     // Store current position for roll calculation

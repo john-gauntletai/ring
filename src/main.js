@@ -265,11 +265,11 @@ async function init() {
 
     // Update grass animation and LOD
     // Only show log messages every 10 seconds to avoid console spam
-    const shouldLog = logTimer > 10000.0;
+    const shouldLog = logTimer > 10.0;
     if (shouldLog) {
       logTimer = 0;
     }
-    grass.update(delta, CAMERA.camera, false);
+    grass.update(delta, CAMERA.camera, true);
     renderer.render(scene, CAMERA.camera);
     stats.end();
   }

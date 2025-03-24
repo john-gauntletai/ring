@@ -19,6 +19,9 @@ class SoundManager {
     // Preload action sounds
     this.preloadSound('roll', '/assets/sounds/roll.mp3');
     
+    // Preload ambient sounds
+    this.preloadAmbientSounds();
+    
     // Define sound sets for different surfaces
     this.surfaceSounds = {
       grass: ['grassWalk1', 'grassWalk2', 'grassWalk3', 'grassWalk4', 'grassWalk5', 'grassWalk6'],
@@ -27,6 +30,16 @@ class SoundManager {
       // wood: ['woodWalk1', 'woodWalk2'],
       // water: ['waterWalk1', 'waterWalk2'],
     };
+  }
+  
+  /**
+   * Preload ambient sounds used throughout the game
+   */
+  preloadAmbientSounds() {
+    // Preload the ambient wind sound
+    this.preloadSound('ambientWind', '/assets/sounds/windBlowing.mp3');
+    
+    // Add other ambient sounds as needed
   }
   
   preloadSound(id, url) {
@@ -119,7 +132,7 @@ class SoundManager {
     this.footstepIndex++;
     
     // Randomize volume slightly for more natural variation
-    const baseVolume = 0.5;
+    const baseVolume = options.volume || 0.3;
     const volumeVariation = 0.15; // ±15% volume variation
     const randomizedVolume = baseVolume * (1 - volumeVariation + Math.random() * volumeVariation * 2);
     
@@ -210,12 +223,12 @@ class SoundManager {
       clearInterval(this.footstepInterval);
       
       // Play a step immediately
-      this.playFootstep({ volume: 0.5 });
+      this.playFootstep({ volume: 0.2 });
       this.lastFootstepTime = Date.now();
       
       // Set new interval
       this.footstepInterval = setInterval(() => {
-        this.playFootstep({ volume: 0.5 });
+        this.playFootstep({ volume: 0.2 });
       }, newInterval);
     }
   }
