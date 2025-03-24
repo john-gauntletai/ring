@@ -433,6 +433,159 @@
 				transition: opacity 0.5s ease;
 			}
 			
+			/* Character Selection Screen Styles */
+			#character-select-screen {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: linear-gradient(to bottom, #1a1a1a 0%, #000000 100%);
+				z-index: 998;
+				display: none;
+				flex-direction: column;
+				align-items: center;
+				color: #fff;
+				padding-top: calc(100px + 3vh); /* Increased by 5% of viewport height to move boxes lower */
+			}
+			
+			.character-select-title {
+				font-size: 1.5em; /* 50% smaller than previous 3em */
+				letter-spacing: 0.1rem;
+				color: #c4b08c;
+				text-shadow: none; /* Removed glow effect */
+				position: absolute;
+				top: 30px;
+				left: 30px;
+				margin: 0;
+			}
+			
+			.character-boxes {
+				display: flex;
+				justify-content: center;
+				gap: 4rem;
+				margin-bottom: 2rem;
+				padding: 0 2rem;
+				width: 100%;
+				box-sizing: border-box;
+			}
+			
+			.character-box {
+				width: 36%; /* Reduced from 45% by 20% */
+				max-width: 400px; /* Reduced from 500px by 20% */
+				height: 57vh; /* Reduced from 63vh by 10% */
+				max-height: 570px; /* Reduced from 630px by 10% */
+				border: 2px solid #a17f4b;
+				border-radius: 10px;
+				background-color: rgba(0, 0, 0, 0.5);
+				overflow: hidden;
+				position: relative;
+				cursor: pointer;
+				transition: all 0.3s ease;
+				display: flex;
+				justify-content: center;
+				align-items: flex-start; /* Align to top instead of center */
+				padding-top: 5%; /* Add padding at top for image positioning */
+			}
+			
+			.character-box:hover {
+				transform: scale(1.05);
+				border-color: #c4b08c;
+				box-shadow: 0 0 20px rgba(196, 176, 140, 0.5);
+			}
+			
+			.character-box.selected {
+				border-color: #c4b08c;
+				box-shadow: 0 0 30px rgba(196, 176, 140, 0.8);
+			}
+			
+			.character-image {
+				max-width: 120%; /* Increased from 108% to make image larger */
+				max-height: 120%; /* Increased from 108% to make image larger */
+				object-fit: contain;
+				transform: translateY(-15%); /* Move image up by 15% of its height */
+			}
+			
+			.character-name {
+				position: absolute;
+				bottom: 9%; /* Move up by ~15% of available space (from 0%) */
+				left: 0;
+				width: 100%;
+				padding: 0.5rem 0; /* Reduced from 1rem to 0.5rem to decrease spacing */
+				background-color: rgba(0, 0, 0, 0.7);
+				text-align: center;
+				font-size: 1.5rem;
+				color: #c4b08c;
+			}
+			
+			.select-character-button {
+				padding: 0.8rem 3rem;
+				font-size: 1.2rem;
+				letter-spacing: 0.1rem;
+				background-color: transparent;
+				color: #c4b08c;
+				border: none;
+				cursor: pointer;
+				transition: all 0.3s ease;
+				position: relative;
+				z-index: 2; /* Increased to be above the glow effect */
+				text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+				font-family: 'Cormorant Garamond', serif;
+				margin-top: 3vh; /* Added 20% of viewport height to move button lower */
+			}
+			
+			/* Create the pen stroke effect with a pseudo-element for the button */
+			.select-character-button::before {
+				content: "";
+				position: absolute;
+				top: -10px;
+				left: -15px;
+				right: -15px;
+				bottom: -10px;
+				background: radial-gradient(ellipse at center, rgba(255, 180, 60, 0.25) 0%, rgba(245, 170, 50, 0.15) 60%, rgba(235, 160, 40, 0) 100%);
+				z-index: -1; /* Behind the text */
+				transform: none;
+				border-radius: 50%;
+				filter: blur(10px);
+				box-shadow: 
+					0 0 20px rgba(250, 190, 70, 0.2),
+					0 0 35px rgba(240, 180, 50, 0.1);
+				animation: glowPulse 3s infinite ease-in-out;
+				
+				-webkit-mask-image: none;
+				mask-image: none;
+			}
+			
+			/* Add a secondary glow layer for more cloud-like complexity for the button */
+			.select-character-button::after {
+				content: "";
+				position: absolute;
+				top: -5px;
+				left: -10px;
+				right: -10px;
+				bottom: -5px;
+				background: radial-gradient(circle at 30% 40%, rgba(255, 200, 70, 0.2) 0%, rgba(250, 180, 60, 0.1) 40%, rgba(245, 170, 40, 0) 80%);
+				z-index: -2; /* Behind everything */
+				border-radius: 40% 60% 60% 40% / 60% 30% 70% 40%;
+				filter: blur(8px);
+				animation: cloudMove 8s infinite alternate ease-in-out;
+			}
+			
+			.select-character-button:hover {
+				transform: scale(1.05);
+				text-shadow: 0 0 8px rgba(255, 220, 150, 0.7); /* Gold-tinted glow */
+			}
+			
+			.select-character-button:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+			
+			.select-character-button:disabled::before,
+			.select-character-button:disabled::after {
+				opacity: 0.3;
+			}
+			
 			/* Animation */
 			@keyframes pulse {
 				0% { opacity: 0.4; }
@@ -505,6 +658,22 @@
 			<div class="skip-message">press any key to skip</div>
 		</div>
 		
+		<!-- Character Selection Screen -->
+		<div id="character-select-screen">
+			<h2 class="character-select-title">Select Character Base</h2>
+			<div class="character-boxes">
+				<div class="character-box" data-character="austen">
+					<img src="/assets/images/austen.png" alt="Austen" class="character-image">
+					<div class="character-name">Austen</div>
+				</div>
+				<div class="character-box" data-character="archer">
+					<img src="/assets/images/archer.png" alt="Archer" class="character-image">
+					<div class="character-name">Archer</div>
+				</div>
+			</div>
+			<button class="select-character-button" disabled>SELECT CHARACTER</button>
+		</div>
+		
 		<script type="module" src="/src/main.js"></script>
 		
 		<script>
@@ -516,8 +685,12 @@
 				const introVideo = document.getElementById('intro-video');
 				const skipMessage = document.querySelector('.skip-message');
 				const backgroundVideo = document.getElementById('background-video');
+				const characterSelectScreen = document.getElementById('character-select-screen');
+				const characterBoxes = document.querySelectorAll('.character-box');
+				const selectCharacterButton = document.querySelector('.select-character-button');
 				
 				let firstKeyPressed = false;
+				let selectedCharacter = null;
 				
 				// Ensure background video starts playing
 				backgroundVideo.play().catch(error => {
@@ -586,6 +759,40 @@
 					checkForSoundManager();
 				}
 				
+				// Show character selection screen
+				function showCharacterSelect() {
+					characterSelectScreen.style.display = 'flex';
+				}
+				
+				// Character selection
+				characterBoxes.forEach(box => {
+					box.addEventListener('click', () => {
+						// Remove selected class from all boxes
+						characterBoxes.forEach(b => b.classList.remove('selected'));
+						
+						// Add selected class to clicked box
+						box.classList.add('selected');
+						
+						// Store selected character
+						selectedCharacter = box.getAttribute('data-character');
+						
+						// Enable select button
+						selectCharacterButton.disabled = false;
+					});
+				});
+				
+				// Character selection button
+				selectCharacterButton.addEventListener('click', () => {
+					if (selectedCharacter) {
+						console.log(`Selected character: ${selectedCharacter}`);
+						// Start the ambient wind sound when character is selected
+						startAmbientWind();
+						// Here you would start the game with the selected character
+						// For now, we'll just hide the character select screen
+						characterSelectScreen.style.display = 'none';
+					}
+				});
+				
 				// Listen for any key press on the start screen
 				document.addEventListener('keydown', function(event) {
 					if (startScreen.style.display !== 'none' && !firstKeyPressed) {
@@ -620,18 +827,18 @@
 						skipMessage.style.opacity = '0';
 					}, 3000);
 					
-					// When video ends, clean up video elements and start wind sound
+					// When video ends, clean up video elements and show character selection
 					introVideo.addEventListener('ended', () => {
 						cleanupVideo();
-						startAmbientWind();
 						removeUnusedDOMElements();
+						showCharacterSelect();
 					});
 				}
 				
 				function skipVideo() {
 					cleanupVideo();
-					startAmbientWind();
 					removeUnusedDOMElements();
+					showCharacterSelect();
 				}
 				
 				// Function to remove all unused DOM elements to free memory
