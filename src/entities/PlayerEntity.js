@@ -944,6 +944,11 @@ class PlayerEntity {
     this.currentState = "ROLLING";
     this.isRolling = true;
     
+    // Play roll sound effect
+    if (this.soundManager) {
+      this.soundManager.playSound('roll', { volume: 0.5 });
+    }
+    
     // Store current position for roll calculation
     const startPosition = this.model.position.clone();
     
@@ -1046,8 +1051,8 @@ class PlayerEntity {
     console.log("Roll invulnerability activated");
     
     // Roll distance and duration
-    const rollDistance = 2; // Units to roll
-    const rollDuration = 0.6; // Seconds
+    const rollDistance = 5; // Units to roll
+    const rollDuration = 1; // Seconds
     
     // Set cooldown
     this.rollCooldown = 1.0; // 1 second cooldown

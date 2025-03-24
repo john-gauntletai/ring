@@ -16,6 +16,9 @@ class SoundManager {
     this.preloadSound('grassWalk5', '/assets/sounds/grassWalk5.MP3');
     this.preloadSound('grassWalk6', '/assets/sounds/grassWalk6.MP3');
     
+    // Preload action sounds
+    this.preloadSound('roll', '/assets/sounds/roll.mp3');
+    
     // Define sound sets for different surfaces
     this.surfaceSounds = {
       grass: ['grassWalk1', 'grassWalk2', 'grassWalk3', 'grassWalk4', 'grassWalk5', 'grassWalk6'],
@@ -116,7 +119,7 @@ class SoundManager {
     this.footstepIndex++;
     
     // Randomize volume slightly for more natural variation
-    const baseVolume = 0.3;
+    const baseVolume = 0.5;
     const volumeVariation = 0.15; // ±15% volume variation
     const randomizedVolume = baseVolume * (1 - volumeVariation + Math.random() * volumeVariation * 2);
     

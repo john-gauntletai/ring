@@ -13,7 +13,7 @@ class BossUI {
       left: 50%;
       transform: translateX(-50%);
       width: 60%;
-      height: 40px;
+      height: 35px;
       display: none;
       flex-direction: column;
       align-items: center;
@@ -270,7 +270,7 @@ class BossUI {
     this.healthBarContainer.className = 'boss-health-bar-container';
     this.healthBarContainer.style.cssText = `
       width: calc(100% - 4px);
-      height: 20px;
+      height: 12px;
       background-color: #0f1b36;
       border-radius: 0;
       overflow: hidden;
@@ -298,12 +298,11 @@ class BossUI {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
+      width: 0;
       height: 100%;
-      background-color: transparent;
-      transform: scaleX(0);
-      transform-origin: right;
-      transition: transform 0.3s ease;
+      background-color: #f7d06a;
+      opacity: 0.8;
+      transition: width 0.3s ease;
     `;
 
     // Add elements to DOM
@@ -378,7 +377,7 @@ class BossUI {
     
     // Update UI
     this.nameElement.textContent = name;
-    this.updateHealthBar(health, maxHealth);
+    this.updateHealthBar(health, maxHealth, undefined);
     
     // Show UI with animation
     this.show();
@@ -394,8 +393,14 @@ class BossUI {
     const { health, maxHealth } = event.detail;
     
     if (this.bossData) {
+      // Store previous health before updating
+      const previousHealth = this.bossData.health;
+      
+      // Update current health
       this.bossData.health = health;
-      this.updateHealthBar(health, maxHealth);
+      
+      // Update health bar with previous health for damage preview
+      this.updateHealthBar(health, maxHealth, previousHealth);
     }
   }
 
@@ -419,14 +424,45 @@ class BossUI {
    * Update health bar display
    * @param {number} health - Current health
    * @param {number} maxHealth - Maximum health
+   * @param {number} previousHealth - Previous health value (for damage preview)
    */
-  updateHealthBar(health, maxHealth) {
+  updateHealthBar(health, maxHealth, previousHealth) {
     const healthPercentage = Math.max(0, Math.min(100, (health / maxHealth) * 100));
-    this.healthBar.style.width = `${healthPercentage}%`;
     
-    // Update damage overlay without flash effect
-    this.damageOverlay.style.opacity = '0';
-    this.damageOverlay.style.transform = `scaleX(${1 - healthPercentage / 100})`;
+    // If we have a previous health value and damage was taken
+    if (previousHealth !== undefined && previousHealth > health) {
+      const previousHealthPercentage = Math.max(0, Math.min(100, (previousHealth / maxHealth) * 100));
+      
+      // Calculate the size of damage preview (yellow bar)
+      const damageWidth = previousHealthPercentage - healthPercentage;
+      
+      // Set damage overlay (yellow) to show the amount of damage taken
+      this.damageOverlay.style.backgroundColor = '#f7d06a'; // Pale yellow
+      this.damageOverlay.style.opacity = '0.8';
+      this.damageOverlay.style.width = `${damageWidth}%`;
+      this.damageOverlay.style.left = `${healthPercentage}%`;
+      
+      // Update health bar immediately
+      this.healthBar.style.width = `${healthPercentage}%`;
+      
+      // Animate the damage overlay to shrink horizontally
+      setTimeout(() => {
+        this.damageOverlay.style.width = `${damageWidth * 0.75}%`;
+        setTimeout(() => {
+          this.damageOverlay.style.width = `${damageWidth * 0.5}%`;
+          setTimeout(() => {
+            this.damageOverlay.style.width = `${damageWidth * 0.25}%`;
+            setTimeout(() => {
+              this.damageOverlay.style.width = '0%';
+            }, 30);
+          }, 30);
+        }, 30);
+      }, 1000);
+    } else {
+      // For healing or initial display, just update the health bar
+      this.healthBar.style.width = `${healthPercentage}%`;
+      this.damageOverlay.style.width = '0';
+    }
   }
 
   /**

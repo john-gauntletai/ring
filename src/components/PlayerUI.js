@@ -296,13 +296,11 @@ class PlayerUI {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
+      width: 0;
       height: 100%;
-      background-color: black;
-      opacity: 0;
-      transform: scaleX(0);
-      transform-origin: right;
-      transition: transform 0.3s ease, opacity 0.2s ease;
+      background-color: #f7d06a;
+      opacity: 0.8;
+      transition: width 0.3s ease;
     `;
 
     // Add elements to DOM
@@ -390,24 +388,49 @@ class PlayerUI {
    * @param {number} maxHealth - Maximum health
    */
   updateHealthBar(health, maxHealth) {
+    const oldHealthPercentage = this.playerData.previousHealth ? 
+      Math.max(0, Math.min(100, (this.playerData.previousHealth / maxHealth) * 100)) : 
+      Math.max(0, Math.min(100, (health / maxHealth) * 100));
+    
     const healthPercentage = Math.max(0, Math.min(100, (health / maxHealth) * 100));
-    this.healthBar.style.width = `${healthPercentage}%`;
     
-    // Update damage overlay with a flash effect
-    const damageWidth = 1 - healthPercentage / 100;
+    // Store current health for future comparison
+    this.playerData.previousHealth = health;
     
-    // Set the damage overlay to be red
-    this.damageOverlay.style.backgroundColor = '#ff3333';
-    this.damageOverlay.style.opacity = '0.6';
-    this.damageOverlay.style.transform = `scaleX(${damageWidth})`;
+    // Determine if damage was taken
+    const damageTaken = oldHealthPercentage > healthPercentage;
     
-    // Flash effect - fade out the red damage indicator after a delay
-    setTimeout(() => {
-      this.damageOverlay.style.opacity = '0.3';
+    if (damageTaken) {
+      // Calculate the size of damage preview (yellow bar)
+      const damageWidth = oldHealthPercentage - healthPercentage;
+      
+      // Set damage overlay (yellow) to show the amount of damage taken
+      this.damageOverlay.style.backgroundColor = '#f7d06a'; // Pale yellow
+      this.damageOverlay.style.opacity = '0.8';
+      this.damageOverlay.style.width = `${damageWidth}%`;
+      this.damageOverlay.style.left = `${healthPercentage}%`;
+      
+      // Update health bar immediately
+      this.healthBar.style.width = `${healthPercentage}%`;
+      
+      // Animate the damage overlay to shrink horizontally
       setTimeout(() => {
-        this.damageOverlay.style.opacity = '0';
-      }, 300);
-    }, 200);
+        this.damageOverlay.style.width = `${damageWidth * 0.75}%`;
+        setTimeout(() => {
+          this.damageOverlay.style.width = `${damageWidth * 0.5}%`;
+          setTimeout(() => {
+            this.damageOverlay.style.width = `${damageWidth * 0.25}%`;
+            setTimeout(() => {
+              this.damageOverlay.style.width = '0%';
+            }, 30);
+          }, 30);
+        }, 30);
+      }, 1000);
+    } else {
+      // For healing, just update the health bar
+      this.healthBar.style.width = `${healthPercentage}%`;
+      this.damageOverlay.style.width = '0';
+    }
   }
 
   /**
