@@ -736,8 +736,29 @@ class EnemyEntity {
       // Wait for the fade-out transition to complete before hiding the element
       setTimeout(() => {
         enemyFelledOverlay.style.display = 'none';
+        
+        // Play the "Well Done" sound 1 second after the overlay is fully hidden
+        setTimeout(() => {
+          this.playWellDoneSound();
+        }, 1000);
       }, 1500); // 1.5 seconds for fade-out transition
     }, 2500); // Display for 2.5 seconds before starting fade-out
+  }
+  
+  /**
+   * Play the "Well Done" sound
+   */
+  playWellDoneSound() {
+    if (this.soundManager) {
+      // Preload the well done sound if it wasn't already
+      if (!this.soundManager.sounds['wellDone']) {
+        this.soundManager.preloadSound('wellDone', '/assets/sounds/wellDone.mp3');
+      }
+      
+      // Play the well done sound
+      this.soundManager.playSound('wellDone', { volume: 0.5 });
+      console.log('Played well done sound');
+    }
   }
 
   /**
