@@ -229,6 +229,8 @@ async function init() {
       } else {
         PLAYER.toggleLockOn(ENEMY);
       }
+    } else if (key === "p") {
+      PLAYER.powerUp();
     }
   });
 

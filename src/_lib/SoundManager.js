@@ -18,6 +18,8 @@ class SoundManager {
     
     // Preload action sounds
     this.preloadSound('roll', '/assets/sounds/roll.mp3');
+    this.preloadSound('powerUp', '/assets/sounds/powerUp.mp3');
+    this.preloadSound('powerUpScream', '/assets/sounds/powerUpScream.mp3');
     
     // Preload sword slash sounds
     this.preloadSound('swordSlash1', '/assets/sounds/swordSlash1.MP3');

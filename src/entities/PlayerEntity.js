@@ -31,6 +31,10 @@ class PlayerEntity {
     // Track currently playing actions for animation completion
     this.activeAction = null;
     
+    // Particle system for power-up effect
+    this.powerUpParticles = null;
+    this.powerUpParticleSystem = null;
+    
     // Track movement for footstep sounds
     this.isMoving = false;
     this.currentMovementType = null;
@@ -45,7 +49,7 @@ class PlayerEntity {
     this.minHeight = 0;
     this.maxHeight = 3;
     this.heightOffset = 0;
-
+    
     // Combat properties
     this.health = 100;
     this.maxHealth = 100;
@@ -60,7 +64,7 @@ class PlayerEntity {
     // Collision properties
     this.collisionRadius = 0.7; // Player collision radius (reduced from 0.8)
     this.enemyEntities = []; // Will store references to enemies
-
+    
     // References
     this.combatManager = null;
 
@@ -90,7 +94,7 @@ class PlayerEntity {
     // Set up animation complete callbacks
     this.setupAnimationCallbacks();
   }
-
+  
   // Set up callbacks for animation completion
   setupAnimationCallbacks() {
     this.mixer.addEventListener("finished", (e) => {
@@ -106,13 +110,13 @@ class PlayerEntity {
         e.action === this.animations.impact.action ||
         e.action === this.animations.impact2.action
       ) {
-        this.onAttackComplete();
+          this.onAttackComplete();
       } else if (e.action === this.animations.roll.action) {
         this.onRollComplete();
-      }
-    });
-  }
-
+        }
+      });
+    }
+    
   toggleLockOn(entity) {
     // Remove previous lock-on marker if it exists
     if (this.lockOnMarker) {
@@ -159,7 +163,7 @@ class PlayerEntity {
       console.log("Lock-on indicator with thin border added to entity's body");
     }
   }
-
+  
   // Called when attack animations complete
   onAttackComplete() {
     this.isAttacking = false;
@@ -168,7 +172,7 @@ class PlayerEntity {
     
     // Reset state to IDLE (for attacks and blocks)
     if (this.currentState === "ATTACKING" || this.currentState === "BLOCKING") {
-      this.currentState = "IDLE";
+    this.currentState = "IDLE";
     }
     
     console.log("Attack or block complete");
@@ -298,28 +302,28 @@ class PlayerEntity {
       this.attackCooldown > 0
     );
   }
-
+  
   // Perform a light attack
   slash() {
     if (this.isUnableToAttack()) {
       return;
     }
-
+    
     this.isAttacking = true;
     this.attackAnimationComplete = false;
     this.currentState = "ATTACKING";
     this.currentAttack = "slash";
-
+    
     // Play attack animation
     this.fadeToAction(this.animations.slash.action, false);
-
+    
     // Create hitbox in front of player after a slight delay (mid animation)
     if (this.combatManager) {
       // Schedule hitbox creation
       setTimeout(() => {
         const hitboxOffset = new THREE.Vector3(0, 1, -1.2); // In front of player (player faces -Z)
         const hitboxSize = new THREE.Vector3(1.0, 0.8, 1.5); // Reduced size of the hitbox
-
+        
         this.combatManager.createHitbox(
           this.model, // Parent object
           hitboxOffset, // Position offset
@@ -328,36 +332,36 @@ class PlayerEntity {
           0.2, // Duration in seconds
           { owner: this, knockback: 2 } // Additional options
         );
-
+        
         console.log("Created player attack hitbox");
       }, 300); // 300ms into the animation
     }
-
+    
     // Set attack cooldown
     this.attackCooldown = 0.8; // 0.8 seconds before next attack
   }
-
+  
   // Perform a heavy attack
   slash2() {
     if (this.isUnableToAttack()) {
       return;
     }
-
+    
     this.isAttacking = true;
     this.attackAnimationComplete = false;
     this.currentState = "ATTACKING";
     this.currentAttack = "slash2";
-
+    
     // Play heavy attack animation
     this.fadeToAction(this.animations.slash2.action, false);
-
+    
     // Create larger hitbox in front of player after a delay
     if (this.combatManager) {
       // Schedule hitbox creation
       setTimeout(() => {
         const hitboxOffset = new THREE.Vector3(0, 1, -1.7); // Further in front for heavy attack
         const hitboxSize = new THREE.Vector3(1.8, 1.0, 2.0); // Reduced size for heavy attack
-
+        
         this.combatManager.createHitbox(
           this.model, // Parent object
           hitboxOffset, // Position offset
@@ -366,11 +370,11 @@ class PlayerEntity {
           0.3, // Duration in seconds
           { owner: this, knockback: 4 } // More knockback
         );
-
+        
         console.log("Created player heavy attack hitbox");
       }, 500); // 500ms into the animation (heavy attack has longer windup)
     }
-
+    
     // Set attack cooldown (longer for heavy attack)
     this.attackCooldown = 1.2; // 1.2 seconds before next attack
   }
@@ -460,6 +464,288 @@ class PlayerEntity {
     this.attackCooldown = 1.5; // 1.5 seconds before next attack (longer cooldown for powerful attack)
   }
 
+  // Create particle system for power-up effect
+  createPowerUpParticles() {
+    // Create particle geometry with more particles
+    const particleCount = 300;
+    const particles = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+    const velocities = new Float32Array(particleCount * 3);
+    const lifetimes = new Float32Array(particleCount);
+    
+    for (let i = 0; i < particleCount; i++) {
+      // Random starting position in a sphere around the player
+      const angle = Math.random() * Math.PI * 2;
+      const verticalAngle = Math.random() * Math.PI - Math.PI / 2;
+      const radius = 2.0 + Math.random() * 1.0; // Start from 2-3 units away
+      
+      // Calculate position on sphere
+      particles[i * 3] = Math.cos(angle) * Math.cos(verticalAngle) * radius;
+      particles[i * 3 + 1] = Math.sin(verticalAngle) * radius + 1.0; // Center vertically around player's body
+      particles[i * 3 + 2] = Math.sin(angle) * Math.cos(verticalAngle) * radius;
+      
+      // Calculate inward direction vector (normalized)
+      const inwardDir = new THREE.Vector3(
+        -particles[i * 3],
+        -(particles[i * 3 + 1] - 1.0), // Adjust for vertical offset
+        -particles[i * 3 + 2]
+      ).normalize();
+      
+      // Set velocities for inward movement with some variation
+      const inwardSpeed = 1.5 + Math.random() * 1.0;
+      velocities[i * 3] = inwardDir.x * inwardSpeed;
+      velocities[i * 3 + 1] = inwardDir.y * inwardSpeed;
+      velocities[i * 3 + 2] = inwardDir.z * inwardSpeed;
+      
+      // Start with larger particles that will shrink as they move inward
+      sizes[i] = 0.004 + Math.random() * 0.006;
+      
+      // Color gradient from orange/red outer to bright yellow/white inner
+      const colorMix = Math.random();
+      if (colorMix < 0.3) {
+        // Outer particles (orange/red)
+        colors[i * 3] = 1.0;     // Red
+        colors[i * 3 + 1] = 0.3;  // Green
+        colors[i * 3 + 2] = 0.1;  // Blue
+      } else if (colorMix < 0.7) {
+        // Mid particles (yellow/orange)
+        colors[i * 3] = 1.0;     // Red
+        colors[i * 3 + 1] = 0.6;  // Green
+        colors[i * 3 + 2] = 0.2;  // Blue
+      } else {
+        // Inner particles (bright yellow/white)
+        colors[i * 3] = 1.0;     // Red
+        colors[i * 3 + 1] = 0.9;  // Green
+        colors[i * 3 + 2] = 0.7;  // Blue
+      }
+      
+      // Random lifetime for each particle
+      lifetimes[i] = Math.random();
+    }
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    
+    // Create particle material with custom shader
+    const material = new THREE.PointsMaterial({
+      size: 0.3, // Base size (will be multiplied by individual sizes)
+      transparent: true,
+      opacity: 0.6,
+      vertexColors: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      map: this.createParticleTexture(),
+      alphaTest: 0.1
+    });
+    
+    // Create particle system
+    this.powerUpParticles = new THREE.Points(geometry, material);
+    this.powerUpParticles.name = 'powerUpParticles';
+    
+    // Store additional particle data
+    this.powerUpParticles.userData = {
+      velocities,
+      lifetimes,
+      originalPositions: particles.slice(),
+      time: 0
+    };
+    
+    // Add to player model
+    this.model.add(this.powerUpParticles);
+    
+    // Start particle animation
+    this.animatePowerUpParticles();
+  }
+  
+  // Create a more realistic particle texture
+  createParticleTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    
+    // Create a radial gradient for soft particles
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)');
+    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 32, 32);
+    
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+  
+  // Animate power-up particles
+  animatePowerUpParticles() {
+    if (!this.powerUpParticles) return;
+    
+    const positions = this.powerUpParticles.geometry.attributes.position.array;
+    const colors = this.powerUpParticles.geometry.attributes.color.array;
+    const sizes = this.powerUpParticles.geometry.attributes.size.array;
+    const velocities = this.powerUpParticles.userData.velocities;
+    const lifetimes = this.powerUpParticles.userData.lifetimes;
+    const originalPositions = this.powerUpParticles.userData.originalPositions;
+    const particleCount = positions.length / 3;
+    
+    // Create animation loop
+    this.powerUpParticleSystem = setInterval(() => {
+      this.powerUpParticles.userData.time += 0.016;
+      const time = this.powerUpParticles.userData.time;
+      
+      for (let i = 0; i < particleCount; i++) {
+        // Update particle lifetime
+        lifetimes[i] += 0.016;
+        
+        // Reset particle if its lifetime exceeds threshold
+        if (lifetimes[i] > 1.0) {
+          // Reset position
+          positions[i * 3] = originalPositions[i * 3];
+          positions[i * 3 + 1] = originalPositions[i * 3 + 1];
+          positions[i * 3 + 2] = originalPositions[i * 3 + 2];
+          
+          // Reset lifetime
+          lifetimes[i] = 0;
+          
+          // Reset size to initial small value
+          sizes[i] = 0.0005 + Math.random() * 0.001;
+        } else {
+          // Update position and handle inward movement
+          const currentPos = new THREE.Vector3(
+            positions[i * 3],
+            positions[i * 3 + 1],
+            positions[i * 3 + 2]
+          );
+          
+          // Calculate distance from center
+          const distanceFromCenter = Math.sqrt(
+            currentPos.x * currentPos.x +
+            (currentPos.y - 1.0) * (currentPos.y - 1.0) + // Adjust for vertical offset
+            currentPos.z * currentPos.z
+          );
+          
+          // Update position with velocity
+          positions[i * 3] += velocities[i * 3] * 0.016;
+          positions[i * 3 + 1] += velocities[i * 3 + 1] * 0.016;
+          positions[i * 3 + 2] += velocities[i * 3 + 2] * 0.016;
+          
+          // Particle behavior based on distance from center
+          if (distanceFromCenter < 0.3) {
+            // Reset particle to outer radius when it gets too close to center
+            const newAngle = Math.random() * Math.PI * 2;
+            const newVerticalAngle = Math.random() * Math.PI - Math.PI / 2;
+            const newRadius = 2.0 + Math.random() * 1.0;
+            
+            positions[i * 3] = Math.cos(newAngle) * Math.cos(newVerticalAngle) * newRadius;
+            positions[i * 3 + 1] = Math.sin(newVerticalAngle) * newRadius + 1.0;
+            positions[i * 3 + 2] = Math.sin(newAngle) * Math.cos(newVerticalAngle) * newRadius;
+            
+            // Reset size
+            sizes[i] = 0.004 + Math.random() * 0.006;
+            
+            // Calculate new inward velocity
+            const newInwardDir = new THREE.Vector3(
+              -positions[i * 3],
+              -(positions[i * 3 + 1] - 1.0),
+              -positions[i * 3 + 2]
+            ).normalize();
+            
+            const newInwardSpeed = 1.5 + Math.random() * 1.0;
+            velocities[i * 3] = newInwardDir.x * newInwardSpeed;
+            velocities[i * 3 + 1] = newInwardDir.y * newInwardSpeed;
+            velocities[i * 3 + 2] = newInwardDir.z * newInwardSpeed;
+          } else {
+            // Gradually shrink particles as they get closer to the center
+            const shrinkFactor = Math.min(distanceFromCenter / 2.0, 1.0);
+            sizes[i] *= 0.99;
+            sizes[i] = Math.max(sizes[i], 0.001); // Minimum size
+            
+            // Brighten color as particles get closer to center
+            const brightnessFactor = 1.0 - (distanceFromCenter / 3.0);
+            colors[i * 3 + 1] = Math.min(0.9, colors[i * 3 + 1] + brightnessFactor * 0.01);
+            colors[i * 3 + 2] = Math.min(0.7, colors[i * 3 + 2] + brightnessFactor * 0.01);
+          }
+        }
+      }
+      
+      // Update Three.js buffers
+      this.powerUpParticles.geometry.attributes.position.needsUpdate = true;
+      this.powerUpParticles.geometry.attributes.color.needsUpdate = true;
+      this.powerUpParticles.geometry.attributes.size.needsUpdate = true;
+    }, 16);
+  }
+  
+  // Stop and clean up power-up particles
+  stopPowerUpParticles() {
+    if (this.powerUpParticles) {
+      // Start fade out effect
+      const fadeOutDuration = 1000; // 1 second fade out
+      const startOpacity = this.powerUpParticles.material.opacity;
+      const startTime = Date.now();
+      
+      const fadeInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / fadeOutDuration;
+        
+        if (progress >= 1) {
+          // Clean up when fade is complete
+          clearInterval(fadeInterval);
+          clearInterval(this.powerUpParticleSystem);
+          this.powerUpParticleSystem = null;
+          
+          this.model.remove(this.powerUpParticles);
+          this.powerUpParticles.geometry.dispose();
+          this.powerUpParticles.material.dispose();
+          this.powerUpParticles = null;
+        } else {
+          // Gradually reduce opacity
+          this.powerUpParticles.material.opacity = startOpacity * (1 - progress);
+        }
+      }, 16);
+    }
+  }
+
+  // Perform a power-up animation
+  powerUp() {
+    // Don't allow power-up if attacking, rolling, staggered, or dead
+    if (this.isUnableToAttack()) {
+      return;
+    }
+
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.currentState = "ATTACKING";
+    this.currentAttack = "powerUp";
+
+    // Play power-up animation
+    this.fadeToAction(this.animations.powerUp.action, false);
+
+    // Create and start particle effect
+    this.createPowerUpParticles();
+
+    // Play power-up sounds
+    if (this.soundManager) {
+      this.soundManager.playSound('powerUp', { volume: 0.5 });
+      // Play the scream slightly delayed to sync better with the animation
+      setTimeout(() => {
+        this.soundManager.playSound('powerUpScream', { volume: 0.2 });
+      }, 100);
+    }
+
+    // Stop particle effect with fade out after animation completes
+    setTimeout(() => {
+      this.stopPowerUpParticles();
+    }, 1500); // Reduced from 2000ms to 1500ms to make the effect shorter
+
+    console.log("Player powering up!");
+  }
+  
   // Take damage from an attack
   takeDamage(damage) {
     // Check invulnerability first
@@ -513,12 +799,12 @@ class PlayerEntity {
     
     // Get staggered if not blocking
     if (this.currentState !== "BLOCKING") {
-      this.getStaggered();
+    this.getStaggered();
     }
     
     this.updatePlayerUI();
   }
-
+  
   // Enter staggered state
   getStaggered() {
     this.currentState = "STAGGERED";
@@ -527,7 +813,7 @@ class PlayerEntity {
     // Note: We don't play the animation here anymore since it's already played in takeDamage
     // when the player is hit without blocking
   }
-
+  
   // Die
   die() {
     this.currentState = "DEAD";
@@ -544,7 +830,7 @@ class PlayerEntity {
       })
     );
   }
-
+  
   // Set debug visualization mode
   setDebugVisualization(enabled) {
     // Create debug visuals when enabled
@@ -610,18 +896,18 @@ class PlayerEntity {
     if (this.rollCooldown > 0) {
       this.rollCooldown -= delta;
     }
-
+    
     // Handle staggered state
     if (this.currentState === "STAGGERED") {
       this.staggerTime -= delta;
       if (this.staggerTime <= 0) {
         this.currentState = "IDLE";
       }
-
+      
       // Early return - no movement or attacks while staggered
       return;
     }
-
+    
     // Skip remaining logic if dead, attacking or rolling
     if (this.currentState === "DEAD" || this.isAttacking || this.isRolling) {
       // Update the mixer
@@ -662,7 +948,7 @@ class PlayerEntity {
       // Always face the locked entity
       this.faceEntity(this.lockOnEntity);
 
-      if (isMoving) {
+    if (isMoving) {
         // Choose appropriate animation based on direction and walking/running
         let currentAnimName = 'idle';
         
@@ -696,7 +982,7 @@ class PlayerEntity {
         if (this.currentMovementType !== currentAnimName) {
           this.currentMovementType = currentAnimName;
           this.startMovementSound(currentAnimName);
-        } else {
+      } else {
           // Update the frequency based on current velocity
           this.updateMovementSound();
         }
@@ -769,56 +1055,56 @@ class PlayerEntity {
         } else {
           // Update the frequency based on current velocity
           this.updateMovementSound();
-        }
-      } else {
-        this.fadeToAction(this.animations.idle.action);
       }
+    } else {
+      this.fadeToAction(this.animations.idle.action);
+    }
 
-      // Update the mixer
-      if (this.mixer) {
-        this.mixer.update(delta);
-      }
+    // Update the mixer
+    if (this.mixer) {
+      this.mixer.update(delta);
+    }
 
-      // Only allow movement if not attacking
-      if (isMoving && !this.isAttacking) {
-        // calculate towards camera direction
-        const angleYCameraDirection = Math.atan2(
-          CAMERA.camera.position.x - this.model.position.x,
-          CAMERA.camera.position.z - this.model.position.z
-        );
+    // Only allow movement if not attacking
+    if (isMoving && !this.isAttacking) {
+      // calculate towards camera direction
+      const angleYCameraDirection = Math.atan2(
+        CAMERA.camera.position.x - this.model.position.x,
+        CAMERA.camera.position.z - this.model.position.z
+      );
 
-        const directionOffset = getDirectionOffset(KEYS);
+      const directionOffset = getDirectionOffset(KEYS);
 
-        // rotate model
-        this.rotateQuaternion.setFromAxisAngle(
-          this.rotateAngle,
-          angleYCameraDirection + directionOffset + Math.PI
-        );
-        this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.2);
+      // rotate model
+      this.rotateQuaternion.setFromAxisAngle(
+        this.rotateAngle,
+        angleYCameraDirection + directionOffset + Math.PI
+      );
+      this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.2);
 
-        CAMERA.camera.getWorldDirection(this.moveDirection);
-        this.moveDirection.y = 0;
-        this.moveDirection.normalize();
-        this.moveDirection.applyAxisAngle(this.rotateAngle, directionOffset);
+      CAMERA.camera.getWorldDirection(this.moveDirection);
+      this.moveDirection.y = 0;
+      this.moveDirection.normalize();
+      this.moveDirection.applyAxisAngle(this.rotateAngle, directionOffset);
 
-        const velocity = isWalking ? this.walkVelocity : this.runVelocity;
+      const velocity = isWalking ? this.walkVelocity : this.runVelocity;
 
-        // move model & camera
-        const moveX = this.moveDirection.x * velocity * delta;
-        const moveZ = this.moveDirection.z * velocity * delta;
-        
-        // Calculate new position
-        const newX = this.model.position.x + moveX;
-        const newZ = this.model.position.z + moveZ;
-        
+      // move model & camera
+      const moveX = this.moveDirection.x * velocity * delta;
+      const moveZ = this.moveDirection.z * velocity * delta;
+      
+      // Calculate new position
+      const newX = this.model.position.x + moveX;
+      const newZ = this.model.position.z + moveZ;
+      
         // Check for collisions before updating position
         if (!this.checkCollisions(newX, newZ)) {
           // Update X and Z position if no collision
-          this.model.position.x = newX;
-          this.model.position.z = newZ;
-          
-          // Update camera position in X and Z
-          this.updateCamera(moveX, moveZ, 0);
+      this.model.position.x = newX;
+      this.model.position.z = newZ;
+      
+      // Update camera position in X and Z
+      this.updateCamera(moveX, moveZ, 0);
         }
       }
     }
@@ -860,7 +1146,7 @@ class PlayerEntity {
     // move camera
     CAMERA.locations.behindPlayer.position.x += moveX;
     CAMERA.locations.behindPlayer.position.z += moveZ;
-
+    
     // Only update camera Y if the change is significant
     // if (Math.abs(moveY) > 0.01) {
     CAMERA.locations.behindPlayer.position.y += moveY; // Reduced vertical follow
@@ -869,7 +1155,7 @@ class PlayerEntity {
     if (CAMERA.activeLocation === "behindPlayer") {
       const currentCameraPos = new THREE.Vector3();
       CAMERA.controls.getPosition(currentCameraPos);
-
+      
       // Create a new position with full X/Z movement but damped Y movement
       const newCameraPos = currentCameraPos
         .clone()
