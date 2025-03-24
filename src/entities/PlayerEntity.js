@@ -400,7 +400,7 @@ class PlayerEntity {
     
     // Play kick sound
     if (this.soundManager) {
-      this.soundManager.playSound('austen-ha', { volume: 0.3 });
+      this.soundManager.playSound('austen-ha', { volume: 0.1 });
     }
 
     // Create hitbox in front of player after a slight delay (mid animation)
