@@ -840,6 +840,16 @@ class PlayerEntity {
     this.currentState = "DEAD";
     this.fadeToAction(this.animations.death.action, false);
     console.log("Player died");
+    
+    // Dispatch an event that the player has died
+    // This will be listened for by any enemies playing boss music
+    document.dispatchEvent(
+      new CustomEvent("player_died", {
+        detail: {
+          player: this
+        }
+      })
+    );
   }
   
   // Set debug visualization mode

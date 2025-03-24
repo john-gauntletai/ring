@@ -407,8 +407,78 @@ class EnemyEntity {
         // Reset attack cooldown when entering attack state
         this.attackCooldown = 0;
         break;
+        
+      case "AWARE":
+        // Start boss battle music when becoming aware of player
+        this.startBossBattleMusic();
+        break;
 
       // Add other state transition logic as needed
+    }
+  }
+
+  /**
+   * Start playing the boss battle music
+   */
+  startBossBattleMusic() {
+    if (this.soundManager && !this.isBossMusicPlaying) {
+      // Preload the boss battle music if it wasn't already
+      if (!this.soundManager.sounds['bossBattleMusic']) {
+        this.soundManager.preloadSound('bossBattleMusic', '/assets/sounds/bossBattleMusic.mp3');
+      }
+      
+      // Start the boss battle music loop
+      this.soundManager.startLoop('bossBattleMusic', { volume: 0.1 });
+      this.isBossMusicPlaying = true;
+      console.log('Started boss battle music');
+      
+      // Add a listener for player death to stop the music
+      this.playerDeathListener = (event) => {
+        if (this.isBossMusicPlaying) {
+          this.stopBossBattleMusic();
+        }
+      };
+      
+      // Listen for the player_died event that would be dispatched by the player entity
+      document.addEventListener('player_died', this.playerDeathListener);
+    }
+  }
+  
+  /**
+   * Stop the boss battle music
+   */
+  stopBossBattleMusic() {
+    if (this.soundManager && this.isBossMusicPlaying) {
+      this.soundManager.stopLoop('bossBattleMusic');
+      this.isBossMusicPlaying = false;
+      console.log('Stopped boss battle music');
+      
+      // Play victory sound 1 second after the battle music ends
+      setTimeout(() => {
+        this.playVictorySound();
+      }, 500);
+      
+      // Remove the player death event listener
+      if (this.playerDeathListener) {
+        document.removeEventListener('player_died', this.playerDeathListener);
+        this.playerDeathListener = null;
+      }
+    }
+  }
+  
+  /**
+   * Play the victory sound
+   */
+  playVictorySound() {
+    if (this.soundManager) {
+      // Preload the victory sound if it wasn't already
+      if (!this.soundManager.sounds['victory']) {
+        this.soundManager.preloadSound('victory', '/assets/sounds/victory.mp3');
+      }
+      
+      // Play the victory sound
+      this.soundManager.playSound('victory', { volume: 0.1 });
+      console.log('Played victory sound');
     }
   }
 
@@ -605,6 +675,9 @@ class EnemyEntity {
   die() {
     this.setState("DEAD");
 
+    // Stop boss battle music when enemy dies
+    this.stopBossBattleMusic();
+
     // Cancel any attack state
     this.isAttacking = false;
     this.currentAttackType = null;
@@ -628,6 +701,9 @@ class EnemyEntity {
       console.log("Removing lock-on from dying enemy");
       window.PLAYER.toggleLockOn(); // Call with no parameters to clear the lock-on
     }
+    
+    // Show the "ENEMY FELLED" overlay
+    this.showEnemyFelledOverlay();
 
     // Hide the boss UI after 3 seconds
     setTimeout(() => {
@@ -641,6 +717,55 @@ class EnemyEntity {
       );
       console.log("Boss UI hidden after death");
     }, 3000);
+  }
+  
+  /**
+   * Show the Enemy Felled overlay
+   */
+  showEnemyFelledOverlay() {
+    // Get the enemy felled overlay element
+    const enemyFelledOverlay = document.getElementById('enemy-felled-overlay');
+    if (!enemyFelledOverlay) {
+      console.warn("Enemy felled overlay element not found");
+      return;
+    }
+    
+    // Show the overlay with fade in
+    enemyFelledOverlay.style.display = 'flex';
+    // Trigger a reflow before setting opacity for the transition to work
+    enemyFelledOverlay.offsetHeight;
+    // Make the overlay visible with transition
+    enemyFelledOverlay.style.opacity = '1';
+    
+    // Hide the overlay after 4 seconds
+    setTimeout(() => {
+      enemyFelledOverlay.style.opacity = '0';
+      // Wait for the fade-out transition to complete before hiding the element
+      setTimeout(() => {
+        enemyFelledOverlay.style.display = 'none';
+        
+        // Play the "Well Done" sound 1 second after the overlay is fully hidden
+        setTimeout(() => {
+          this.playWellDoneSound();
+        }, 1000);
+      }, 1500); // 1.5 seconds for fade-out transition
+    }, 2500); // Display for 2.5 seconds before starting fade-out
+  }
+  
+  /**
+   * Play the "Well Done" sound
+   */
+  playWellDoneSound() {
+    if (this.soundManager) {
+      // Preload the well done sound if it wasn't already
+      if (!this.soundManager.sounds['wellDone']) {
+        this.soundManager.preloadSound('wellDone', '/assets/sounds/wellDone.mp3');
+      }
+      
+      // Play the well done sound
+      this.soundManager.playSound('wellDone', { volume: 0.5 });
+      console.log('Played well done sound');
+    }
   }
 
   /**
