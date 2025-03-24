@@ -633,6 +633,86 @@
 					border-radius: 60% 40% 30% 70% / 50% 60% 40% 50%;
 				}
 			}
+			
+			/* Location Overlay Styles */
+			#location-overlay {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background-color: transparent;
+				z-index: 997;
+				display: none;
+				justify-content: center;
+				align-items: center;
+				opacity: 0;
+				transition: opacity 2s ease;
+			}
+			
+			.location-text-container {
+				position: relative;
+				width: 50%;
+				padding: 15px 0;
+				text-align: center;
+				background-color: rgba(0, 0, 0, 0.5);
+				/* Create fade effect on left and right edges */
+				mask-image: linear-gradient(to right, transparent 0%, white 15%, white 85%, transparent 100%);
+				-webkit-mask-image: linear-gradient(to right, transparent 0%, white 15%, white 85%, transparent 100%);
+			}
+			
+			.location-text {
+				font-family: 'Cormorant Garamond', serif;
+				font-size: 3.5rem;
+				font-weight: 400;
+				letter-spacing: 0.1rem;
+				color: #fff;
+				text-align: center;
+				text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+				margin: 0;
+				padding: 0.5rem 0;
+				line-height: 1;
+			}
+			
+			/* Enemy Felled Overlay Styles */
+			#enemy-felled-overlay {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background-color: transparent;
+				z-index: 997;
+				display: none;
+				justify-content: center;
+				align-items: center;
+				opacity: 0;
+				transition: opacity 1.5s ease;
+			}
+			
+			.enemy-felled-container {
+				position: relative;
+				width: 50%;
+				padding: 15px 0;
+				text-align: center;
+				background-color: rgba(0, 0, 0, 0.5);
+				/* Create fade effect on left and right edges */
+				mask-image: linear-gradient(to right, transparent 0%, white 15%, white 85%, transparent 100%);
+				-webkit-mask-image: linear-gradient(to right, transparent 0%, white 15%, white 85%, transparent 100%);
+			}
+			
+			.enemy-felled-text {
+				font-family: 'Cormorant Garamond', serif;
+				font-size: 3.5rem;
+				font-weight: 400;
+				letter-spacing: 0.1rem;
+				color: #fff;
+				text-align: center;
+				text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+				margin: 0;
+				padding: 0.5rem 0;
+				line-height: 1;
+			}
 		</style>
 	</head>
 	<body>
@@ -674,6 +754,20 @@
 			<button class="select-character-button" disabled>SELECT CHARACTER</button>
 		</div>
 		
+		<!-- Location Overlay -->
+		<div id="location-overlay">
+			<div class="location-text-container">
+				<div class="location-text">GOLDEN GRASS PLAINS</div>
+			</div>
+		</div>
+		
+		<!-- Enemy Felled Overlay -->
+		<div id="enemy-felled-overlay">
+			<div class="enemy-felled-container">
+				<div class="enemy-felled-text">ENEMY FELLED</div>
+			</div>
+		</div>
+		
 		<script type="module" src="/src/main.js"></script>
 		
 		<script>
@@ -688,6 +782,8 @@
 				const characterSelectScreen = document.getElementById('character-select-screen');
 				const characterBoxes = document.querySelectorAll('.character-box');
 				const selectCharacterButton = document.querySelector('.select-character-button');
+				const locationOverlay = document.getElementById('location-overlay');
+				const enemyFelledOverlay = document.getElementById('enemy-felled-overlay');
 				
 				let firstKeyPressed = false;
 				let selectedCharacter = null;
@@ -759,6 +855,28 @@
 					checkForSoundManager();
 				}
 				
+				// Function to play the new area sound using the game's sound manager
+				function playNewAreaSound() {
+					// Wait until the game has loaded and the sound manager is available
+					const checkForSoundManager = () => {
+						if (window.SOUND_MANAGER) {
+							// Preload the new area sound if it wasn't already
+							if (!window.SOUND_MANAGER.sounds['newArea']) {
+								window.SOUND_MANAGER.preloadSound('newArea', '/assets/sounds/newArea.mp3');
+							}
+							
+							// Play the sound (non-looping)
+							window.SOUND_MANAGER.playSound('newArea', { volume: 0.2 });
+							console.log('Played new area sound');
+						} else {
+							// If sound manager isn't available yet, check again in 100ms
+							setTimeout(checkForSoundManager, 100);
+						}
+					};
+					
+					checkForSoundManager();
+				}
+				
 				// Show character selection screen
 				function showCharacterSelect() {
 					characterSelectScreen.style.display = 'flex';
@@ -787,9 +905,28 @@
 						console.log(`Selected character: ${selectedCharacter}`);
 						// Start the ambient wind sound when character is selected
 						startAmbientWind();
-						// Here you would start the game with the selected character
-						// For now, we'll just hide the character select screen
+						// Hide character select screen
 						characterSelectScreen.style.display = 'none';
+						
+						// Show location overlay
+						locationOverlay.style.display = 'flex';
+						// Trigger a reflow before setting opacity for the transition to work
+						locationOverlay.offsetHeight;
+						// Make the overlay visible with transition
+						locationOverlay.style.opacity = '1';
+						
+						// Play the new area sound when the location overlay appears
+						playNewAreaSound();
+						
+						// Hide the overlay after 5 seconds
+						setTimeout(() => {
+							locationOverlay.style.opacity = '0';
+							// Wait for the fade-out transition to complete before hiding the element
+							setTimeout(() => {
+								locationOverlay.style.display = 'none';
+								// Here you would continue with the actual game initialization
+							}, 2000); // 2 seconds for fade-out transition
+						}, 3000); // Display for 3 seconds before starting fade-out
 					}
 				});
 				
