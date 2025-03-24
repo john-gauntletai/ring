@@ -11,10 +11,14 @@ class SoundManager {
     // Preload common sounds
     this.preloadSound('grassWalk1', '/assets/sounds/grassWalk1.MP3');
     this.preloadSound('grassWalk2', '/assets/sounds/grassWalk2.MP3');
+    this.preloadSound('grassWalk3', '/assets/sounds/grassWalk3.MP3');
+    this.preloadSound('grassWalk4', '/assets/sounds/grassWalk4.MP3');
+    this.preloadSound('grassWalk5', '/assets/sounds/grassWalk5.MP3');
+    this.preloadSound('grassWalk6', '/assets/sounds/grassWalk6.MP3');
     
     // Define sound sets for different surfaces
     this.surfaceSounds = {
-      grass: ['grassWalk1', 'grassWalk2'],
+      grass: ['grassWalk1', 'grassWalk2', 'grassWalk3', 'grassWalk4', 'grassWalk5', 'grassWalk6'],
       // Add more surface types when assets are available
       // stone: ['stoneWalk1', 'stoneWalk2'],
       // wood: ['woodWalk1', 'woodWalk2'],
@@ -93,22 +97,26 @@ class SoundManager {
     // Get the sound set for the current surface
     const soundSet = this.surfaceSounds[this.currentSurfaceType];
     
-    // Choose footstep sound with randomization but tendency to alternate
+    // Choose a random sound from the available set
+    // With a bias towards not repeating the most recent sound
     let soundIndex;
+    const lastIndex = this.footstepIndex % soundSet.length;
     
-    if (Math.random() < 0.8) {
-      // 80% chance to follow the natural alternating pattern
-      soundIndex = this.footstepIndex % 2;
+    if (Math.random() < 0.85) {
+      // 85% chance to pick a random sound that's not the last one played
+      do {
+        soundIndex = Math.floor(Math.random() * soundSet.length);
+      } while (soundIndex === lastIndex && soundSet.length > 1);
     } else {
-      // 20% chance to repeat the same sound as last time (breaks the pattern for more natural feel)
-      soundIndex = (this.footstepIndex + 1) % 2;
+      // 15% chance to repeat the last sound
+      soundIndex = lastIndex;
     }
     
     const soundId = soundSet[soundIndex];
     this.footstepIndex++;
     
     // Randomize volume slightly for more natural variation
-    const baseVolume = options.volume || 0.5;
+    const baseVolume = 0.3;
     const volumeVariation = 0.15; // ±15% volume variation
     const randomizedVolume = baseVolume * (1 - volumeVariation + Math.random() * volumeVariation * 2);
     
@@ -173,6 +181,10 @@ class SoundManager {
     // Stop any ongoing looped footstep sounds (from old implementation)
     this.stopLoop('grassWalk1');
     this.stopLoop('grassWalk2');
+    this.stopLoop('grassWalk3');
+    this.stopLoop('grassWalk4');
+    this.stopLoop('grassWalk5');
+    this.stopLoop('grassWalk6');
     
     this.currentMovementType = null;
   }
