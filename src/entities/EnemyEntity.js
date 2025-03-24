@@ -13,14 +13,15 @@ class EnemyEntity {
     console.log("Golden Knight animations:", this.animations);
     // Enemy data based on COMBAT_TODO.md
     this.data = {
-      health: 500,
-      maxHealth: 500,
+      health: 300,
+      maxHealth: 300,
       name: "Golden Guard of the King",
       isHostile: false,
       detectionRadius: 20,
       attackRange: 3,
       attackDamage: 15,
       attackCooldown: 1.0,
+      velocity: 1.8,
     };
 
     // State management
@@ -346,7 +347,7 @@ class EnemyEntity {
       .normalize();
 
     // Move towards player
-    const speed = 1; // units per second
+    const speed = this.data.velocity; // units per second
     this.model.position.x += direction.x * speed * delta;
     this.model.position.z += direction.z * speed * delta;
 
@@ -482,8 +483,7 @@ class EnemyEntity {
     if (this.soundManager) {
       // For enemy, use a constant velocity based on their movement speed
       // The enemy has a constant movement speed of 1 unit per second defined in moveTowardsPlayer
-      const velocity = 1.0; 
-      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.4 }, velocity);
+      this.soundManager.startFootstepsForMovementType(movementType, { volume: 0.4 }, this.data.velocity);
     }
   }
   
@@ -584,6 +584,12 @@ class EnemyEntity {
     // Disable detection sphere
     if (this.detectionSphere) {
       this.detectionSphere.visible = false;
+    }
+    
+    // Check if this enemy is the player's lockOnEntity, and if so, toggle it off
+    if (window.PLAYER && window.PLAYER.lockOnEntity === this) {
+      console.log("Removing lock-on from dying enemy");
+      window.PLAYER.toggleLockOn(); // Call with no parameters to clear the lock-on
     }
 
     // Hide the boss UI after 3 seconds

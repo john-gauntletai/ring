@@ -20,13 +20,25 @@
 				left: 0;
 				width: 100%;
 				height: 100%;
-				background-color: rgba(0, 0, 0);
+				background-color: rgba(0, 0, 0, 0.5);
 				z-index: 1000;
 				display: flex;
 				flex-direction: column;
 				justify-content: center;
 				align-items: center;
 				color: #fff;
+			}
+			
+			#background-video {
+				position: fixed;
+				top: 0;
+				left: 0;
+				min-width: 100%;
+				min-height: 100%;
+				width: auto;
+				height: auto;
+				z-index: 999;
+				object-fit: cover;
 			}
 			
 			.game-title {
@@ -107,6 +119,9 @@
 			<button class="start-button">START GAME</button>
 		</div>
 		
+		<!-- Background Video -->
+		<video id="background-video" src="/assets/videos/Start Screen.mp4" autoplay loop muted playsinline></video>
+		
 		<!-- Video Screen -->
 		<div id="video-screen">
 			<video id="intro-video" src="/assets/videos/trailer.mov"></video>
@@ -123,8 +138,14 @@
 				const videoScreen = document.getElementById('video-screen');
 				const introVideo = document.getElementById('intro-video');
 				const skipMessage = document.querySelector('.skip-message');
+				const backgroundVideo = document.getElementById('background-video');
 				
 				let firstKeyPressed = false;
+				
+				// Ensure background video starts playing
+				backgroundVideo.play().catch(error => {
+					console.warn('Background video autoplay failed:', error);
+				});
 				
 				// Function to clean up video element to free memory
 				function cleanupVideo() {
@@ -154,6 +175,18 @@
 					console.log('Video element cleaned up and removed from memory');
 				}
 				
+				// Function to clean up background video
+				function cleanupBackgroundVideo() {
+					// Stop video playback
+					backgroundVideo.pause();
+					
+					// Remove source and clear any buffered data
+					backgroundVideo.removeAttribute('src');
+					backgroundVideo.load();
+					
+					console.log('Background video stopped and cleaned up');
+				}
+				
 				// Function to start the ambient wind sound using the game's sound manager
 				function startAmbientWind() {
 					// Wait until the game has loaded and the sound manager is available
@@ -165,7 +198,7 @@
 							}
 							
 							// Start the wind sound loop
-							window.SOUND_MANAGER.startLoop('ambientWind', { volume: 0.9 });
+							window.SOUND_MANAGER.startLoop('ambientWind', { volume: 1.0 });
 							console.log('Started ambient wind sound');
 						} else {
 							// If sound manager isn't available yet, check again in 100ms
@@ -194,10 +227,14 @@
 				startButton.addEventListener('click', startGame);
 				
 				function startGame() {
+					// Hide the start screen first for immediate visual feedback
 					startScreen.style.display = 'none';
 					videoScreen.style.display = 'flex';
 					
-					// Start playing the video
+					// Clean up background video
+					cleanupBackgroundVideo();
+					
+					// Start playing the intro video
 					introVideo.play();
 					
 					// Show "press any key to skip" for 3 seconds
@@ -206,16 +243,49 @@
 						skipMessage.style.opacity = '0';
 					}, 3000);
 					
-					// When video ends, clean up and start wind sound
+					// When video ends, clean up video elements and start wind sound
 					introVideo.addEventListener('ended', () => {
 						cleanupVideo();
 						startAmbientWind();
+						removeUnusedDOMElements();
 					});
 				}
 				
 				function skipVideo() {
 					cleanupVideo();
 					startAmbientWind();
+					removeUnusedDOMElements();
+				}
+				
+				// Function to remove all unused DOM elements to free memory
+				function removeUnusedDOMElements() {
+					// Remove the start screen from the DOM
+					if (startScreen && startScreen.parentNode) {
+						startScreen.parentNode.removeChild(startScreen);
+						console.log('Start screen removed from DOM');
+					}
+					
+					// Remove the background video from the DOM
+					if (backgroundVideo && backgroundVideo.parentNode) {
+						backgroundVideo.parentNode.removeChild(backgroundVideo);
+						console.log('Background video removed from DOM');
+					}
+					
+					// Remove the video screen from the DOM
+					if (videoScreen && videoScreen.parentNode) {
+						videoScreen.parentNode.removeChild(videoScreen);
+						console.log('Video screen removed from DOM');
+					}
+					
+					// Clear references
+					window.startScreen = null;
+					window.backgroundVideo = null;
+					window.videoScreen = null;
+					
+					// Force garbage collection if browser supports it
+					if (window.gc) {
+						window.gc();
+					}
 				}
 			});
 		</script>
