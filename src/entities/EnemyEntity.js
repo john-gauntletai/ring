@@ -714,6 +714,11 @@ class EnemyEntity {
     // Show the "ENEMY FELLED" overlay
     this.showEnemyFelledOverlay();
 
+    // Play dragon roar sound 5 seconds after death
+    setTimeout(() => {
+      this.playDragonRoarSound();
+    }, 7000);
+
     // Hide the boss UI after 3 seconds
     setTimeout(() => {
       // Dispatch custom event to hide the UI
@@ -1039,6 +1044,22 @@ class EnemyEntity {
     } else {
       // Still in cooldown, reduce timer
       this.attackCooldown -= delta;
+    }
+  }
+
+  /**
+   * Play the dragon roar sound
+   */
+  playDragonRoarSound() {
+    if (this.soundManager) {
+      // Preload the dragon roar sound if it wasn't already
+      if (!this.soundManager.sounds['dragonRoar']) {
+        this.soundManager.preloadSound('dragonRoar', '/assets/sounds/dragon roar.mp3');
+      }
+      
+      // Play the dragon roar sound
+      this.soundManager.playSound('dragonRoar', { volume: 0.7 });
+      console.log('Played dragon roar sound');
     }
   }
 }
