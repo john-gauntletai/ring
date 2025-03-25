@@ -13,8 +13,8 @@ class EnemyEntity {
     console.log("Golden Knight animations:", this.animations);
     // Enemy data based on COMBAT_TODO.md
     this.data = {
-      health: 300,
-      maxHealth: 300,
+      health: 100,
+      maxHealth: 100,
       name: "Golden Guard of the King",
       isHostile: false,
       detectionRadius: 20,
@@ -719,6 +719,27 @@ class EnemyEntity {
       this.playDragonRoarSound();
     }, 7000);
 
+    // Schedule dragon animations and sounds at specified intervals
+    // 10 seconds later: play 'stop' animation + sound 'dragon stop.mp3' simultaneously 2 times
+    setTimeout(() => {
+      this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
+      
+      // Play the second time after a short delay
+      setTimeout(() => {
+        this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
+      }, 2000); // 2 seconds delay between the two instances
+    }, 10000); // 10 seconds after death
+
+    // 15 seconds later: play 'down' animation + sound 'dragon down.mp3' simultaneously 1 time
+    setTimeout(() => {
+      this.playDragonAnimationAndSound("down", "dragon down.mp3");
+    }, 15000); // 15 seconds after death
+
+    // 16.7 seconds later: play 'fire' animation + sound 'dragon fire.mp3' simultaneously 1 time
+    setTimeout(() => {
+      this.playDragonAnimationAndSound("fire", "dragon fire.mp3");
+    }, 16700); // 16.7 seconds after death
+
     // Hide the boss UI after 3 seconds
     setTimeout(() => {
       // Dispatch custom event to hide the UI
@@ -1060,6 +1081,130 @@ class EnemyEntity {
       // Play the dragon roar sound
       this.soundManager.playSound('dragonRoar', { volume: 0.7 });
       console.log('Played dragon roar sound');
+    }
+  }
+
+  /**
+   * Play dragon animation and sound simultaneously
+   * @param {string} animationName - The name of the dragon animation to play
+   * @param {string} soundName - The name of the sound file to play
+   */
+  playDragonAnimationAndSound(animationName, soundFileName) {
+    // Get the dragon entity from window or scene
+    const dragon = window.DRAGON;
+    
+    if (!dragon) {
+      console.warn("Dragon entity not found, cannot play animation:", animationName);
+      return;
+    }
+    
+    console.log("Dragon entity found:", dragon);
+    
+    // Play dragon animation
+    if (dragon.animations && dragon.animations[animationName]) {
+      // Reset and play the animation
+      const action = dragon.animations[animationName].action;
+      action.reset().play();
+      console.log(`Playing dragon ${animationName} animation`);
+      
+      // Special case for 'down' animation - land the dragon
+      if (animationName === "down") {
+        console.log("Dragon 'down' animation started, will handle landing sequence");
+        
+        // Record initial position
+        const initialPosition = dragon.model.position.clone();
+        console.log("Initial dragon position:", initialPosition);
+        
+        // 1. Let animation play for a bit (0.5 seconds)
+        setTimeout(() => {
+          try {
+            // 2. Get current position but keep height at 0 (ground level)
+            const newPosition = dragon.model.position.clone();
+            
+            // 3. Stop the animation completely
+            action.stop();
+            
+            // 4. Get the mixer and reset it
+            if (dragon.mixer) {
+              // Reset all active animations
+              dragon.mixer.stopAllAction();
+            }
+            
+            // 5. Force the dragon model to ground level
+            // Use the player's position as reference for ground height
+            let groundLevel = 0;
+            if (window.PLAYER && window.PLAYER.model && window.PLAYER.model.position) {
+              // Get the y-position of the player as our ground reference
+              groundLevel = window.PLAYER.model.position.y;
+              console.log("Using player's position as ground reference:", groundLevel);
+            }
+            
+            // 6. Set the position to match current x/z but with ground-level y
+            dragon.model.position.set(newPosition.x, groundLevel, newPosition.z);
+            console.log("Dragon positioned at ground level:", dragon.model.position);
+            
+            // 7. Apply the position directly to all child meshes as well
+            if (dragon.model.children && dragon.model.children.length > 0) {
+              console.log("Adjusting all child elements to match new parent position");
+              dragon.model.updateMatrixWorld(true); // Update the world matrix
+            }
+            
+            // 8. Create a visually distinctive effect when the dragon lands
+            if (window.SCENE) {
+              // Create dust effect or ground impact visuals
+              console.log("Would add landing impact effect here if implemented");
+            }
+            
+            // 9. Record that we've landed the dragon
+            dragon.hasLanded = true;
+          } catch (error) {
+            console.error("Error during dragon landing sequence:", error);
+          }
+        }, 500); // 0.5 seconds delay before stopping animation
+        
+        // 10. Apply permanent override to prevent the dragon from floating again
+        // This creates a custom update handler if it doesn't already exist
+        if (!dragon._originalUpdateMethod) {
+          dragon._originalUpdateMethod = dragon.update;
+          
+          // Override the update method
+          dragon.update = function(delta) {
+            // Call the original update first
+            if (this._originalUpdateMethod) {
+              this._originalUpdateMethod.call(this, delta);
+            }
+            
+            // After update, if the dragon has landed, force its position to ground
+            if (this.hasLanded && this.model) {
+              // Keep x and z, but force y to ground level
+              const groundLevel = window.PLAYER && window.PLAYER.model ? 
+                window.PLAYER.model.position.y : 0;
+                
+              // Maintain current x/z but enforce ground level y
+              this.model.position.y = groundLevel;
+            }
+          };
+          
+          console.log("Added position override to dragon's update method");
+        }
+      }
+    } else {
+      console.warn(`Dragon animation ${animationName} not found`);
+    }
+    
+    // Play the corresponding sound
+    if (this.soundManager) {
+      // Ensure the sound is loaded
+      const soundId = `dragon_${animationName}`;
+      if (!this.soundManager.sounds[soundId]) {
+        this.soundManager.preloadSound(soundId, `/assets/sounds/${soundFileName}`);
+      }
+      
+      // Play the sound
+      this.soundManager.playSound(soundId, { volume: 0.5 });
+      console.log(`Playing dragon sound: ${soundFileName}`);
+    } else {
+      console.warn("Sound manager not available, cannot play sound:", soundFileName);
     }
   }
 }
