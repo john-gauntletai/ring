@@ -111,7 +111,7 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, goldenKnight, dragon] = await Promise.all([
+  const [player, goldenKnight] = await Promise.all([
     loadModel("/assets/models/austen2.glb", scene, LOADING_MANAGER),
     loadModel(
       "/assets/models/move golden knight-out2.glb",
@@ -119,7 +119,7 @@ async function init() {
       LOADING_MANAGER
     ),
     // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
-    loadModel("/assets/models/dragon-out.glb", scene),
+    // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
   const PLAYER = new PlayerEntity(
@@ -142,14 +142,14 @@ async function init() {
 
   window.ENEMY = ENEMY;
 
-  const DRAGON = new DragonEntity(
-    dragon.model,
-    dragon.animations,
-    dragon.mixer,
-    soundManager
-  );
+  // const DRAGON = new DragonEntity(
+  //   dragon.model,
+  //   dragon.animations,
+  //   dragon.mixer,
+  //   soundManager
+  // );
 
-  window.DRAGON = DRAGON;
+  // window.DRAGON = DRAGON;
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -237,9 +237,9 @@ async function init() {
     logTimer += delta;
     PLAYER.update(delta);
     ENEMY.update(delta, PLAYER);
-    if (DRAGON) {
-      DRAGON.update(delta);
-    }
+    // if (DRAGON) {
+    //   DRAGON.update(delta);
+    // }
     CAMERA.update(delta, PLAYER);
 
     // Update combat manager

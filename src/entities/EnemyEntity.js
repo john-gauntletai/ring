@@ -13,8 +13,8 @@ class EnemyEntity {
     console.log("Golden Knight animations:", this.animations);
     // Enemy data based on COMBAT_TODO.md
     this.data = {
-      health: 100,
-      maxHealth: 100,
+      health: 300,
+      maxHealth: 300,
       name: "Golden Guard of the King",
       isHostile: false,
       detectionRadius: 20,
@@ -737,31 +737,31 @@ class EnemyEntity {
       this.showEnemyFelledOverlay();
     }, 500);
 
-    // Play dragon roar sound 5 seconds after death
-    setTimeout(() => {
-      this.playDragonRoarSound();
-    }, 7000);
+    // // Play dragon roar sound 5 seconds after death
+    // setTimeout(() => {
+    //   this.playDragonRoarSound();
+    // }, 7000);
 
-    // Schedule dragon animations and sounds at specified intervals
-    // 10 seconds later: play 'stop' animation + sound 'dragon stop.mp3' simultaneously 2 times
-    setTimeout(() => {
-      this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
+    // // Schedule dragon animations and sounds at specified intervals
+    // // 10 seconds later: play 'stop' animation + sound 'dragon stop.mp3' simultaneously 2 times
+    // setTimeout(() => {
+    //   this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
 
-      // Play the second time after a short delay
-      setTimeout(() => {
-        this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
-      }, 2000); // 2 seconds delay between the two instances
-    }, 10000); // 10 seconds after death
+    //   // Play the second time after a short delay
+    //   setTimeout(() => {
+    //     this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
+    //   }, 2000); // 2 seconds delay between the two instances
+    // }, 10000); // 10 seconds after death
 
-    // 15 seconds later: play 'down' animation + sound 'dragon down.mp3' simultaneously 1 time
-    setTimeout(() => {
-      this.playDragonAnimationAndSound("down", "dragon down.mp3");
-    }, 15000); // 15 seconds after death
+    // // 15 seconds later: play 'down' animation + sound 'dragon down.mp3' simultaneously 1 time
+    // setTimeout(() => {
+    //   this.playDragonAnimationAndSound("down", "dragon down.mp3");
+    // }, 15000); // 15 seconds after death
 
-    // 16.7 seconds later: play 'fire' animation + sound 'dragon fire.mp3' simultaneously 1 time
-    setTimeout(() => {
-      this.playDragonAnimationAndSound("fire", "dragon fire.mp3");
-    }, 16700); // 16.7 seconds after death
+    // // 16.7 seconds later: play 'fire' animation + sound 'dragon fire.mp3' simultaneously 1 time
+    // setTimeout(() => {
+    //   this.playDragonAnimationAndSound("fire", "dragon fire.mp3");
+    // }, 16700); // 16.7 seconds after death
 
     // Hide the boss UI after 3 seconds
     setTimeout(() => {
