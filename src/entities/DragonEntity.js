@@ -10,6 +10,7 @@ class DragonEntity {
     console.log('Dragon animations', this.animations);
 
     // modify this to set where the dragon is originally
+    this.model.scale.setScalar(0.5);
     this.model.position.set(0, 0, 0);
     this.init();
   }
