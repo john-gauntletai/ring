@@ -3,11 +3,10 @@ import Stats from "three/examples/jsm/libs/stats.module.js";
 import {
   loadModel,
   addResizeEventListeners,
-  removeBottomHalf,
-  applyKingdomEffects,
 } from "./_lib/helpers.js";
 import PlayerEntity from "./entities/PlayerEntity.js";
 import EnemyEntity from "./entities/EnemyEntity.js";
+import DragonEntity from "./entities/DragonEntity.js";
 import Camera from "./entities/Camera.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -115,7 +114,7 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, goldenKnight] = await Promise.all([
+  const [player, goldenKnight, dragon] = await Promise.all([
     loadModel("/assets/models/austen2.glb", scene, LOADING_MANAGER),
     loadModel(
       "/assets/models/move golden knight-out2.glb",
@@ -123,7 +122,7 @@ async function init() {
       LOADING_MANAGER
     ),
     // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
-    // loadModel("/assets/models/dragon-out.glb", scene),
+    loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
   const PLAYER = new PlayerEntity(
@@ -146,19 +145,14 @@ async function init() {
 
   window.ENEMY = ENEMY;
 
-  // Position the kingdom model
-  // kingdom.model.position.set(0, -50, 0);
-  // kingdom.model.rotation.y = Math.PI * 2/3;
-  // kingdom.model.rotation.y = Math.PI * 1.02;
+  const DRAGON = new DragonEntity(
+    dragon.model,
+    dragon.animations,
+    dragon.mixer,
+    soundManager
+  );
 
-  // window.KINGDOM = kingdom;
-  // kingdom.model.rotation.y = Math.PI;
-
-  // // Apply optimization to the kingdom model
-  // removeBottomHalf(kingdom.model);
-
-  // Apply darkening effects to the kingdom (no blur)
-  // applyKingdomEffects(kingdom.model);
+  window.DRAGON = DRAGON;
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -246,6 +240,9 @@ async function init() {
     logTimer += delta;
     PLAYER.update(delta);
     ENEMY.update(delta, PLAYER);
+    if (DRAGON) {
+      DRAGON.update(delta);
+    }
     CAMERA.update(delta, PLAYER);
 
     // Update combat manager
