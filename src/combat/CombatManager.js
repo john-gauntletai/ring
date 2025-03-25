@@ -240,7 +240,7 @@ class CombatManager {
       });
     }
     
-    // Create spark effect for non-kick attacks
+    // Create spark effect for non-kick attacks after a delay
     if (hitbox.attackType !== 'kick' && entity.model && hitbox.owner && hitbox.owner.model) {
       // Calculate impact position (halfway between attacker and hit entity)
       const attackerPos = hitbox.owner.model.position.clone();
@@ -253,8 +253,11 @@ class CombatManager {
       // Calculate direction from attacker to victim (for spark direction)
       const sparkDirection = new THREE.Vector3().subVectors(entityPos, attackerPos).normalize();
       
-      // Create spark effect at impact position
-      this.createSparkEffect(impactPos, sparkDirection);
+      // Wait 0.3 seconds before creating the spark effect
+      setTimeout(() => {
+        // Create spark effect at impact position
+        this.createSparkEffect(impactPos, sparkDirection);
+      }, 300); // 300ms delay
     }
     
     // Create hit effect
@@ -525,8 +528,8 @@ class CombatManager {
         colors[i * 3 + 2] = 0.0;  // Blue
       }
       
-      // Set particle sizes (much smaller)
-      sizes[i] = 0.005 + Math.random() * 0.01;
+      // Set particle sizes (much smaller - half the previous size)
+      sizes[i] = 0.0025 + Math.random() * 0.005;
     }
     
     // Create particle geometry and material
@@ -537,7 +540,7 @@ class CombatManager {
     
     // Create particle material with texture
     const material = new THREE.PointsMaterial({
-      size: 0.25, // Reduced base size
+      size: 0.125, // Reduced base size by half (from 0.25)
       transparent: true,
       opacity: 0.8,
       vertexColors: true,

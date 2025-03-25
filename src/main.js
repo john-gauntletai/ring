@@ -151,23 +151,14 @@ async function init() {
   // kingdom.model.rotation.y = Math.PI * 2/3;
   // kingdom.model.rotation.y = Math.PI * 1.02;
 
-  window.KINGDOM = kingdom;
-
-  // // Remove any existing blur effects
-  kingdom.model.traverse((child) => {
-    if (child.name === "kingdomBlurEffect" && child.parent) {
-      child.parent.remove(child);
-      if (child.material) child.material.dispose();
-      if (child.geometry) child.geometry.dispose();
-      console.log("Removed existing blur effect");
-    }
-  });
+  // window.KINGDOM = kingdom;
+  // kingdom.model.rotation.y = Math.PI;
 
   // // Apply optimization to the kingdom model
-  removeBottomHalf(kingdom.model);
+  // removeBottomHalf(kingdom.model);
 
   // Apply darkening effects to the kingdom (no blur)
-  applyKingdomEffects(kingdom.model);
+  // applyKingdomEffects(kingdom.model);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
