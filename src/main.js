@@ -8,9 +8,6 @@ import PlayerEntity from "./entities/PlayerEntity.js";
 import EnemyEntity from "./entities/EnemyEntity.js";
 import DragonEntity from "./entities/DragonEntity.js";
 import Camera from "./entities/Camera.js";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 import KEYS from "./_lib/keys";
 import GrassComponent from "./components/GrassComponent.js";
 import FlatTerrain from "./components/FlatTerrain.js";
@@ -96,11 +93,11 @@ async function init() {
   renderer.toneMappingExposure = 0.7; // Reduced to make the scene darker overall
 
   // Add Stats (FPS meter)
-  const stats = new Stats();
-  stats.domElement.style.position = "absolute";
-  stats.domElement.style.top = "0px";
-  stats.domElement.style.left = "0px";
-  document.body.appendChild(stats.domElement);
+  // const stats = new Stats();
+  // stats.domElement.style.position = "absolute";
+  // stats.domElement.style.top = "0px";
+  // stats.domElement.style.left = "0px";
+  // document.body.appendChild(stats.domElement);
 
   document.body.appendChild(renderer.domElement);
 
@@ -234,7 +231,7 @@ async function init() {
   let logTimer = 0;
 
   function animate() {
-    stats.begin();
+      // stats.begin();
 
     const delta = clock.getDelta();
     logTimer += delta;
@@ -265,7 +262,7 @@ async function init() {
     }
     grass.update(delta, CAMERA.camera, true);
     renderer.render(scene, CAMERA.camera);
-    stats.end();
+    // stats.end();
   }
 
   renderer.setAnimationLoop(animate);
