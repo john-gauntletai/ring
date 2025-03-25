@@ -144,10 +144,12 @@ async function init() {
     soundManager
   );
 
+  window.ENEMY = ENEMY;
+
   // Position the kingdom model
-  kingdom.model.position.set(0, -50, 0);
+  // kingdom.model.position.set(0, -50, 0);
   // kingdom.model.rotation.y = Math.PI * 2/3;
-  kingdom.model.rotation.y = Math.PI * 1.02;
+  // kingdom.model.rotation.y = Math.PI * 1.02;
 
   window.KINGDOM = kingdom;
 
@@ -165,7 +167,7 @@ async function init() {
   removeBottomHalf(kingdom.model);
 
   // Apply darkening effects to the kingdom (no blur)
-  // applyKingdomEffects(kingdom.model);
+  applyKingdomEffects(kingdom.model);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
