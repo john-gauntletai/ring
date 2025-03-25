@@ -115,14 +115,14 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, goldenKnight, kingdom] = await Promise.all([
+  const [player, goldenKnight] = await Promise.all([
     loadModel("/assets/models/austen2.glb", scene, LOADING_MANAGER),
     loadModel(
       "/assets/models/move golden knight-out2.glb",
       scene,
       LOADING_MANAGER
     ),
-    loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
+    // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
