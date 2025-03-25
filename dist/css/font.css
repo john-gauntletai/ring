@@ -1,0 +1,27 @@
+@font-face {
+  font-family: 'CormorantGaramond';
+  src: url('/assets/fonts/CormorantGaramond-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+.cormorant-font {
+  font-family: 'CormorantGaramond', serif;
+}
+
+.cormorant-heading {
+  font-family: 'CormorantGaramond', serif;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.cormorant-body {
+  font-family: 'CormorantGaramond', serif;
+  font-weight: 400;
+}
+
+/* Apply to all game text by default */
+body {
+  font-family: 'CormorantGaramond', serif;
+} 
