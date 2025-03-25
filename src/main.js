@@ -122,7 +122,7 @@ async function init() {
       scene,
       LOADING_MANAGER
     ),
-    // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
+    loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
     // loadModel("/assets/models/dragon-out.glb", scene),
   ]);
 
@@ -144,26 +144,30 @@ async function init() {
     soundManager
   );
 
+  window.ENEMY = ENEMY;
+
   // Position the kingdom model
   // kingdom.model.position.set(0, -50, 0);
   // kingdom.model.rotation.y = Math.PI * 2/3;
-  // // kingdom.model.rotation.y = Math.PI * 1.02;
+  // kingdom.model.rotation.y = Math.PI * 1.02;
+
+  window.KINGDOM = kingdom;
 
   // // Remove any existing blur effects
-  // kingdom.model.traverse((child) => {
-  //   if (child.name === "kingdomBlurEffect" && child.parent) {
-  //     child.parent.remove(child);
-  //     if (child.material) child.material.dispose();
-  //     if (child.geometry) child.geometry.dispose();
-  //     console.log("Removed existing blur effect");
-  //   }
-  // });
+  kingdom.model.traverse((child) => {
+    if (child.name === "kingdomBlurEffect" && child.parent) {
+      child.parent.remove(child);
+      if (child.material) child.material.dispose();
+      if (child.geometry) child.geometry.dispose();
+      console.log("Removed existing blur effect");
+    }
+  });
 
   // // Apply optimization to the kingdom model
-  // removeBottomHalf(kingdom.model);
+  removeBottomHalf(kingdom.model);
 
   // Apply darkening effects to the kingdom (no blur)
-  // applyKingdomEffects(kingdom.model);
+  applyKingdomEffects(kingdom.model);
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);

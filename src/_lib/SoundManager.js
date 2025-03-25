@@ -25,6 +25,10 @@ class SoundManager {
     this.preloadSound('swordSlash1', '/assets/sounds/swordSlash1.MP3');
     this.preloadSound('swordSlash2', '/assets/sounds/swordSlash2.MP3');
     this.preloadSound('swordSlash3', '/assets/sounds/swordSlash3.MP3');
+    this.preloadSound('swordSwoosh', '/assets/sounds/swordSwoosh.MP3');
+    this.preloadSound('spinAttackSound', '/assets/sounds/spinAttackSound.MP3');
+    this.preloadSound('kickSound', '/assets/sounds/kickSound.MP3');
+    this.preloadSound('austen-ha', '/assets/sounds/austen-ha.mp3');
     
     // Preload ambient sounds
     this.preloadAmbientSounds();

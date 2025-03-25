@@ -427,20 +427,29 @@ class EnemyEntity {
         this.soundManager.preloadSound('bossBattleMusic', '/assets/sounds/bossBattleMusic.mp3');
       }
       
-      // Start the boss battle music loop
-      this.soundManager.startLoop('bossBattleMusic', { volume: 0.1 });
-      this.isBossMusicPlaying = true;
-      console.log('Started boss battle music');
+      console.log('Preparing boss battle music, starting in 3 seconds...');
       
-      // Add a listener for player death to stop the music
-      this.playerDeathListener = (event) => {
-        if (this.isBossMusicPlaying) {
-          this.stopBossBattleMusic();
-        }
-      };
+      // Set a flag to prevent multiple timeouts
+      this.isBossMusicPreparing = true;
       
-      // Listen for the player_died event that would be dispatched by the player entity
-      document.addEventListener('player_died', this.playerDeathListener);
+      // Wait 3 seconds before starting the boss battle music
+      setTimeout(() => {
+        // Start the boss battle music loop
+        this.soundManager.startLoop('bossBattleMusic', { volume: 0.05 });
+        this.isBossMusicPlaying = true;
+        this.isBossMusicPreparing = false;
+        console.log('Started boss battle music after delay');
+        
+        // Add a listener for player death to stop the music
+        this.playerDeathListener = (event) => {
+          if (this.isBossMusicPlaying) {
+            this.stopBossBattleMusic();
+          }
+        };
+        
+        // Listen for the player_died event that would be dispatched by the player entity
+        document.addEventListener('player_died', this.playerDeathListener);
+      }, 3000); // 3-second delay
     }
   }
   
@@ -594,8 +603,9 @@ class EnemyEntity {
   /**
    * Take damage from an attack
    * @param {number} damage - Amount of damage to take
+   * @param {object} options - Additional options
    */
-  takeDamage(damage) {
+  takeDamage(damage, options = {}) {
     // Don't take damage if already dead
     if (this.currentState === "DEAD") {
       return;
@@ -626,9 +636,15 @@ class EnemyEntity {
       }
     }, 200);
 
-    // Play sword slash sound
+    // Play appropriate sound for the attack type
     if (this.soundManager) {
-      this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+      if (options && options.attackType === 'kick') {
+        // Play kick sound for kick attacks
+        this.soundManager.playSound('kickSound', { volume: 0.5 });
+      } else {
+        // Play sword slash sound for other attacks
+        this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+      }
     }
 
     // Check for death first - this takes highest priority
