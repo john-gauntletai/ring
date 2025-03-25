@@ -23,8 +23,6 @@ class DragonEntity {
     this.markAsLoopOnce(this.animations.attack.action);
     this.markAsLoopOnce(this.animations.down.action);
     this.markAsLoopOnce(this.animations.fire.action);
-    this.markAsLoopOnce(this.animations.roar.action);
-    this.markAsLoopOnce(this.animations.roar1.action);
     this.markAsLoopOnce(this.animations.stop.action);
   }
 

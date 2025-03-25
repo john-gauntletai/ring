@@ -711,8 +711,10 @@ class EnemyEntity {
       window.PLAYER.toggleLockOn(); // Call with no parameters to clear the lock-on
     }
     
-    // Show the "ENEMY FELLED" overlay
-    this.showEnemyFelledOverlay();
+    // Show the "ENEMY FELLED" overlay and play victory sound 1 second after death
+    setTimeout(() => {
+      this.showEnemyFelledOverlay();
+    }, 1000);
 
     // Play dragon roar sound 5 seconds after death
     setTimeout(() => {
@@ -765,6 +767,18 @@ class EnemyEntity {
       return;
     }
     
+    // Play victory sound at the same time as showing the overlay
+    if (this.soundManager) {
+      // Preload the victory sound if it wasn't already
+      if (!this.soundManager.sounds['victory']) {
+        this.soundManager.preloadSound('victory', '/assets/sounds/victory.mp3');
+      }
+      
+      // Play the victory sound
+      this.soundManager.playSound('victory', { volume: 0.1 });
+      console.log('Played victory sound with enemy felled overlay');
+    }
+    
     // Show the overlay with fade in
     enemyFelledOverlay.style.display = 'flex';
     // Trigger a reflow before setting opacity for the transition to work
@@ -779,14 +793,14 @@ class EnemyEntity {
       setTimeout(() => {
         enemyFelledOverlay.style.display = 'none';
         
-        // Play the "Well Done" sound 1 second after the overlay is fully hidden
+        // Play the "Well Done" sound 0.5 seconds after the overlay completes
         setTimeout(() => {
           this.playWellDoneSound();
-        }, 1000);
+        }, 500); // 0.5 seconds after the overlay is fully hidden
       }, 1500); // 1.5 seconds for fade-out transition
     }, 2500); // Display for 2.5 seconds before starting fade-out
   }
-  
+
   /**
    * Play the "Well Done" sound
    */
