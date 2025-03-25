@@ -12,7 +12,7 @@ class PlayerEntity {
     this.mixer = mixer;
     this.soundManager = soundManager;
 
-    this.runVelocity = 20;
+    this.runVelocity = 6
     this.lockedOnRunVelocity = 4.5;
     this.walkVelocity = 1.5;
     this.moveDirection = new THREE.Vector3();
