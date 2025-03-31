@@ -41,6 +41,7 @@
 			
 			.game-title {
 				font-size: 8rem;
+				text-align: center;
 				font-weight: bold;
 				margin-bottom: 8rem;
 				letter-spacing: 0.2rem;
@@ -950,6 +951,9 @@
 						pressAnyKey.style.display = 'none';
 						startButton.style.display = 'block';
 						firstKeyPressed = true;
+					} else if (videoScreen.style.display === 'flex') {
+						// Skip video if playing and clicked
+						skipVideo();
 					}
 				});
 				
