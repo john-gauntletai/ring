@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { TERRAIN_SIZE } from "../entities/_constants.js";
 
 // Constants for grass configuration
 const NUM_GRASS = 40 * 40; // Reduced blade count per patch for better performance
@@ -14,7 +15,6 @@ const GRASS_HEIGHT = 1; // Increased grass blade height from 0.9 to 1.1 for tall
 // More reasonable patch radius for performance while ensuring coverage
 const PATCH_RADIUS = 9; // Standard patch radius for areas in front of player
 const BEHIND_PATCH_RADIUS = 3; // Reduced patch radius for areas behind player
-const TERRAIN_SIZE = 150; // Match the terrain size for full coverage
 
 class GrassComponent {
   constructor(scene, playerObject) {

@@ -930,7 +930,7 @@
 					}
 				});
 				
-				// Listen for any key press on the start screen
+				// Listen for any key press or mouse click on the start screen
 				document.addEventListener('keydown', function(event) {
 					if (startScreen.style.display !== 'none' && !firstKeyPressed) {
 						pressAnyKey.style.display = 'none';
@@ -941,6 +941,15 @@
 					} else if (videoScreen.style.display === 'flex') {
 						// Skip video if playing and key is pressed
 						skipVideo();
+					}
+				});
+				
+				// Add click event listener for the start screen
+				document.addEventListener('click', function(event) {
+					if (startScreen.style.display !== 'none' && !firstKeyPressed) {
+						pressAnyKey.style.display = 'none';
+						startButton.style.display = 'block';
+						firstKeyPressed = true;
 					}
 				});
 				

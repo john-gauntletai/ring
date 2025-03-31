@@ -1,9 +1,6 @@
 import * as THREE from "three";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-import {
-  loadModel,
-  addResizeEventListeners,
-} from "./_lib/helpers.js";
+import { loadModel, addResizeEventListeners } from "./_lib/helpers.js";
 import PlayerEntity from "./entities/PlayerEntity.js";
 import EnemyEntity from "./entities/EnemyEntity.js";
 import DragonEntity from "./entities/DragonEntity.js";
@@ -15,6 +12,7 @@ import CombatManager from "./combat/CombatManager.js";
 import BossUI from "./components/BossUI.js";
 import PlayerUI from "./components/PlayerUI.js";
 import SoundManager from "./_lib/SoundManager.js";
+import { TERRAIN_SIZE } from "./entities/_constants.js";
 
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 
@@ -25,7 +23,6 @@ const soundManager = new SoundManager();
 window.SOUND_MANAGER = soundManager;
 
 const LOADING_MANAGER = new THREE.LoadingManager();
-const TERRAIN_SIZE = 150;
 
 LOADING_MANAGER.onProgress = (url, itemsLoaded, itemsTotal) => {
   // console.log(url, itemsLoaded, itemsTotal);
@@ -93,11 +90,11 @@ async function init() {
   renderer.toneMappingExposure = 0.7; // Reduced to make the scene darker overall
 
   // Add Stats (FPS meter)
-  // const stats = new Stats();
-  // stats.domElement.style.position = "absolute";
-  // stats.domElement.style.top = "0px";
-  // stats.domElement.style.left = "0px";
-  // document.body.appendChild(stats.domElement);
+  const stats = new Stats();
+  stats.domElement.style.position = "absolute";
+  stats.domElement.style.top = "0px";
+  stats.domElement.style.right = "0px";
+  document.body.appendChild(stats.domElement);
 
   document.body.appendChild(renderer.domElement);
 
@@ -129,10 +126,10 @@ async function init() {
     soundManager
   );
   window.PLAYER = PLAYER;
-  
+
   // Set the terrain reference for the player
   PLAYER.setTerrain(terrain);
-  
+
   const ENEMY = new EnemyEntity(
     goldenKnight.model,
     goldenKnight.animations,
@@ -163,7 +160,7 @@ async function init() {
   // Set references to combat manager in entities
   PLAYER.combatManager = combatManager;
   ENEMY.combatManager = combatManager;
-  
+
   // Set up enemy references for player collision detection
   PLAYER.setEnemies([ENEMY]);
 
@@ -187,7 +184,7 @@ async function init() {
   // Initialize Boss UI
   const bossUI = new BossUI();
   window.BOSS_UI = bossUI;
-  
+
   // Initialize Player UI
   const playerUI = new PlayerUI();
   window.PLAYER_UI = playerUI;
@@ -201,7 +198,8 @@ async function init() {
       PLAYER.slash();
     } else if (key === "i") {
       PLAYER.slash2();
-    } else if (key === "o") { // "o" or spacebar for roll
+    } else if (key === "o") {
+      // "o" or spacebar for roll
       PLAYER.roll();
     } else if (key === "j") {
       PLAYER.spinAttack();
@@ -231,7 +229,7 @@ async function init() {
   let logTimer = 0;
 
   function animate() {
-      // stats.begin();
+    stats.begin();
 
     const delta = clock.getDelta();
     logTimer += delta;
@@ -249,7 +247,7 @@ async function init() {
     if (window.BOSS_UI) {
       window.BOSS_UI.update();
     }
-    
+
     if (window.PLAYER_UI) {
       window.PLAYER_UI.update();
     }
@@ -262,7 +260,7 @@ async function init() {
     }
     grass.update(delta, CAMERA.camera, true);
     renderer.render(scene, CAMERA.camera);
-    // stats.end();
+    stats.end();
   }
 
   renderer.setAnimationLoop(animate);
