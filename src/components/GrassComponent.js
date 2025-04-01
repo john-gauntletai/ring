@@ -1,8 +1,8 @@
-import * as THREE from "three";
-import { TERRAIN_SIZE } from "../entities/_constants.js";
+import * as THREE from 'three';
+import { TERRAIN_SIZE } from '../entities/_constants.js';
 
 // Constants for grass configuration
-const NUM_GRASS = 40 * 40; // Reduced blade count per patch for better performance
+const NUM_GRASS = 25 * 25; // Reduced blade count per patch for better performance
 const GRASS_SEGMENTS_LOW = 1; // Low LOD segments
 const GRASS_SEGMENTS_HIGH = 4; // Reduced high LOD segments for better performance
 const GRASS_VERTICES_LOW = (GRASS_SEGMENTS_LOW + 1) * 2;
@@ -23,7 +23,7 @@ class GrassComponent {
 
     // Create container for all grass objects
     this.grassGroup = new THREE.Group();
-    this.grassGroup.name = "GRASS";
+    this.grassGroup.name = 'GRASS';
 
     // Initialize arrays for both LOD levels
     this.meshesLow = [];
@@ -220,14 +220,14 @@ class GrassComponent {
 
     // Set geometry attributes
     geometry.setAttribute(
-      "position",
+      'position',
       new THREE.Float32BufferAttribute(positions, 3)
     );
     geometry.setAttribute(
-      "normal",
+      'normal',
       new THREE.Float32BufferAttribute(normals, 3)
     );
-    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
 
     // Create instanced attributes for position, height, width, color, and randomness
@@ -297,36 +297,36 @@ class GrassComponent {
       if (colorType < 0.15) {
         // Pale hay-like grass - golden wheat tones (reduced from 20% to 15%)
         // Toned down red to reduce pink/orange appearance
-        instanceColors[i * 3] = 0.50 + Math.random() * 0.08; // R: 0.50-0.58 (reduced red)
+        instanceColors[i * 3] = 0.5 + Math.random() * 0.08; // R: 0.50-0.58 (reduced red)
         instanceColors[i * 3 + 1] = 0.47 + Math.random() * 0.12; // G: 0.47-0.59 (similar green)
-        instanceColors[i * 3 + 2] = 0.30 + Math.random() * 0.08; // B: 0.30-0.38 (increased blue)
-      } else if (colorType < 0.40) {
+        instanceColors[i * 3 + 2] = 0.3 + Math.random() * 0.08; // B: 0.30-0.38 (increased blue)
+      } else if (colorType < 0.4) {
         // Slightly greener hay - still dry but with hint of green (reduced from 25% to similar 25%)
         // Adjusted to be less pink
         instanceColors[i * 3] = 0.45 + Math.random() * 0.08; // R: 0.45-0.53 (reduced red)
-        instanceColors[i * 3 + 1] = 0.48 + Math.random() * 0.10; // G: 0.48-0.58 (similar green)
+        instanceColors[i * 3 + 1] = 0.48 + Math.random() * 0.1; // G: 0.48-0.58 (similar green)
         instanceColors[i * 3 + 2] = 0.25 + Math.random() * 0.08; // B: 0.25-0.33 (increased blue)
-      } else if (colorType < 0.70) {
+      } else if (colorType < 0.7) {
         // Pale dried grass - neutral straw tones (increased from 25% to 30%)
         // Made more neutral, less orange
         instanceColors[i * 3] = 0.52 + Math.random() * 0.08; // R: 0.52-0.60 (reduced red)
         instanceColors[i * 3 + 1] = 0.48 + Math.random() * 0.09; // G: 0.48-0.57 (similar)
         instanceColors[i * 3 + 2] = 0.35 + Math.random() * 0.08; // B: 0.35-0.43 (increased blue)
-      } else if (colorType < 0.90) {
+      } else if (colorType < 0.9) {
         // Light straw color - very pale yellow (increased from 15% to 20%)
-        instanceColors[i * 3] = 0.62 + Math.random() * 0.10; // R: 0.62-0.72 (slightly reduced)
-        instanceColors[i * 3 + 1] = 0.60 + Math.random() * 0.10; // G: 0.60-0.70 (same)
-        instanceColors[i * 3 + 2] = 0.45 + Math.random() * 0.10; // B: 0.45-0.55 (increased blue)
+        instanceColors[i * 3] = 0.62 + Math.random() * 0.1; // R: 0.62-0.72 (slightly reduced)
+        instanceColors[i * 3 + 1] = 0.6 + Math.random() * 0.1; // G: 0.60-0.70 (same)
+        instanceColors[i * 3 + 2] = 0.45 + Math.random() * 0.1; // B: 0.45-0.55 (increased blue)
       } else if (colorType < 0.95) {
         // Slightly darker dried grass - more amber tones (reduced from 12% to 5%)
         // Made less orange, more neutral brown
-        instanceColors[i * 3] = 0.40 + Math.random() * 0.08; // R: 0.40-0.48 (reduced red)
+        instanceColors[i * 3] = 0.4 + Math.random() * 0.08; // R: 0.40-0.48 (reduced red)
         instanceColors[i * 3 + 1] = 0.35 + Math.random() * 0.08; // G: 0.35-0.43 (similar)
         instanceColors[i * 3 + 2] = 0.22 + Math.random() * 0.07; // B: 0.22-0.29 (increased blue)
       } else {
         // Nearly white bleached hay (increased from 3% to 5%)
         instanceColors[i * 3] = 0.72 + Math.random() * 0.12; // R: 0.72-0.84 (slightly reduced)
-        instanceColors[i * 3 + 1] = 0.70 + Math.random() * 0.12; // G: 0.70-0.82 (slightly reduced)
+        instanceColors[i * 3 + 1] = 0.7 + Math.random() * 0.12; // G: 0.70-0.82 (slightly reduced)
         instanceColors[i * 3 + 2] = 0.65 + Math.random() * 0.12; // B: 0.65-0.77 (same)
       }
 
@@ -355,7 +355,8 @@ class GrassComponent {
       } else if (colorType < 0.75) {
         // Near boundary between different hay tones
         const transitionFactor = (colorType - 0.3) / 0.45; // 0-1.0 as we approach the boundary
-        const edgeBlend = (1.0 - Math.abs(transitionFactor - 0.5) * 2.0) * blendFactor;
+        const edgeBlend =
+          (1.0 - Math.abs(transitionFactor - 0.5) * 2.0) * blendFactor;
 
         // Blend colors based on transition factor - softer transitions
         instanceColors[i * 3] += edgeBlend * 0.05; // Slightly increase red
@@ -368,16 +369,16 @@ class GrassComponent {
         // Enhance contrast with distance from transition point - softer transitions
         if (colorType < 0.9) {
           // Moving toward amber tones
-          instanceColors[i * 3] -= edgeBlend * 0.10; // Decrease red
+          instanceColors[i * 3] -= edgeBlend * 0.1; // Decrease red
           instanceColors[i * 3 + 1] -= edgeBlend * 0.15; // Decrease green more
         } else {
           // Moving toward white bleached hay
-          instanceColors[i * 3] += edgeBlend * 0.10; // Increase red
-          instanceColors[i * 3 + 1] += edgeBlend * 0.10; // Increase green 
+          instanceColors[i * 3] += edgeBlend * 0.1; // Increase red
+          instanceColors[i * 3 + 1] += edgeBlend * 0.1; // Increase green
           instanceColors[i * 3 + 2] += edgeBlend * 0.15; // Increase blue more
         }
       }
-      
+
       // Add slight random variation to each color to further break up patterns
       instanceColors[i * 3] += (Math.random() - 0.5) * 0.04;
       instanceColors[i * 3 + 1] += (Math.random() - 0.5) * 0.04;
@@ -391,7 +392,7 @@ class GrassComponent {
       if (distFromCenter > 0.8) {
         // Only affect the very outer edges (reduced from 0.7 to 0.8)
         const edgeFactor = (distFromCenter - 0.8) / 0.2; // 0-1 scale for outer 20% (reduced from 30%)
-        
+
         // Use much subtler color adjustments that won't create a pink tint
         // Balance the RGB values to maintain the neutral white/bleached appearance
         instanceColors[i * 3] += edgeFactor * 0.02; // Minimal red adjustment (reduced from 0.05)
@@ -411,31 +412,31 @@ class GrassComponent {
 
     // Set instanced attributes
     geometry.setAttribute(
-      "instancePosition",
+      'instancePosition',
       new THREE.InstancedBufferAttribute(instancePositions, 3)
     );
     geometry.setAttribute(
-      "instanceHeight",
+      'instanceHeight',
       new THREE.InstancedBufferAttribute(instanceHeights, 1)
     );
     geometry.setAttribute(
-      "instanceWidth",
+      'instanceWidth',
       new THREE.InstancedBufferAttribute(instanceWidths, 1)
     );
     geometry.setAttribute(
-      "instanceColor",
+      'instanceColor',
       new THREE.InstancedBufferAttribute(instanceColors, 3)
     );
     geometry.setAttribute(
-      "instanceBend",
+      'instanceBend',
       new THREE.InstancedBufferAttribute(instanceBend, 1)
     );
     geometry.setAttribute(
-      "instanceRandom",
+      'instanceRandom',
       new THREE.InstancedBufferAttribute(instanceRandom, 1)
     );
     geometry.setAttribute(
-      "instanceDepth",
+      'instanceDepth',
       new THREE.InstancedBufferAttribute(instanceDepth, 1)
     );
 
@@ -1372,7 +1373,7 @@ class GrassComponent {
 
     // Format numbers with commas
     const formatNumber = (num) => {
-      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     };
 
     // Calculate percent change for patch count
@@ -1381,8 +1382,8 @@ class GrassComponent {
         ? (
             ((visiblePatchCount - this.lastPatchCount) / this.lastPatchCount) *
             100
-          ).toFixed(1) + "%"
-        : "N/A";
+          ).toFixed(1) + '%'
+        : 'N/A';
 
     // Calculate percent change for blade count
     const bladePercentChange =
@@ -1390,8 +1391,8 @@ class GrassComponent {
         ? (
             ((totalBlades - this.lastBladeCount) / this.lastBladeCount) *
             100
-          ).toFixed(1) + "%"
-        : "N/A";
+          ).toFixed(1) + '%'
+        : 'N/A';
 
     // Estimate memory usage (very rough approximation)
     // Each vertex has position (3), normal (3), uv (2) = 8 floats * 4 bytes = 32 bytes per vertex
@@ -1413,8 +1414,8 @@ class GrassComponent {
 
     // Create styled console output
     console.log(
-      "%c 🌿 GRASS RENDERING STATS 🌿 ",
-      "background: #2c3e50; color: #2ecc71; font-weight: bold; padding: 4px 0;"
+      '%c 🌿 GRASS RENDERING STATS 🌿 ',
+      'background: #2c3e50; color: #2ecc71; font-weight: bold; padding: 4px 0;'
     );
     console.log(
       `Patches: ${visiblePatchCount} of ${this.grassGroup.children.length} total patches: (${patchPercentChange} change) | ` +
