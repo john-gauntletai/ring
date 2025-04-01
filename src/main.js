@@ -1,20 +1,21 @@
-import * as THREE from "three";
-import Stats from "three/examples/jsm/libs/stats.module.js";
-import { loadModel, addResizeEventListeners } from "./_lib/helpers.js";
-import PlayerEntity from "./entities/PlayerEntity.js";
-import EnemyEntity from "./entities/EnemyEntity.js";
-import DragonEntity from "./entities/DragonEntity.js";
-import Camera from "./entities/Camera.js";
-import KEYS from "./_lib/keys";
-import GrassComponent from "./components/GrassComponent.js";
-import FlatTerrain from "./components/FlatTerrain.js";
-import CombatManager from "./combat/CombatManager.js";
-import BossUI from "./components/BossUI.js";
-import PlayerUI from "./components/PlayerUI.js";
-import SoundManager from "./_lib/SoundManager.js";
-import { TERRAIN_SIZE } from "./entities/_constants.js";
+import * as THREE from 'three';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
+import { loadModel, addResizeEventListeners } from './_lib/helpers.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { MathUtils, Vector3 } from 'three';
+import PlayerEntity from './entities/PlayerEntity.js';
+import EnemyEntity from './entities/EnemyEntity.js';
+import Camera from './entities/Camera.js';
+import KEYS from './_lib/keys';
+import GrassComponent from './components/GrassComponent.js';
+import FlatTerrain from './components/FlatTerrain.js';
+import CombatManager from './combat/CombatManager.js';
+import BossUI from './components/BossUI.js';
+import PlayerUI from './components/PlayerUI.js';
+import SoundManager from './_lib/SoundManager.js';
+import { TERRAIN_SIZE } from './entities/_constants.js';
 
-import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 window.GAME_STARTED = true;
 
@@ -29,7 +30,7 @@ LOADING_MANAGER.onProgress = (url, itemsLoaded, itemsTotal) => {
 };
 
 LOADING_MANAGER.onLoad = () => {
-  console.log("Loaded");
+  console.log('Loaded');
 };
 
 LOADING_MANAGER.onError = (url) => {
@@ -38,7 +39,7 @@ LOADING_MANAGER.onError = (url) => {
 
 async function generateHDR(scene) {
   const hdriLoader = new RGBELoader();
-  const texture = await hdriLoader.loadAsync("/assets/hdr/kingdom-sky.hdr");
+  const texture = await hdriLoader.loadAsync('/assets/hdr/kingdom-sky.hdr');
   texture.mapping = THREE.EquirectangularReflectionMapping;
   scene.background = texture;
   scene.environment = texture;
@@ -46,7 +47,7 @@ async function generateHDR(scene) {
 
 function generateLight(scene) {
   // Ambient Light: Reduced intensity for darker feel
-  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.5); // Reduced from 0.7 to 0.5
+  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.8); // Reduced from 0.7 to 0.5
   scene.add(ambientLight);
 
   // Directional Light: Maintain sun brightness but adjust color for contrast
@@ -79,6 +80,17 @@ async function init() {
   // Create scene
   const scene = new THREE.Scene();
 
+  const sky = new Sky();
+  sky.scale.setScalar(450000);
+
+  const phi = MathUtils.degToRad(90);
+  const theta = MathUtils.degToRad(180);
+  const sunPosition = new Vector3().setFromSphericalCoords(1, phi, theta);
+
+  sky.material.uniforms.sunPosition.value = sunPosition;
+
+  // scene.add(sky);
+
   // Set up renderer before generating terrain to ensure proper shader setup
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -91,16 +103,16 @@ async function init() {
 
   // Add Stats (FPS meter)
   const stats = new Stats();
-  stats.domElement.style.position = "absolute";
-  stats.domElement.style.top = "0px";
-  stats.domElement.style.right = "0px";
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.top = '0px';
+  stats.domElement.style.right = '0px';
   document.body.appendChild(stats.domElement);
 
   document.body.appendChild(renderer.domElement);
 
   // Set up scene lighting and environment
   generateLight(scene);
-  generateHDR(scene);
+  // generateHDR(scene);
 
   // Create a flat terrain
   const terrain = new FlatTerrain(TERRAIN_SIZE, 32);
@@ -108,16 +120,15 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, goldenKnight] = await Promise.all([
-    loadModel("/assets/models/austen2.glb", scene, LOADING_MANAGER),
-    loadModel(
-      "/assets/models/move golden knight-out2.glb",
-      scene,
-      LOADING_MANAGER
-    ),
-    // loadModel("/assets/models/lonely kingdom-compressed2.glb", scene, LOADING_MANAGER),
-    // loadModel("/assets/models/dragon-out.glb", scene),
+  const [player, dragonkin] = await Promise.all([
+    loadModel('/assets/models/austen2.glb', scene, LOADING_MANAGER),
+    loadModel('/assets/models/dragonkin.glb', scene, LOADING_MANAGER),
   ]);
+
+  if (dragonkin) {
+    dragonkin.model.scale.setScalar(0.2);
+    console.log(dragonkin.animations);
+  }
 
   const PLAYER = new PlayerEntity(
     player.model,
@@ -131,22 +142,13 @@ async function init() {
   PLAYER.setTerrain(terrain);
 
   const ENEMY = new EnemyEntity(
-    goldenKnight.model,
-    goldenKnight.animations,
-    goldenKnight.mixer,
+    dragonkin.model,
+    dragonkin.animations,
+    dragonkin.mixer,
     soundManager
   );
 
   window.ENEMY = ENEMY;
-
-  // const DRAGON = new DragonEntity(
-  //   dragon.model,
-  //   dragon.animations,
-  //   dragon.mixer,
-  //   soundManager
-  // );
-
-  // window.DRAGON = DRAGON;
 
   // Create camera
   window.CAMERA = new Camera(PLAYER, renderer);
@@ -165,11 +167,11 @@ async function init() {
   PLAYER.setEnemies([ENEMY]);
 
   // Enable debug mode with the ` (backtick) key
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "`") {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '`') {
       combatManager.setDebugMode(!combatManager.debugMode);
       console.log(
-        `Debug mode: ${combatManager.debugMode ? "enabled" : "disabled"}`
+        `Debug mode: ${combatManager.debugMode ? 'enabled' : 'disabled'}`
       );
     }
   });
@@ -179,7 +181,7 @@ async function init() {
   grass.init();
 
   // Position grass group at ground level
-  grass.grassGroup.position.y = 0;
+  // grass.grassGroup.position.y = 0;
 
   // Initialize Boss UI
   const bossUI = new BossUI();
@@ -189,36 +191,36 @@ async function init() {
   const playerUI = new PlayerUI();
   window.PLAYER_UI = playerUI;
 
-  window.addEventListener("keydown", (event) => {
+  window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     KEYS[key] = true;
 
     // Special key handling
-    if (key === "u") {
+    if (key === 'u') {
       PLAYER.slash();
-    } else if (key === "i") {
+    } else if (key === 'i') {
       PLAYER.slash2();
-    } else if (key === "o") {
+    } else if (key === 'o') {
       // "o" or spacebar for roll
       PLAYER.roll();
-    } else if (key === "j") {
+    } else if (key === 'j') {
       PLAYER.spinAttack();
-    } else if (key === "k") {
+    } else if (key === 'k') {
       PLAYER.kick();
-    } else if (key === "b") {
+    } else if (key === 'b') {
       PLAYER.block();
-    } else if (key === "l") {
+    } else if (key === 'l') {
       if (PLAYER.lockOnEntity === ENEMY) {
         PLAYER.toggleLockOn();
       } else {
         PLAYER.toggleLockOn(ENEMY);
       }
-    } else if (key === "p") {
+    } else if (key === 'p') {
       PLAYER.powerUp();
     }
   });
 
-  window.addEventListener("keyup", (event) => {
+  window.addEventListener('keyup', (event) => {
     const key = event.key.toLowerCase();
     KEYS[key] = false;
   });
@@ -234,10 +236,8 @@ async function init() {
     const delta = clock.getDelta();
     logTimer += delta;
     PLAYER.update(delta);
-    ENEMY.update(delta, PLAYER);
-    // if (DRAGON) {
-    //   DRAGON.update(delta);
-    // }
+    // ENEMY.update(delta, PLAYER);
+
     CAMERA.update(delta, PLAYER);
 
     // Update combat manager
@@ -266,4 +266,4 @@ async function init() {
   renderer.setAnimationLoop(animate);
 }
 
-window.addEventListener("DOMContentLoaded", init);
+window.addEventListener('DOMContentLoaded', init);
