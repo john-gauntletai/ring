@@ -64,6 +64,24 @@ function generateLight(scene) {
   fillLight.position.set(-30, 30, -20);
   scene.add(fillLight);
 
+  // Add player-specific light to ensure character visibility
+  const playerLight = new THREE.PointLight(0xffffff, 0.8, 20);
+  playerLight.position.set(0, 5, 0);
+  playerLight.castShadow = false;
+  scene.add(playerLight);
+
+  // Store the player light in scene's userData for later repositioning
+  scene.userData.playerLight = playerLight;
+
+  // Add enemy-specific light for better visibility
+  const enemyLight = new THREE.PointLight(0xffcc88, 1.0, 25);
+  enemyLight.position.set(0, 5, 0);
+  enemyLight.castShadow = false;
+  scene.add(enemyLight);
+
+  // Store the enemy light in scene's userData for later repositioning
+  scene.userData.enemyLight = enemyLight;
+
   // Add a ground-reflecting light to brighten the terrain
   const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.35); // Increased from 0.35 to 0.4
   scene.add(groundLight);
@@ -107,7 +125,6 @@ async function init() {
 
   // Set up scene lighting and environment
   generateLight(scene);
-  // generateHDR(scene);
 
   // Create a flat terrain
   const terrain = new FlatTerrain(TERRAIN_SIZE, 32);
@@ -253,6 +270,12 @@ async function init() {
     if (scene.userData.playerLight) {
       scene.userData.playerLight.position.copy(PLAYER.model.position);
       scene.userData.playerLight.position.y += 5; // Position light above player
+    }
+
+    // Update enemy light position to follow enemy
+    if (scene.userData.enemyLight && ENEMY) {
+      scene.userData.enemyLight.position.copy(ENEMY.model.position);
+      scene.userData.enemyLight.position.y += 6; // Position light above enemy (slightly higher than player light)
     }
 
     const shouldLog = logTimer > 10.0;

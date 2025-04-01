@@ -15,13 +15,14 @@ class EnemyEntity {
     this.data = {
       health: 300,
       maxHealth: 300,
-      name: 'Golden Guard of the King',
+      name: 'Adult Warwulf',
       isHostile: false,
       detectionRadius: 20,
       attackRange: 3,
       attackDamage: 15,
       attackCooldown: 1.0,
-      velocity: 5.5,
+      velocity: 6,
+      dashVelocity: 10,
     };
 
     // State management
@@ -126,7 +127,8 @@ class EnemyEntity {
     // Initialize animations if available
     this.setupAnimations();
 
-    console.log('Golden Knight initialized at position:', this.model.position);
+    // Make the enemy model brighter by adjusting material properties
+    this.brightenEnemyModel();
   }
 
   /**
@@ -1278,6 +1280,58 @@ class EnemyEntity {
         soundFileName
       );
     }
+  }
+
+  /**
+   * Make the enemy model brighter by adjusting material properties
+   */
+  brightenEnemyModel() {
+    // Traverse all meshes in the model
+    this.model.traverse((child) => {
+      if (child.isMesh && child.material) {
+        // Handle case where material might be an array
+        const materials = Array.isArray(child.material)
+          ? child.material
+          : [child.material];
+
+        materials.forEach((material) => {
+          // Increase emissive to make the model appear brighter
+          if (material.emissive) {
+            // Add emissive glow
+            material.emissive.set(0x333333);
+          }
+
+          // Increase material color brightness if it exists
+          if (material.color) {
+            // Get current HSL values
+            const hsl = { h: 0, s: 0, l: 0 };
+            material.color.getHSL(hsl);
+
+            // Increase lightness by 25%, capped at 0.95 to avoid pure white
+            hsl.l = Math.min(hsl.l * 1.25, 0.95);
+
+            // Apply the new lightness
+            material.color.setHSL(hsl.h, hsl.s, hsl.l);
+          }
+
+          // Adjust other material properties for better visibility
+          if (material.roughness !== undefined) {
+            // Decrease roughness for more specularity
+            material.roughness = Math.max(material.roughness * 0.8, 0.2);
+          }
+
+          if (material.metalness !== undefined) {
+            // Increase metalness slightly for more reflectivity
+            material.metalness = Math.min(material.metalness + 0.15, 1.0);
+          }
+
+          // Ensure material is updated
+          material.needsUpdate = true;
+        });
+      }
+    });
+
+    console.log('Enemy model brightened');
   }
 }
 
