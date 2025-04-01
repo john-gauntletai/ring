@@ -2,11 +2,10 @@ import * as THREE from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {
   loadModel,
+  loadMutantModel,
   addResizeEventListeners,
   applyEnvMapToModel,
 } from './_lib/helpers.js';
-import { Sky } from 'three/addons/objects/Sky.js';
-import { MathUtils, Vector3 } from 'three';
 import PlayerEntity from './entities/PlayerEntity.js';
 import EnemyEntity from './entities/EnemyEntity.js';
 import Camera from './entities/Camera.js';
@@ -18,8 +17,6 @@ import BossUI from './components/BossUI.js';
 import PlayerUI from './components/PlayerUI.js';
 import SoundManager from './_lib/SoundManager.js';
 import { TERRAIN_SIZE } from './entities/_constants.js';
-
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 window.GAME_STARTED = true;
 
@@ -121,7 +118,9 @@ async function init() {
   const [player, enemy] = await Promise.all([
     // loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
     loadModel('/assets/models/austen2.glb', scene, LOADING_MANAGER),
-    loadModel('/assets/models/new archer.glb', scene, LOADING_MANAGER),
+    // loadModel('/assets/models/new archer.glb', scene, LOADING_MANAGER),
+    // loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
+    loadMutantModel(scene, LOADING_MANAGER),
   ]);
 
   if (enemy) {

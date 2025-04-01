@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from 'three';
 
 /**
  * EnemyEntity class for managing enemy behavior
@@ -10,22 +10,22 @@ class EnemyEntity {
     this.animations = animations;
     this.mixer = mixer;
     this.soundManager = soundManager;
-    console.log("Golden Knight animations:", this.animations);
+    console.log('Enemy animations:', this.animations);
     // Enemy data based on COMBAT_TODO.md
     this.data = {
       health: 300,
       maxHealth: 300,
-      name: "Golden Guard of the King",
+      name: 'Golden Guard of the King',
       isHostile: false,
       detectionRadius: 20,
       attackRange: 3,
       attackDamage: 15,
       attackCooldown: 1.0,
-      velocity: 1.8,
+      velocity: 5.5,
     };
 
     // State management
-    this.currentState = "IDLE"; // IDLE, AWARE, CHASE, ATTACK, STAGGERED, DEAD
+    this.currentState = 'IDLE'; // IDLE, AWARE, CHASE, ATTACK, STAGGERED, DEAD
     this.targetEntity = null;
 
     // Combat properties
@@ -36,13 +36,13 @@ class EnemyEntity {
     this.attackCallbackSet = false;
     // this.availableAttacks = ["comboAttack", "slash", "kick", "spinAttack", "jumpAttack"];
     this.availableAttacks = [
-      "comboAttack",
-      "spinAttack",
-      "jumpAttack",
-      "slash",
-      "kick",
+      'comboAttack',
+      'spinAttack',
+      'jumpAttack',
+      'slash',
+      'kick',
     ];
-    this.currentAttackType = "comboAttack"; // Default attack
+    this.currentAttackType = 'comboAttack'; // Default attack
 
     // Animation properties
     this.currentAction = null;
@@ -126,7 +126,7 @@ class EnemyEntity {
     // Initialize animations if available
     this.setupAnimations();
 
-    console.log("Golden Knight initialized at position:", this.model.position);
+    console.log('Golden Knight initialized at position:', this.model.position);
   }
 
   /**
@@ -134,7 +134,7 @@ class EnemyEntity {
    */
   setupAnimations() {
     if (!this.animations) {
-      console.warn("No animations available for Golden Knight");
+      console.warn('No animations available for Golden Knight');
       return;
     }
 
@@ -145,13 +145,13 @@ class EnemyEntity {
         // Set loop mode based on animation type
         if (
           [
-            "comboAttack",
-            "slash",
-            "kick",
-            "spinAttack",
-            "jumpAttack",
-            "impact",
-            "death",
+            'comboAttack',
+            'slash',
+            'kick',
+            'spinAttack',
+            'jumpAttack',
+            'impact',
+            'death',
           ].includes(animationName)
         ) {
           animationData.action.loop = THREE.LoopOnce;
@@ -166,7 +166,7 @@ class EnemyEntity {
     this.setupAnimationCallbacks();
 
     // Start with idle animation
-    this.playAnimation("idle");
+    this.playAnimation('idle');
   }
 
   /**
@@ -175,11 +175,11 @@ class EnemyEntity {
   setupAnimationCallbacks() {
     // Set up callbacks for all attack animations
     const attackTypes = [
-      "comboAttack",
-      "slash",
-      "kick",
-      "spinAttack",
-      "jumpAttack",
+      'comboAttack',
+      'slash',
+      'kick',
+      'spinAttack',
+      'jumpAttack',
     ];
 
     // Create a bound callback to handle animation completion
@@ -194,7 +194,7 @@ class EnemyEntity {
           console.log(`Enemy ${attackType} animation finished`);
 
           // Log final position for combo attack
-          if (attackType === "comboAttack" && this.attackStartPosition) {
+          if (attackType === 'comboAttack' && this.attackStartPosition) {
             // Store current position to prevent any teleporting
             const finalPosition = this.model.position.clone();
 
@@ -213,8 +213,8 @@ class EnemyEntity {
           this.attackCooldown = this.data.attackCooldown;
 
           // Return to idle animation
-          if (this.currentState === "ATTACK") {
-            this.playAnimation("idle");
+          if (this.currentState === 'ATTACK') {
+            this.playAnimation('idle');
           }
           break;
         }
@@ -229,12 +229,12 @@ class EnemyEntity {
         // Remove any existing listeners to avoid duplicates
         attackAction
           .getMixer()
-          .removeEventListener("finished", this.onAttackFinished);
+          .removeEventListener('finished', this.onAttackFinished);
 
         // Add the event listener to the mixer
         attackAction
           .getMixer()
-          .addEventListener("finished", this.onAttackFinished);
+          .addEventListener('finished', this.onAttackFinished);
 
         // Set up non-looping for attack animations with clampWhenFinished
         // This ensures the animation completes and holds its final frame
@@ -257,7 +257,7 @@ class EnemyEntity {
     }
 
     // Skip further updates if dead
-    if (this.currentState === "DEAD") {
+    if (this.currentState === 'DEAD') {
       return;
     }
 
@@ -265,7 +265,7 @@ class EnemyEntity {
     this.targetEntity = player;
 
     // If player is dead, return to idle state
-    if (player && player.currentState === "DEAD") {
+    if (player && player.currentState === 'DEAD') {
       // Stop any ongoing movement sounds
       if (this.isMoving) {
         this.stopMovementSound();
@@ -275,7 +275,7 @@ class EnemyEntity {
 
       // Reset hostility and return to idle state
       this.data.isHostile = false;
-      this.setState("IDLE");
+      this.setState('IDLE');
       return;
     }
 
@@ -293,7 +293,7 @@ class EnemyEntity {
     }
 
     // If the current state is not CHASE and we're still playing movement sounds, stop them
-    if (this.currentState !== "CHASE" && this.isMoving) {
+    if (this.currentState !== 'CHASE' && this.isMoving) {
       this.stopMovementSound();
       this.isMoving = false;
       this.currentMovementType = null;
@@ -307,43 +307,43 @@ class EnemyEntity {
    */
   updateStateBehavior(delta, distanceToPlayer) {
     switch (this.currentState) {
-      case "IDLE":
+      case 'IDLE':
         // Just idle
-        this.playAnimation("idle");
+        this.playAnimation('idle');
         break;
 
-      case "AWARE":
+      case 'AWARE':
         // Aware but not yet chasing - face player and prepare
         this.faceTarget();
-        this.playAnimation("idle");
-        this.setState("CHASE");
+        this.playAnimation('idle');
+        this.setState('CHASE');
         break;
 
-      case "CHASE":
+      case 'CHASE':
         // Chase the player
         this.moveTowardsPlayer(delta);
 
         // If close enough to attack
         if (distanceToPlayer <= this.data.attackRange) {
-          this.setState("ATTACK");
+          this.setState('ATTACK');
         }
         break;
 
-      case "ATTACK":
+      case 'ATTACK':
         // Attack the player
         this.attack(delta);
         break;
 
-      case "STAGGERED":
+      case 'STAGGERED':
         // Already handled in takeDamage
         break;
 
-      case "DEAD":
+      case 'DEAD':
         // Already handled in die
         break;
 
       default:
-        this.setState("IDLE");
+        this.setState('IDLE');
         break;
     }
   }
@@ -371,7 +371,7 @@ class EnemyEntity {
     this.model.rotation.y = targetAngle;
 
     // Play run/chase animation and update movement sounds
-    this.playAnimation("walk");
+    this.playAnimation('run');
     this.updateMovementSound();
   }
 
@@ -387,7 +387,7 @@ class EnemyEntity {
       this.triggerBossUI();
 
       // Transition to aware state first
-      this.setState("AWARE");
+      this.setState('AWARE');
     }
   }
 
@@ -403,12 +403,12 @@ class EnemyEntity {
 
     // Additional state transition logic can be added here
     switch (newState) {
-      case "ATTACK":
+      case 'ATTACK':
         // Reset attack cooldown when entering attack state
         this.attackCooldown = 0;
         break;
 
-      case "AWARE":
+      case 'AWARE':
         // Start boss battle music when becoming aware of player
         this.startBossBattleMusic();
         break;
@@ -423,14 +423,14 @@ class EnemyEntity {
   startBossBattleMusic() {
     if (this.soundManager && !this.isBossMusicPlaying) {
       // Preload the boss battle music if it wasn't already
-      if (!this.soundManager.sounds["bossBattleMusic"]) {
+      if (!this.soundManager.sounds['bossBattleMusic']) {
         this.soundManager.preloadSound(
-          "bossBattleMusic",
-          "/assets/sounds/bossBattleMusic.mp3"
+          'bossBattleMusic',
+          '/assets/sounds/bossBattleMusic.mp3'
         );
       }
 
-      console.log("Preparing boss battle music, starting in 3 seconds...");
+      console.log('Preparing boss battle music, starting in 3 seconds...');
 
       // Set a flag to prevent multiple timeouts
       this.isBossMusicPreparing = true;
@@ -438,10 +438,10 @@ class EnemyEntity {
       // Wait 3 seconds before starting the boss battle music
       setTimeout(() => {
         // Start the boss battle music loop
-        this.soundManager.startLoop("bossBattleMusic", { volume: 0.05 });
+        this.soundManager.startLoop('bossBattleMusic', { volume: 0.05 });
         this.isBossMusicPlaying = true;
         this.isBossMusicPreparing = false;
-        console.log("Started boss battle music after delay");
+        console.log('Started boss battle music after delay');
 
         // Add a listener for player death to stop the music
         this.playerDeathListener = (event) => {
@@ -451,7 +451,7 @@ class EnemyEntity {
         };
 
         // Listen for the player_died event that would be dispatched by the player entity
-        document.addEventListener("player_died", this.playerDeathListener);
+        document.addEventListener('player_died', this.playerDeathListener);
       }, 3000); // 3-second delay
     }
   }
@@ -461,9 +461,9 @@ class EnemyEntity {
    */
   stopBossBattleMusic() {
     if (this.soundManager && this.isBossMusicPlaying) {
-      this.soundManager.stopLoop("bossBattleMusic");
+      this.soundManager.stopLoop('bossBattleMusic');
       this.isBossMusicPlaying = false;
-      console.log("Stopped boss battle music");
+      console.log('Stopped boss battle music');
 
       // Play victory sound 1 second after the battle music ends
       setTimeout(() => {
@@ -472,7 +472,7 @@ class EnemyEntity {
 
       // Remove the player death event listener
       if (this.playerDeathListener) {
-        document.removeEventListener("player_died", this.playerDeathListener);
+        document.removeEventListener('player_died', this.playerDeathListener);
         this.playerDeathListener = null;
       }
     }
@@ -484,13 +484,13 @@ class EnemyEntity {
   playVictorySound() {
     if (this.soundManager) {
       // Preload the victory sound if it wasn't already
-      if (!this.soundManager.sounds["victory"]) {
-        this.soundManager.preloadSound("victory", "/assets/sounds/victory.mp3");
+      if (!this.soundManager.sounds['victory']) {
+        this.soundManager.preloadSound('victory', '/assets/sounds/victory.mp3');
       }
 
       // Play the victory sound
-      this.soundManager.playSound("victory", { volume: 0.1 });
-      console.log("Played victory sound");
+      this.soundManager.playSound('victory', { volume: 0.1 });
+      console.log('Played victory sound');
     }
   }
 
@@ -509,7 +509,7 @@ class EnemyEntity {
     const newAction = this.animations[name].action;
 
     // For movement sound management
-    const isWalkingAnimation = name === "walk";
+    const isRunningAnimation = name === 'run';
 
     if (this.currentAction === newAction) return;
 
@@ -517,14 +517,14 @@ class EnemyEntity {
     if (
       this.currentAction &&
       this.currentAction === this.animations.death?.action &&
-      name !== "death"
+      name !== 'death'
     ) {
-      console.log("Death animation cannot be interrupted");
+      console.log('Death animation cannot be interrupted');
       return;
     }
 
     // Set special priorities for certain animations
-    if (name === "death") {
+    if (name === 'death') {
       // Death animation gets highest priority (3.0)
       priority = 3.0;
     }
@@ -536,7 +536,7 @@ class EnemyEntity {
     if (
       priority < 2.0 &&
       this.isAttacking &&
-      !["comboAttack", "slash", "kick", "spinAttack", "jumpAttack"].includes(
+      !['comboAttack', 'slash', 'kick', 'spinAttack', 'jumpAttack'].includes(
         name
       )
     ) {
@@ -562,13 +562,13 @@ class EnemyEntity {
     // For attack animations, ensure they complete
     if (
       [
-        "comboAttack",
-        "slash",
-        "kick",
-        "spinAttack",
-        "jumpAttack",
-        "impact",
-        "death",
+        'comboAttack',
+        'slash',
+        'kick',
+        'spinAttack',
+        'jumpAttack',
+        'impact',
+        'death',
       ].includes(name)
     ) {
       newAction.enabled = true;
@@ -578,10 +578,10 @@ class EnemyEntity {
     }
 
     // Handle movement sounds
-    if (isWalkingAnimation) {
-      this.startMovementSound("walk");
+    if (isRunningAnimation) {
+      this.startMovementSound('run');
       this.isMoving = true;
-      this.currentMovementType = "walk";
+      this.currentMovementType = 'run';
     } else if (this.isMoving) {
       this.stopMovementSound();
       this.isMoving = false;
@@ -629,7 +629,7 @@ class EnemyEntity {
    */
   takeDamage(damage, options = {}) {
     // Don't take damage if already dead
-    if (this.currentState === "DEAD") {
+    if (this.currentState === 'DEAD') {
       return;
     }
 
@@ -641,7 +641,7 @@ class EnemyEntity {
 
     // Update boss health UI
     document.dispatchEvent(
-      new CustomEvent("boss_health_changed", {
+      new CustomEvent('boss_health_changed', {
         detail: {
           name: this.data.name,
           health: this.data.health,
@@ -653,16 +653,16 @@ class EnemyEntity {
     // Visual feedback
     this.model.material = this.materials.damaged;
     setTimeout(() => {
-      if (this.currentState !== "DEAD") {
+      if (this.currentState !== 'DEAD') {
         this.model.material = this.materials.default;
       }
     }, 200);
 
     // Play appropriate sound for the attack type
     if (this.soundManager) {
-      if (options && options.attackType === "kick") {
+      if (options && options.attackType === 'kick') {
         // Play kick sound for kick attacks
-        this.soundManager.playSound("kickSound", { volume: 0.5 });
+        this.soundManager.playSound('kickSound', { volume: 0.5 });
       } else {
         // Play sword slash sound for other attacks
         this.soundManager.playRandomSwordSlash({ volume: 0.4 });
@@ -682,16 +682,16 @@ class EnemyEntity {
     this.currentAttackType = null;
 
     // Interrupt current animation and force play the impact animation with high priority
-    this.playAnimation("impact", 0.1, 2.0); // Fast crossfade (0.1s) and high priority (2.0)
+    this.playAnimation('impact', 0.1, 2.0); // Fast crossfade (0.1s) and high priority (2.0)
 
     // Get staggered only if damage is significant
     if (damage >= 20) {
-      this.setState("STAGGERED");
+      this.setState('STAGGERED');
 
       // Return to chase after stagger time
       setTimeout(() => {
-        if (this.currentState === "STAGGERED") {
-          this.setState("CHASE");
+        if (this.currentState === 'STAGGERED') {
+          this.setState('CHASE');
         }
       }, 1000);
     } else {
@@ -704,7 +704,7 @@ class EnemyEntity {
    * Die and clean up
    */
   die() {
-    this.setState("DEAD");
+    this.setState('DEAD');
 
     // Stop boss battle music when enemy dies
     this.stopBossBattleMusic();
@@ -715,12 +715,12 @@ class EnemyEntity {
 
     // Play death animation with highest priority
     // The priority is set to 3.0 in the playAnimation method
-    this.playAnimation("death", 0.2, 3.0);
+    this.playAnimation('death', 0.2, 3.0);
 
     // Change material to indicate death
     this.model.material = this.materials.dead;
 
-    console.log("Enemy died");
+    console.log('Enemy died');
 
     // Disable detection sphere
     if (this.detectionSphere) {
@@ -729,7 +729,7 @@ class EnemyEntity {
 
     // Check if this enemy is the player's lockOnEntity, and if so, toggle it off
     if (window.PLAYER && window.PLAYER.lockOnEntity === this) {
-      console.log("Removing lock-on from dying enemy");
+      console.log('Removing lock-on from dying enemy');
       window.PLAYER.toggleLockOn(); // Call with no parameters to clear the lock-on
     }
 
@@ -767,13 +767,13 @@ class EnemyEntity {
     setTimeout(() => {
       // Dispatch custom event to hide the UI
       document.dispatchEvent(
-        new CustomEvent("boss_defeated", {
+        new CustomEvent('boss_defeated', {
           detail: {
             name: this.data.name,
           },
         })
       );
-      console.log("Boss UI hidden after death");
+      console.log('Boss UI hidden after death');
     }, 3000);
   }
 
@@ -782,37 +782,37 @@ class EnemyEntity {
    */
   showEnemyFelledOverlay() {
     // Get the enemy felled overlay element
-    const enemyFelledOverlay = document.getElementById("enemy-felled-overlay");
+    const enemyFelledOverlay = document.getElementById('enemy-felled-overlay');
     if (!enemyFelledOverlay) {
-      console.warn("Enemy felled overlay element not found");
+      console.warn('Enemy felled overlay element not found');
       return;
     }
 
     // Play victory sound at the same time as showing the overlay
     if (this.soundManager) {
       // Preload the victory sound if it wasn't already
-      if (!this.soundManager.sounds["victory"]) {
-        this.soundManager.preloadSound("victory", "/assets/sounds/victory.mp3");
+      if (!this.soundManager.sounds['victory']) {
+        this.soundManager.preloadSound('victory', '/assets/sounds/victory.mp3');
       }
 
       // Play the victory sound
-      this.soundManager.playSound("victory", { volume: 0.2 });
-      console.log("Played victory sound with enemy felled overlay");
+      this.soundManager.playSound('victory', { volume: 0.2 });
+      console.log('Played victory sound with enemy felled overlay');
     }
 
     // Show the overlay with fade in
-    enemyFelledOverlay.style.display = "flex";
+    enemyFelledOverlay.style.display = 'flex';
     // Trigger a reflow before setting opacity for the transition to work
     enemyFelledOverlay.offsetHeight;
     // Make the overlay visible with transition
-    enemyFelledOverlay.style.opacity = "1";
+    enemyFelledOverlay.style.opacity = '1';
 
     // Hide the overlay after 4 seconds
     setTimeout(() => {
-      enemyFelledOverlay.style.opacity = "0";
+      enemyFelledOverlay.style.opacity = '0';
       // Wait for the fade-out transition to complete before hiding the element
       setTimeout(() => {
-        enemyFelledOverlay.style.display = "none";
+        enemyFelledOverlay.style.display = 'none';
 
         // Play the "Well Done" sound 0.5 seconds after the overlay completes
         setTimeout(() => {
@@ -828,16 +828,16 @@ class EnemyEntity {
   playWellDoneSound() {
     if (this.soundManager) {
       // Preload the well done sound if it wasn't already
-      if (!this.soundManager.sounds["wellDone"]) {
+      if (!this.soundManager.sounds['wellDone']) {
         this.soundManager.preloadSound(
-          "wellDone",
-          "/assets/sounds/wellDone.mp3"
+          'wellDone',
+          '/assets/sounds/wellDone.mp3'
         );
       }
 
       // Play the well done sound
-      this.soundManager.playSound("wellDone", { volume: 0.5 });
-      console.log("Played well done sound");
+      this.soundManager.playSound('wellDone', { volume: 0.5 });
+      console.log('Played well done sound');
     }
   }
 
@@ -846,10 +846,10 @@ class EnemyEntity {
    */
   triggerBossUI() {
     // This will be implemented in UI task
-    console.log("Boss health bar should appear now");
+    console.log('Boss health bar should appear now');
     // Create a custom event for the UI system to handle
     document.dispatchEvent(
-      new CustomEvent("boss_detected", {
+      new CustomEvent('boss_detected', {
         detail: {
           name: this.data.name,
           health: this.data.health,
@@ -906,7 +906,7 @@ class EnemyEntity {
     }
 
     console.log(
-      `Enemy debug visualization ${enabled ? "enabled" : "disabled"}`
+      `Enemy debug visualization ${enabled ? 'enabled' : 'disabled'}`
     );
   }
 
@@ -973,7 +973,7 @@ class EnemyEntity {
       this.targetEntity.model.position
     );
     if (distance > this.data.attackRange) {
-      this.setState("CHASE");
+      this.setState('CHASE');
       return;
     }
 
@@ -1009,7 +1009,7 @@ class EnemyEntity {
         console.log(`Enemy using ${this.currentAttackType} attack`);
 
         // Log starting position for combo attack
-        if (this.currentAttackType === "comboAttack") {
+        if (this.currentAttackType === 'comboAttack') {
           console.log(
             `ComboAttack START position: (${this.model.position.x.toFixed(
               2
@@ -1024,7 +1024,7 @@ class EnemyEntity {
 
         // For comboAttack, reset the animation time to ensure consistent movement
         if (
-          this.currentAttackType === "comboAttack" &&
+          this.currentAttackType === 'comboAttack' &&
           this.animations.comboAttack
         ) {
           this.animations.comboAttack.action.time = 0;
@@ -1041,30 +1041,30 @@ class EnemyEntity {
 
           // Customize hitbox based on attack type
           switch (this.currentAttackType) {
-            case "slash":
+            case 'slash':
               hitboxOffset = new THREE.Vector3(0, 1, -1.7);
               hitboxSize = new THREE.Vector3(1.5, 1, 1.2);
               break;
-            case "kick":
+            case 'kick':
               hitboxDelay = 300;
               hitboxOffset = new THREE.Vector3(0, 0.5, -1.5);
               hitboxSize = new THREE.Vector3(1, 0.7, 1.5);
               damage = Math.floor(this.data.attackDamage * 0.8); // Kick does less damage
               knockback = 1.5; // But more knockback
               break;
-            case "spinAttack":
+            case 'spinAttack':
               hitboxDelay = 500;
               hitboxOffset = new THREE.Vector3(0, 1, 0);
               hitboxSize = new THREE.Vector3(2.5, 1, 2.5); // Wider area
               damage = Math.floor(this.data.attackDamage * 1.2); // More damage for spin attack
               break;
-            case "jumpAttack":
+            case 'jumpAttack':
               hitboxDelay = 700; // Longer delay for jump attack
               hitboxOffset = new THREE.Vector3(0, 0.5, -2);
               hitboxSize = new THREE.Vector3(1.8, 1, 1.8);
               damage = Math.floor(this.data.attackDamage * 1.5); // Jump attack does more damage
               break;
-            case "comboAttack":
+            case 'comboAttack':
               // For combo attack, adjust the hitbox to be slightly in front since the enemy moves
               hitboxOffset = new THREE.Vector3(0, 1, -5);
               hitboxSize = new THREE.Vector3(2, 1, 5); // Longer hitbox to account for increased movement
@@ -1074,7 +1074,7 @@ class EnemyEntity {
 
           setTimeout(() => {
             // Only create hitbox if still in attack state
-            if (this.currentState === "ATTACK" && this.isAttacking) {
+            if (this.currentState === 'ATTACK' && this.isAttacking) {
               this.combatManager.createHitbox(
                 this.model,
                 hitboxOffset,
@@ -1097,7 +1097,7 @@ class EnemyEntity {
         }
       } else {
         // Fallback if no valid attacks
-        console.warn("No valid attack animations available");
+        console.warn('No valid attack animations available');
         this.isAttacking = false;
       }
     } else {
@@ -1112,16 +1112,16 @@ class EnemyEntity {
   playDragonRoarSound() {
     if (this.soundManager) {
       // Preload the dragon roar sound if it wasn't already
-      if (!this.soundManager.sounds["dragonRoar"]) {
+      if (!this.soundManager.sounds['dragonRoar']) {
         this.soundManager.preloadSound(
-          "dragonRoar",
-          "/assets/sounds/dragon roar.mp3"
+          'dragonRoar',
+          '/assets/sounds/dragon roar.mp3'
         );
       }
 
       // Play the dragon roar sound
-      this.soundManager.playSound("dragonRoar", { volume: 0.7 });
-      console.log("Played dragon roar sound");
+      this.soundManager.playSound('dragonRoar', { volume: 0.7 });
+      console.log('Played dragon roar sound');
     }
   }
 
@@ -1136,13 +1136,13 @@ class EnemyEntity {
 
     if (!dragon) {
       console.warn(
-        "Dragon entity not found, cannot play animation:",
+        'Dragon entity not found, cannot play animation:',
         animationName
       );
       return;
     }
 
-    console.log("Dragon entity found:", dragon);
+    console.log('Dragon entity found:', dragon);
 
     // Play dragon animation
     if (dragon.animations && dragon.animations[animationName]) {
@@ -1152,14 +1152,14 @@ class EnemyEntity {
       console.log(`Playing dragon ${animationName} animation`);
 
       // Special case for 'down' animation - land the dragon
-      if (animationName === "down") {
+      if (animationName === 'down') {
         console.log(
           "Dragon 'down' animation started, will handle landing sequence"
         );
 
         // Record initial position
         const initialPosition = dragon.model.position.clone();
-        console.log("Initial dragon position:", initialPosition);
+        console.log('Initial dragon position:', initialPosition);
 
         // 1. Let animation play for a bit (0.5 seconds)
         setTimeout(() => {
@@ -1199,14 +1199,14 @@ class EnemyEntity {
               newPosition.z
             );
             console.log(
-              "Dragon positioned at ground level:",
+              'Dragon positioned at ground level:',
               dragon.model.position
             );
 
             // 7. Apply the position directly to all child meshes as well
             if (dragon.model.children && dragon.model.children.length > 0) {
               console.log(
-                "Adjusting all child elements to match new parent position"
+                'Adjusting all child elements to match new parent position'
               );
               dragon.model.updateMatrixWorld(true); // Update the world matrix
             }
@@ -1215,14 +1215,14 @@ class EnemyEntity {
             if (window.SCENE) {
               // Create dust effect or ground impact visuals
               console.log(
-                "Would add landing impact effect here if implemented"
+                'Would add landing impact effect here if implemented'
               );
             }
 
             // 9. Record that we've landed the dragon
             dragon.hasLanded = true;
           } catch (error) {
-            console.error("Error during dragon landing sequence:", error);
+            console.error('Error during dragon landing sequence:', error);
           }
         }, 500); // 0.5 seconds delay before stopping animation
 
@@ -1274,7 +1274,7 @@ class EnemyEntity {
       console.log(`Playing dragon sound: ${soundFileName}`);
     } else {
       console.warn(
-        "Sound manager not available, cannot play sound:",
+        'Sound manager not available, cannot play sound:',
         soundFileName
       );
     }

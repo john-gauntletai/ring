@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
@@ -57,6 +58,10 @@ export const applyEnvMapToModel = (model, envMap) => {
 };
 
 export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
+  if (filePath.slice(-4) === '.fbx') {
+    return loadFbxModel(filePath, scene, LOADING_MANAGER);
+  }
+
   const animations = {};
 
   const loader = new GLTFLoader(LOADING_MANAGER);
@@ -88,7 +93,7 @@ export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
     gltfData.animations.forEach((animation) => {
       const action = mixer.clipAction(animation);
 
-      animations[animation.name.replace('Mon_BlackDragon31_', '')] = {
+      animations[animation.name] = {
         action,
         clip: animation,
       };
@@ -102,106 +107,48 @@ export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
   };
 };
 
-// Remove all meshes in bottom half of the kingdom model
-export const removeBottomHalf = (model) => {
-  const modelBounds = new THREE.Box3().setFromObject(model);
-  const modelHeight = modelBounds.max.y - modelBounds.min.y;
-  const midHeight = modelBounds.min.y + modelHeight / 2;
+export const loadMutantModel = async (scene, LOADING_MANAGER) => {
+  const animations = {};
+  const loader = new FBXLoader(LOADING_MANAGER);
+  const model = await loader.loadAsync('/assets/models/mutant/mutant.fbx');
 
-  // Store meshes to remove
-  const meshesToRemove = [];
+  let mixer = new THREE.AnimationMixer(model);
 
-  // First identify meshes in the bottom half
-  model.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      const meshBounds = new THREE.Box3().setFromObject(child);
+  const _OnLoad = (animName, anim) => {
+    const clip = anim.animations[0];
+    const action = mixer.clipAction(clip);
 
-      // Check if this mesh is primarily in the bottom half
-      if (
-        meshBounds.max.y < midHeight ||
-        (meshBounds.min.y < midHeight &&
-          meshBounds.max.y - meshBounds.min.y < modelHeight * 0.3)
-      ) {
-        meshesToRemove.push(child);
-      }
-    }
-  });
+    animations[animName] = {
+      clip: clip,
+      action: action,
+    };
+  };
 
-  // Then remove them (can't remove while traversing)
-  meshesToRemove.forEach((mesh) => {
-    // Dispose of geometry and materials to prevent memory leaks
-    if (mesh.geometry) mesh.geometry.dispose();
-    if (mesh.material) {
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((material) => material.dispose());
-      } else {
-        mesh.material.dispose();
-      }
-    }
+  loader.setPath('/assets/models/mutant/animations/');
+  const idle = await loader.loadAsync('idle.fbx');
+  _OnLoad('idle', idle);
+  const flex = await loader.loadAsync('flex.fbx');
+  _OnLoad('flex', flex);
+  const punch = await loader.loadAsync('punch.fbx');
+  _OnLoad('punch', punch);
+  const run = await loader.loadAsync('run.fbx');
+  _OnLoad('run', run);
+  const leftTurn = await loader.loadAsync('leftTurn.fbx');
+  _OnLoad('leftTurn', leftTurn);
+  const rightTurn = await loader.loadAsync('rightTurn.fbx');
+  _OnLoad('rightTurn', rightTurn);
+  const swipe = await loader.loadAsync('swipe.fbx');
+  _OnLoad('swipe', swipe);
+  const roar = await loader.loadAsync('roar.fbx');
+  _OnLoad('roar', roar);
 
-    // Remove from parent
-    if (mesh.parent) {
-      mesh.parent.remove(mesh);
-    }
-  });
-};
+  model.scale.setScalar(0.025);
 
-// Darken and blur the kingdom model
-export const applyKingdomEffects = (model) => {
-  // Calculate distance to position the blur plane
-  const modelBounds = new THREE.Box3().setFromObject(model);
-  const modelCenter = new THREE.Vector3();
-  modelBounds.getCenter(modelCenter);
+  scene.add(model);
 
-  console.log('Applying enhanced darkening effects to kingdom model');
-
-  // Traverse model and modify all materials
-  model.traverse((child) => {
-    if (child instanceof THREE.Mesh && child.material) {
-      // Handle both single materials and material arrays
-      if (Array.isArray(child.material)) {
-        child.material.forEach((mat, index) => {
-          // Create a new material that inherits from the original
-          const newMat = mat.clone();
-
-          // Darken the material significantly more
-          newMat.color.multiplyScalar(0.4); // Darkened from 0.7 to 0.4
-          newMat.emissive = new THREE.Color(0x000000); // No emissive
-          if (newMat.roughness !== undefined)
-            newMat.roughness = Math.min(1.0, newMat.roughness * 1.5); // Increased roughness from 1.3 to 1.5
-          if (newMat.metalness !== undefined)
-            newMat.metalness = Math.min(0.9, newMat.metalness * 1.4); // Increased metalness from 1.2 to 1.4
-
-          // Reduce any reflectivity
-          if (newMat.envMapIntensity !== undefined) {
-            newMat.envMapIntensity *= 0.3; // Significantly reduce environment map reflections
-          }
-
-          // Apply modified material
-          child.material[index] = newMat;
-        });
-      } else {
-        // Create a new material that inherits from the original
-        const newMat = child.material.clone();
-
-        // Darken the material significantly more
-        newMat.color.multiplyScalar(0.4); // Darkened from 0.7 to 0.4
-        newMat.emissive = new THREE.Color(0x000000); // No emissive
-        if (newMat.roughness !== undefined)
-          newMat.roughness = Math.min(1.0, newMat.roughness * 1.5); // Increased roughness
-        if (newMat.metalness !== undefined)
-          newMat.metalness = Math.min(0.9, newMat.metalness * 1.4); // Increased metalness
-
-        // Reduce any reflectivity
-        if (newMat.envMapIntensity !== undefined) {
-          newMat.envMapIntensity *= 0.3; // Significantly reduce environment map reflections
-        }
-
-        // Apply modified material
-        child.material = newMat;
-      }
-    }
-  });
-
-  // No blur plane effect
+  return {
+    model,
+    animations,
+    mixer,
+  };
 };
