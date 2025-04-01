@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { loadModel, addResizeEventListeners } from './_lib/helpers.js';
+import {
+  loadModel,
+  addResizeEventListeners,
+  applyEnvMapToModel,
+} from './_lib/helpers.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { MathUtils, Vector3 } from 'three';
 import PlayerEntity from './entities/PlayerEntity.js';
@@ -37,22 +41,14 @@ LOADING_MANAGER.onError = (url) => {
   console.error(url);
 };
 
-async function generateHDR(scene) {
-  const hdriLoader = new RGBELoader();
-  const texture = await hdriLoader.loadAsync('/assets/hdr/kingdom-sky.hdr');
-  texture.mapping = THREE.EquirectangularReflectionMapping;
-  scene.background = texture;
-  scene.environment = texture;
-}
-
 function generateLight(scene) {
-  // Ambient Light: Reduced intensity for darker feel
-  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.8); // Reduced from 0.7 to 0.5
+  // Ambient Light: Increased intensity for better visibility
+  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.8); // Increased from 0.8 to 1.0
   scene.add(ambientLight);
 
-  // Directional Light: Maintain sun brightness but adjust color for contrast
-  const dirLight = new THREE.DirectionalLight(0xffeecc, 2.0); // Slightly warmer, reduced intensity
-  dirLight.position.set(50, 40, 10); // Positioned at positive X to match HDR sun
+  // Directional Light: Increase intensity and adjust position
+  const dirLight = new THREE.DirectionalLight(0xffeecc, 2); // Increased from 2.0 to 2.5
+  dirLight.position.set(50, 50, 20); // Adjusted position for better player illumination
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 4096;
   dirLight.shadow.mapSize.height = 4096;
@@ -63,33 +59,22 @@ function generateLight(scene) {
   dirLight.shadow.camera.near = 1;
   dirLight.shadow.camera.far = 500;
   dirLight.shadow.bias = -0.0001;
-  dirLight.shadow.radius = 2.0; // Increased for softer shadows against darker terrain
+  dirLight.shadow.radius = 2.0;
   scene.add(dirLight);
 
   // Secondary fill light to balance shadows (from opposite direction)
-  const fillLight = new THREE.DirectionalLight(0xd0e6ff, 0.3); // Reduced from 0.4 to 0.3
-  fillLight.position.set(-30, 30, -20); // Opposite side from main light
+  const fillLight = new THREE.DirectionalLight(0xd0e6ff, 0.3); // Increased from 0.3 to 0.5
+  fillLight.position.set(-30, 30, -20);
   scene.add(fillLight);
 
   // Add a ground-reflecting light to brighten the terrain
-  const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.35); // Darker ground reflection
+  const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.35); // Increased from 0.35 to 0.4
   scene.add(groundLight);
 }
 
 async function init() {
   // Create scene
   const scene = new THREE.Scene();
-
-  // const sky = new Sky();
-  // sky.scale.setScalar(450000);
-
-  // const phi = MathUtils.degToRad(90);
-  // const theta = MathUtils.degToRad(180);
-  // const sunPosition = new Vector3().setFromSphericalCoords(1, phi, theta);
-
-  // sky.material.uniforms.sunPosition.value = sunPosition;
-
-  // scene.add(sky);
 
   const loader = new THREE.CubeTextureLoader();
   const texture = loader.load([
@@ -100,6 +85,7 @@ async function init() {
     '/assets/skybox/px.png',
     '/assets/skybox/nx.png',
   ]);
+
   texture.encoding = THREE.sRGBEncoding;
   scene.background = texture;
 
@@ -133,13 +119,17 @@ async function init() {
 
   // Load models
   const [player, enemy] = await Promise.all([
+    // loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
+    loadModel('/assets/models/austen2.glb', scene, LOADING_MANAGER),
     loadModel('/assets/models/new archer.glb', scene, LOADING_MANAGER),
-    loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
   ]);
 
   if (enemy) {
     console.log('enemy animations', enemy.animations);
+    applyEnvMapToModel(enemy.model, texture);
   }
+
+  applyEnvMapToModel(player.model, texture);
 
   const PLAYER = new PlayerEntity(
     player.model,
@@ -258,6 +248,12 @@ async function init() {
 
     if (window.PLAYER_UI) {
       window.PLAYER_UI.update();
+    }
+
+    // Update player light position to follow player
+    if (scene.userData.playerLight) {
+      scene.userData.playerLight.position.copy(PLAYER.model.position);
+      scene.userData.playerLight.position.y += 5; // Position light above player
     }
 
     const shouldLog = logTimer > 10.0;

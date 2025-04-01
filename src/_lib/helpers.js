@@ -41,6 +41,21 @@ export const getDirectionOffset = (keys) => {
   return directionOffset;
 };
 
+export const applyEnvMapToModel = (model, envMap) => {
+  model.traverse((node) => {
+    if (node.isMesh && node.material) {
+      const material = node.material;
+
+      // Check if the material supports envMap (e.g., Standard or Physical)
+      if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
+        material.envMap = envMap;
+        material.envMapIntensity = 1.0; // Adjust intensity as needed
+        material.needsUpdate = true; // Ensure the material updates
+      }
+    }
+  });
+};
+
 export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
   const animations = {};
 
