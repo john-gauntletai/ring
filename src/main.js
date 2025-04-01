@@ -80,16 +80,28 @@ async function init() {
   // Create scene
   const scene = new THREE.Scene();
 
-  const sky = new Sky();
-  sky.scale.setScalar(450000);
+  // const sky = new Sky();
+  // sky.scale.setScalar(450000);
 
-  const phi = MathUtils.degToRad(90);
-  const theta = MathUtils.degToRad(180);
-  const sunPosition = new Vector3().setFromSphericalCoords(1, phi, theta);
+  // const phi = MathUtils.degToRad(90);
+  // const theta = MathUtils.degToRad(180);
+  // const sunPosition = new Vector3().setFromSphericalCoords(1, phi, theta);
 
-  sky.material.uniforms.sunPosition.value = sunPosition;
+  // sky.material.uniforms.sunPosition.value = sunPosition;
 
   // scene.add(sky);
+
+  const loader = new THREE.CubeTextureLoader();
+  const texture = loader.load([
+    '/assets/skybox/nz.png',
+    '/assets/skybox/pz.png',
+    '/assets/skybox/py.png',
+    '/assets/skybox/ny.png',
+    '/assets/skybox/px.png',
+    '/assets/skybox/nx.png',
+  ]);
+  texture.encoding = THREE.sRGBEncoding;
+  scene.background = texture;
 
   // Set up renderer before generating terrain to ensure proper shader setup
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -120,14 +132,13 @@ async function init() {
   terrain.addToScene(scene);
 
   // Load models
-  const [player, dragonkin] = await Promise.all([
-    loadModel('/assets/models/austen2.glb', scene, LOADING_MANAGER),
-    loadModel('/assets/models/dragonkin.glb', scene, LOADING_MANAGER),
+  const [player, enemy] = await Promise.all([
+    loadModel('/assets/models/new archer.glb', scene, LOADING_MANAGER),
+    loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
   ]);
 
-  if (dragonkin) {
-    dragonkin.model.scale.setScalar(0.2);
-    console.log(dragonkin.animations);
+  if (enemy) {
+    console.log('enemy animations', enemy.animations);
   }
 
   const PLAYER = new PlayerEntity(
@@ -142,9 +153,9 @@ async function init() {
   PLAYER.setTerrain(terrain);
 
   const ENEMY = new EnemyEntity(
-    dragonkin.model,
-    dragonkin.animations,
-    dragonkin.mixer,
+    enemy.model,
+    enemy.animations,
+    enemy.mixer,
     soundManager
   );
 
@@ -179,9 +190,6 @@ async function init() {
   // Initialize grass component
   const grass = new GrassComponent(scene, PLAYER);
   grass.init();
-
-  // Position grass group at ground level
-  // grass.grassGroup.position.y = 0;
 
   // Initialize Boss UI
   const bossUI = new BossUI();
@@ -236,7 +244,7 @@ async function init() {
     const delta = clock.getDelta();
     logTimer += delta;
     PLAYER.update(delta);
-    // ENEMY.update(delta, PLAYER);
+    ENEMY.update(delta, PLAYER);
 
     CAMERA.update(delta, PLAYER);
 
@@ -252,8 +260,6 @@ async function init() {
       window.PLAYER_UI.update();
     }
 
-    // Update grass animation and LOD
-    // Only show log messages every 10 seconds to avoid console spam
     const shouldLog = logTimer > 10.0;
     if (shouldLog) {
       logTimer = 0;

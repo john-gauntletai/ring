@@ -87,16 +87,16 @@ class PlayerEntity {
 
   init() {
     this.markAsLoopOnce(this.animations.slash.action);
-    this.markAsLoopOnce(this.animations.slash2.action);
-    this.markAsLoopOnce(this.animations.jumpAttack.action);
-    this.markAsLoopOnce(this.animations.spinAttack.action);
-    this.markAsLoopOnce(this.animations.block.action);
-    this.markAsLoopOnce(this.animations.death.action);
-    this.markAsLoopOnce(this.animations.powerUp.action);
-    this.markAsLoopOnce(this.animations.kick.action);
-    this.markAsLoopOnce(this.animations.impact.action);
-    this.markAsLoopOnce(this.animations.impact2.action);
-    this.markAsLoopOnce(this.animations.roll.action);
+    // this.markAsLoopOnce(this.animations.slash2.action);
+    // this.markAsLoopOnce(this.animations.jumpAttack.action);
+    // this.markAsLoopOnce(this.animations.spinAttack.action);
+    // this.markAsLoopOnce(this.animations.block.action);
+    // this.markAsLoopOnce(this.animations.death.action);
+    // this.markAsLoopOnce(this.animations.powerUp.action);
+    // this.markAsLoopOnce(this.animations.kick.action);
+    // this.markAsLoopOnce(this.animations.impact.action);
+    // this.markAsLoopOnce(this.animations.impact2.action);
+    // this.markAsLoopOnce(this.animations.roll.action);
     // Set up animation complete callbacks
     this.setupAnimationCallbacks();
   }
