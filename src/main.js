@@ -79,7 +79,7 @@ function generateLight(scene) {
   enemyLight.castShadow = false;
   scene.add(enemyLight);
 
-  // // Store the enemy light in scene's userData for later repositioning
+  // // // Store the enemy light in scene's userData for later repositioning
   scene.userData.enemyLight = enemyLight;
 
   // Add a ground-reflecting light to brighten the terrain
@@ -135,11 +135,6 @@ async function init() {
   const [player, enemy] = await Promise.all([
     // loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
     loadModel('/assets/models/austen2.glb', scene, LOADING_MANAGER),
-    // loadModel(
-    //   '/assets/models/move golden knight-out2.glb',
-    //   scene,
-    //   LOADING_MANAGER
-    // ),
     // loadModel('/assets/models/new archer.glb', scene, LOADING_MANAGER),
     // loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
     loadMutantModel(scene, LOADING_MANAGER),
@@ -147,10 +142,7 @@ async function init() {
 
   if (enemy) {
     console.log('enemy animations', enemy.animations);
-    // applyEnvMapToModel(enemy.model, texture);
   }
-
-  // applyEnvMapToModel(player.model, texture);
 
   const PLAYER = new PlayerEntity(
     player.model,
@@ -255,7 +247,7 @@ async function init() {
     const delta = clock.getDelta();
     logTimer += delta;
     PLAYER.update(delta);
-    // ENEMY.update(delta, PLAYER);
+    ENEMY.update(delta, PLAYER);
 
     CAMERA.update(delta, PLAYER);
 

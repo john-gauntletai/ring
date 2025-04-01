@@ -112,47 +112,6 @@ export const loadMutantModel = async (scene, LOADING_MANAGER) => {
   const loader = new FBXLoader(LOADING_MANAGER);
   const model = await loader.loadAsync('/assets/models/mutant/mutant.fbx');
 
-  // Enhance mutant model brightness by adjusting materials
-  model.traverse((node) => {
-    if (node.isMesh && node.material) {
-      const materials = Array.isArray(node.material)
-        ? node.material
-        : [node.material];
-
-      materials.forEach((material) => {
-        // Increase emissive for a subtle glow
-        if (material.emissive) {
-          material.emissive.set(0x553322); // Warm glow that matches the mutant's color scheme
-        }
-
-        // Brighten the color
-        if (material.color) {
-          const hsl = { h: 0, s: 0, l: 0 };
-          material.color.getHSL(hsl);
-
-          // Increase lightness by 30%, capped at 0.95
-          hsl.l = Math.min(hsl.l * 1.3, 0.95);
-
-          // Apply the new lightness
-          material.color.setHSL(hsl.h, hsl.s, hsl.l);
-        }
-
-        // Adjust other material properties
-        if (material.roughness !== undefined) {
-          material.roughness = Math.max(material.roughness * 0.7, 0.2);
-        }
-
-        if (material.metalness !== undefined) {
-          material.metalness = Math.min(material.metalness + 0.2, 0.8);
-        }
-
-        // Set material for better light response
-        material.flatShading = false; // Smoother shading
-        material.needsUpdate = true;
-      });
-    }
-  });
-
   let mixer = new THREE.AnimationMixer(model);
 
   const _OnLoad = (animName, anim) => {
@@ -183,7 +142,7 @@ export const loadMutantModel = async (scene, LOADING_MANAGER) => {
   const roar = await loader.loadAsync('roar.fbx');
   _OnLoad('roar', roar);
 
-  model.scale.setScalar(0.0225);
+  model.scale.setScalar(0.02);
 
   scene.add(model);
 
