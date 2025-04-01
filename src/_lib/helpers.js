@@ -141,8 +141,10 @@ export const loadMutantModel = async (scene, LOADING_MANAGER) => {
   _OnLoad('swipe', swipe);
   const roar = await loader.loadAsync('roar.fbx');
   _OnLoad('roar', roar);
+  const death = await loader.loadAsync('death.fbx');
+  _OnLoad('death', death);
 
-  model.scale.setScalar(0.02);
+  model.scale.setScalar(0.0225);
 
   scene.add(model);
 

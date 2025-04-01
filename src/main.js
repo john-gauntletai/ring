@@ -126,6 +126,16 @@ async function init() {
   // Set up scene lighting and environment
   generateLight(scene);
 
+  // Preload important sound effects
+  if (soundManager) {
+    soundManager.preloadSound('dragonRoar', '/assets/sounds/dragon roar.mp3');
+    soundManager.preloadSound(
+      'bossBattleMusic',
+      '/assets/sounds/bossBattleMusic.mp3'
+    );
+    soundManager.preloadSound('victory', '/assets/sounds/victory.mp3');
+  }
+
   // Create a flat terrain
   const terrain = new FlatTerrain(TERRAIN_SIZE, 32);
   terrain.init();

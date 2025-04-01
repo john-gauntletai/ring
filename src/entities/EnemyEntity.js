@@ -18,9 +18,9 @@ class EnemyEntity {
       name: 'Adult Warwulf',
       isHostile: false,
       detectionRadius: 20,
-      attackRange: 3,
-      attackDamage: 15,
-      attackCooldown: 1.0,
+      attackRange: 4,
+      attackDamage: 50,
+      attackCooldown: 1,
       velocity: 6,
       dashVelocity: 10,
     };
@@ -28,10 +28,10 @@ class EnemyEntity {
     // State management
     this.currentState = 'IDLE'; // IDLE, AWARE, CHASE, ATTACK, STAGGERED, DEAD
     this.targetEntity = null;
+    this.isPerformingChaseAction = false; // Flag for special chase actions
 
     // Combat properties
     this.isAttacking = false;
-    this.isBlocking = false;
     this.lastAttackTime = 0;
     this.attackCooldown = 0; // current cooldown timer
     this.attackCallbackSet = false;
@@ -63,9 +63,25 @@ class EnemyEntity {
   /**
    * Initialize the enemy entity
    */
+
+  markAsLoopOnce(animation) {
+    console.log(animation);
+    animation.action.loop = THREE.LoopOnce;
+    animation.action.clampWhenFinished = true;
+  }
+
   init() {
-    // Position the golden-knight at initial coordinates (150, 0, 0)
+    // Position the enemy at initial coordinates
     this.model.position.set(0, 0, -30);
+
+    this.markAsLoopOnce(this.animations.roar);
+    this.markAsLoopOnce(this.animations.flex);
+    this.markAsLoopOnce(this.animations.death);
+    this.markAsLoopOnce(this.animations.punch);
+    this.markAsLoopOnce(this.animations.swipe);
+
+    // Setup animation callbacks for attack completion
+    this.setupAnimationCallbacks();
 
     // Clone and store default material
     if (this.model.material) {
@@ -117,123 +133,7 @@ class EnemyEntity {
     this.detectionSphere.visible = false; // Hide by default, shown in debug mode
 
     // Initialize animations if available
-    this.setupAnimations();
-  }
-
-  /**
-   * Initialize animations if available
-   */
-  setupAnimations() {
-    if (!this.animations) {
-      console.warn('No animations available for Golden Knight');
-      return;
-    }
-
-    // Setup animation sequences
-    Object.keys(this.animations).forEach((animationName) => {
-      const animationData = this.animations[animationName];
-      if (animationData && animationData.action) {
-        // Set loop mode based on animation type
-        if (
-          [
-            'comboAttack',
-            'slash',
-            'kick',
-            'spinAttack',
-            'jumpAttack',
-            'impact',
-            'death',
-          ].includes(animationName)
-        ) {
-          animationData.action.loop = THREE.LoopOnce;
-          animationData.action.clampWhenFinished = true;
-        } else {
-          animationData.action.loop = THREE.LoopRepeat;
-        }
-      }
-    });
-
-    // Set up animation callbacks for non-looping animations
-    this.setupAnimationCallbacks();
-
-    // Start with idle animation
     this.playAnimation('idle');
-  }
-
-  /**
-   * Set up callbacks for animation completion
-   */
-  setupAnimationCallbacks() {
-    // Set up callbacks for all attack animations
-    const attackTypes = [
-      'comboAttack',
-      'slash',
-      'kick',
-      'spinAttack',
-      'jumpAttack',
-    ];
-
-    // Create a bound callback to handle animation completion
-    this.onAttackFinished = (e) => {
-      // Check which attack animation has finished
-      for (const attackType of attackTypes) {
-        if (
-          this.animations[attackType] &&
-          this.animations[attackType].action &&
-          e.action === this.animations[attackType].action
-        ) {
-          console.log(`Enemy ${attackType} animation finished`);
-
-          // Log final position for combo attack
-          if (attackType === 'comboAttack' && this.attackStartPosition) {
-            // Store current position to prevent any teleporting
-            const finalPosition = this.model.position.clone();
-
-            console.log(
-              `ComboAttack END position: (${finalPosition.x.toFixed(
-                2
-              )}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(
-                2
-              )}) - Total movement: ${finalPosition
-                .distanceTo(this.attackStartPosition)
-                .toFixed(2)} units`
-            );
-          }
-
-          this.isAttacking = false;
-          this.attackCooldown = this.data.attackCooldown;
-
-          // Return to idle animation
-          if (this.currentState === 'ATTACK') {
-            this.playAnimation('idle');
-          }
-          break;
-        }
-      }
-    };
-
-    // Add listeners for each attack animation
-    for (const attackType of attackTypes) {
-      if (this.animations[attackType] && this.animations[attackType].action) {
-        const attackAction = this.animations[attackType].action;
-
-        // Remove any existing listeners to avoid duplicates
-        attackAction
-          .getMixer()
-          .removeEventListener('finished', this.onAttackFinished);
-
-        // Add the event listener to the mixer
-        attackAction
-          .getMixer()
-          .addEventListener('finished', this.onAttackFinished);
-
-        // Set up non-looping for attack animations with clampWhenFinished
-        // This ensures the animation completes and holds its final frame
-        attackAction.loop = THREE.LoopOnce;
-        attackAction.clampWhenFinished = true;
-        attackAction.repetitions = 1; // Ensure it plays exactly once
-      }
-    }
   }
 
   /**
@@ -279,8 +179,47 @@ class EnemyEntity {
         this.becomeHostile();
       }
 
+      // Face the target between animations if hostile, not attacking, and not performing a special action
+      if (
+        this.data.isHostile &&
+        !this.isAttacking &&
+        !this.isPerformingChaseAction &&
+        this.currentState !== 'DEAD' &&
+        this.currentState !== 'IDLE'
+      ) {
+        this.faceTarget();
+      }
+
       // Update behavior based on current state
       this.updateStateBehavior(delta, distance);
+
+      // Safety check: If we're supposed to be hostile but not in a valid state, reset to CHASE
+      if (
+        this.data.isHostile &&
+        !['AWARE', 'CHASE', 'ATTACK', 'STAGGERED', 'DEAD'].includes(
+          this.currentState
+        )
+      ) {
+        console.log(
+          'State safety check: Enemy is hostile but in invalid state, resetting to CHASE'
+        );
+        this.setState('CHASE');
+      }
+
+      // Safety check: Make sure the enemy stays in the idle animation when attacking
+      if (
+        this.isAttacking &&
+        ['punch', 'swipe'].includes(this.currentAttackType) &&
+        this.currentState === 'ATTACK'
+      ) {
+        // Ensure we're not playing the run animation during attacks
+        if (this.currentAction === this.animations.run?.action) {
+          console.log(
+            'Animation safety check: Enemy should not be running during attack, stopping movement'
+          );
+          this.playAnimation('idle', 0.1);
+        }
+      }
     }
 
     // If the current state is not CHASE and we're still playing movement sounds, stop them
@@ -299,15 +238,22 @@ class EnemyEntity {
   updateStateBehavior(delta, distanceToPlayer) {
     switch (this.currentState) {
       case 'IDLE':
-        // Just idle
-        this.playAnimation('idle');
+        // If hostile but idle, use the run animation
+        if (this.data.isHostile) {
+          this.playAnimation('run');
+          // If the enemy is hostile but idle, it should probably chase the player
+          console.log('Enemy is hostile but idle, switching to CHASE');
+          this.setState('CHASE');
+        } else {
+          // Just idle
+          this.playAnimation('idle');
+        }
         break;
 
       case 'AWARE':
-        // Aware but not yet chasing - face player and prepare
+        // When in AWARE state, face the player but don't move yet
+        // The roar animation and transition to CHASE is handled in setState
         this.faceTarget();
-        this.playAnimation('idle');
-        this.setState('CHASE');
         break;
 
       case 'CHASE':
@@ -316,6 +262,11 @@ class EnemyEntity {
 
         // If close enough to attack
         if (distanceToPlayer <= this.data.attackRange) {
+          console.log(
+            `Enemy in attack range (${distanceToPlayer.toFixed(
+              2
+            )} units), switching to ATTACK`
+          );
           this.setState('ATTACK');
         }
         break;
@@ -323,10 +274,6 @@ class EnemyEntity {
       case 'ATTACK':
         // Attack the player
         this.attack(delta);
-        break;
-
-      case 'STAGGERED':
-        // Already handled in takeDamage
         break;
 
       case 'DEAD':
@@ -346,6 +293,46 @@ class EnemyEntity {
   moveTowardsPlayer(delta) {
     if (!this.targetEntity || !this.targetEntity.model) return;
 
+    // If attacking or performing a special chase action, don't move
+    if (this.isAttacking || this.isPerformingChaseAction) {
+      return;
+    }
+
+    // Random chance for special chase behaviors
+    const chanceRoll = Math.random();
+
+    // 0.02% chance to stop and roar during chase (reduced from 5%) DO NOT CHANGE THIS
+    if (chanceRoll < 0.0002) {
+      this.isPerformingChaseAction = true;
+      console.log('Enemy stopping to roar during chase');
+
+      // Play roar animation
+      this.playAnimation('roar', 0.2, 1.5);
+
+      // Play dragon roar sound
+      this.playDragonRoarSound();
+
+      // Setup completion handler
+      const roarAction = this.animations.roar.action;
+      const roarCompletionHandler = (e) => {
+        if (e.action === roarAction) {
+          this.isPerformingChaseAction = false;
+          console.log('Chase roar completed, resuming chase');
+
+          // Remove the listener
+          roarAction
+            .getMixer()
+            .removeEventListener('finished', roarCompletionHandler);
+        }
+      };
+
+      // Add the event listener
+      roarAction.getMixer().addEventListener('finished', roarCompletionHandler);
+
+      return;
+    }
+
+    // Regular chase behavior
     // Get direction to player
     const targetPosition = this.targetEntity.model.position.clone();
     const direction = new THREE.Vector3()
@@ -390,18 +377,70 @@ class EnemyEntity {
     const oldState = this.currentState;
     this.currentState = newState;
 
-    // console.log(`${this.data.name} state: ${oldState} -> ${newState}`);
+    console.log(`Enemy state transition: ${oldState} -> ${newState}`);
 
     // Additional state transition logic can be added here
     switch (newState) {
+      case 'CHASE':
+        // Force run animation when entering chase state
+        this.playAnimation('run');
+        break;
+
       case 'ATTACK':
         // Reset attack cooldown when entering attack state
         this.attackCooldown = 0;
         break;
 
       case 'AWARE':
-        // Start boss battle music when becoming aware of player
-        this.startBossBattleMusic();
+        // If transitioning from IDLE to AWARE, play roar animation and sound
+        if (oldState === 'IDLE') {
+          // Play roar animation if available
+          if (this.animations.roar && this.animations.roar.action) {
+            this.playAnimation('roar', 0.3, 2.0); // High priority to ensure it plays
+
+            // After roar animation completes, transition to chase state
+            const roarAction = this.animations.roar.action;
+
+            // Make sure it's a one-time animation
+            roarAction.loop = THREE.LoopOnce;
+            roarAction.clampWhenFinished = true;
+
+            // Set up listener for animation completion if not already set
+            const roarCompletionHandler = (e) => {
+              if (e.action === roarAction) {
+                console.log('Roar animation completed, transitioning to CHASE');
+                this.setState('CHASE');
+
+                // Remove the listener to avoid memory leaks
+                roarAction
+                  .getMixer()
+                  .removeEventListener('finished', roarCompletionHandler);
+              }
+            };
+
+            // Add the event listener to the mixer
+            roarAction
+              .getMixer()
+              .addEventListener('finished', roarCompletionHandler);
+
+            // Play dragon roar sound
+            this.playDragonRoarSound();
+          } else {
+            console.warn('Roar animation not available, using fallback');
+            // If no roar animation available, still play the sound
+            this.playDragonRoarSound();
+
+            // Use a timeout to mimic the animation duration before transitioning to CHASE
+            setTimeout(() => {
+              if (this.currentState === 'AWARE') {
+                this.setState('CHASE');
+              }
+            }, 2000); // 2 seconds delay
+          }
+        } else {
+          // Start boss battle music
+          this.startBossBattleMusic();
+        }
         break;
 
       // Add other state transition logic as needed
@@ -527,9 +566,7 @@ class EnemyEntity {
     if (
       priority < 2.0 &&
       this.isAttacking &&
-      !['comboAttack', 'slash', 'kick', 'spinAttack', 'jumpAttack'].includes(
-        name
-      )
+      !['punch', 'swipe'].includes(name)
     ) {
       // Low priority animation during attack - don't interrupt
       return;
@@ -551,17 +588,7 @@ class EnemyEntity {
     this.currentAction = newAction;
 
     // For attack animations, ensure they complete
-    if (
-      [
-        'comboAttack',
-        'slash',
-        'kick',
-        'spinAttack',
-        'jumpAttack',
-        'impact',
-        'death',
-      ].includes(name)
-    ) {
+    if (['punch', 'swipe', 'roar', 'flex'].includes(name)) {
       newAction.enabled = true;
       newAction.clampWhenFinished = true;
       newAction.zeroSlopeAtEnd = false; // Ensures smooth end of animation
@@ -649,17 +676,6 @@ class EnemyEntity {
       }
     }, 200);
 
-    // Play appropriate sound for the attack type
-    if (this.soundManager) {
-      if (options && options.attackType === 'kick') {
-        // Play kick sound for kick attacks
-        this.soundManager.playSound('kickSound', { volume: 0.5 });
-      } else {
-        // Play sword slash sound for other attacks
-        this.soundManager.playRandomSwordSlash({ volume: 0.4 });
-      }
-    }
-
     // Check for death first - this takes highest priority
     if (this.data.health <= 0) {
       this.data.health = 0; // Ensure health doesn't go negative
@@ -672,9 +688,6 @@ class EnemyEntity {
     this.attackCooldown = 0.5; // Add a small cooldown before next attack
     this.currentAttackType = null;
 
-    // Interrupt current animation and force play the impact animation with high priority
-    this.playAnimation('impact', 0.1, 2.0); // Fast crossfade (0.1s) and high priority (2.0)
-
     // Get staggered only if damage is significant
     if (damage >= 20) {
       this.setState('STAGGERED');
@@ -682,12 +695,19 @@ class EnemyEntity {
       // Return to chase after stagger time
       setTimeout(() => {
         if (this.currentState === 'STAGGERED') {
+          // Play run animation before transitioning back to CHASE
+          this.playAnimation('run', 0.3);
           this.setState('CHASE');
         }
       }, 1000);
     } else {
       // Become aware and hostile if not already
       this.becomeHostile();
+
+      // If we were knocked out of an animation but not staggered, ensure we're moving
+      if (this.currentState !== 'CHASE' && this.currentState !== 'ATTACK') {
+        this.setState('CHASE');
+      }
     }
   }
 
@@ -703,6 +723,18 @@ class EnemyEntity {
     // Cancel any attack state
     this.isAttacking = false;
     this.currentAttackType = null;
+    this.isPerformingChaseAction = false;
+
+    // Cancel any ongoing dash or run away animations
+    if (this.dashAnimationFrame) {
+      cancelAnimationFrame(this.dashAnimationFrame);
+      this.dashAnimationFrame = null;
+    }
+
+    if (this.runAwayAnimationFrame) {
+      cancelAnimationFrame(this.runAwayAnimationFrame);
+      this.runAwayAnimationFrame = null;
+    }
 
     // Play death animation with highest priority
     // The priority is set to 3.0 in the playAnimation method
@@ -727,32 +759,6 @@ class EnemyEntity {
     setTimeout(() => {
       this.showEnemyFelledOverlay();
     }, 500);
-
-    // // Play dragon roar sound 5 seconds after death
-    // setTimeout(() => {
-    //   this.playDragonRoarSound();
-    // }, 7000);
-
-    // // Schedule dragon animations and sounds at specified intervals
-    // // 10 seconds later: play 'stop' animation + sound 'dragon stop.mp3' simultaneously 2 times
-    // setTimeout(() => {
-    //   this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
-
-    //   // Play the second time after a short delay
-    //   setTimeout(() => {
-    //     this.playDragonAnimationAndSound("stop", "dragon stop.mp3");
-    //   }, 2000); // 2 seconds delay between the two instances
-    // }, 10000); // 10 seconds after death
-
-    // // 15 seconds later: play 'down' animation + sound 'dragon down.mp3' simultaneously 1 time
-    // setTimeout(() => {
-    //   this.playDragonAnimationAndSound("down", "dragon down.mp3");
-    // }, 15000); // 15 seconds after death
-
-    // // 16.7 seconds later: play 'fire' animation + sound 'dragon fire.mp3' simultaneously 1 time
-    // setTimeout(() => {
-    //   this.playDragonAnimationAndSound("fire", "dragon fire.mp3");
-    // }, 16700); // 16.7 seconds after death
 
     // Hide the boss UI after 3 seconds
     setTimeout(() => {
@@ -964,13 +970,18 @@ class EnemyEntity {
       this.targetEntity.model.position
     );
     if (distance > this.data.attackRange) {
+      console.log('Enemy out of attack range, switching to CHASE');
       this.setState('CHASE');
       return;
     }
 
+    // Always face the target when in attack state
+    this.faceTarget();
+
     // Check if we're currently attacking or in cooldown
     if (this.isAttacking) {
       // Let the attack animation finish - handled by animation callback
+      // Don't move during attack animations
       return;
     } else if (this.attackCooldown <= 0) {
       // Before attacking, make sure we're facing the target
@@ -982,85 +993,92 @@ class EnemyEntity {
 
       // Start a new attack
       this.isAttacking = true;
+      console.log('Enemy starting new attack');
 
       // Track the starting position for animations that move the enemy
       this.attackStartPosition = this.model.position.clone();
 
-      // Randomly select an attack type from available attacks
       // First filter to only include attacks that have animations
       const validAttacks = this.availableAttacks.filter(
         (attackType) =>
           this.animations[attackType] && this.animations[attackType].action
       );
 
+      // Random chance to determine attack type
+      const rand = Math.random();
+
       if (validAttacks.length > 0) {
-        // Choose a random attack from valid attacks
-        this.currentAttackType =
-          validAttacks[Math.floor(Math.random() * validAttacks.length)];
+        // Choose a random attack from valid attacks with weighted probability
+        // Make swipe more common (60% chance) and punch less common (40% chance)
+        let attackIndex;
+        const randAttack = Math.random();
+
+        if (validAttacks.includes('swipe') && validAttacks.includes('punch')) {
+          // Both attacks available - use weighted selection
+          attackIndex =
+            randAttack < 0.6
+              ? validAttacks.indexOf('swipe')
+              : validAttacks.indexOf('punch');
+        } else {
+          // Just use random selection if not both available
+          attackIndex = Math.floor(randAttack * validAttacks.length);
+        }
+
+        this.currentAttackType = validAttacks[attackIndex];
         console.log(`Enemy using ${this.currentAttackType} attack`);
 
-        // Log starting position for combo attack
-        if (this.currentAttackType === 'comboAttack') {
-          console.log(
-            `ComboAttack START position: (${this.model.position.x.toFixed(
-              2
-            )}, ${this.model.position.y.toFixed(
-              2
-            )}, ${this.model.position.z.toFixed(2)})`
-          );
+        // Position the enemy at the appropriate attack range before playing animation
+        if (distance > this.data.attackRange * 0.75) {
+          // Get direction to player
+          const targetPosition = this.targetEntity.model.position.clone();
+          const direction = new THREE.Vector3()
+            .subVectors(targetPosition, this.model.position)
+            .normalize();
+
+          // Move to optimal attack position - only once before the attack animation
+          const optimalDistance = this.data.attackRange * 0.75;
+          const distanceToMove = distance - optimalDistance;
+
+          if (distanceToMove > 0) {
+            this.model.position.x += direction.x * distanceToMove;
+            this.model.position.z += direction.z * distanceToMove;
+            console.log(
+              `Enemy positioned for attack at optimal range: ${optimalDistance.toFixed(
+                2
+              )}`
+            );
+          }
         }
 
         // Play the selected attack animation with high priority to prevent interruption
         this.playAnimation(this.currentAttackType, 0.2, 1.0); // Fast crossfade, high priority
-
-        // For comboAttack, reset the animation time to ensure consistent movement
-        if (
-          this.currentAttackType === 'comboAttack' &&
-          this.animations.comboAttack
-        ) {
-          this.animations.comboAttack.action.time = 0;
-        }
 
         // Create hitbox after a delay to match animation
         if (this.combatManager) {
           // Different hitbox configurations based on attack type
           let hitboxDelay = 400; // Default delay
           let hitboxOffset = new THREE.Vector3(0, 1, -1.5); // Default position
-          let hitboxSize = new THREE.Vector3(1.2, 1, 1.5); // Default size
+          let hitboxSize = new THREE.Vector3(1.5, 1.5, 1.5); // Default size
           let damage = this.data.attackDamage;
           let knockback = 1;
 
           // Customize hitbox based on attack type
           switch (this.currentAttackType) {
-            case 'slash':
-              hitboxOffset = new THREE.Vector3(0, 1, -1.7);
-              hitboxSize = new THREE.Vector3(1.5, 1, 1.2);
+            case 'swipe':
+              hitboxDelay = 400;
+              hitboxOffset = new THREE.Vector3(0, 1, -2);
+              hitboxSize = new THREE.Vector3(2.5, 1.5, 2);
+              damage = Math.floor(this.data.attackDamage * 1.2);
+              knockback = 1.2;
               break;
-            case 'kick':
+            case 'punch':
               hitboxDelay = 300;
-              hitboxOffset = new THREE.Vector3(0, 0.5, -1.5);
-              hitboxSize = new THREE.Vector3(1, 0.7, 1.5);
-              damage = Math.floor(this.data.attackDamage * 0.8); // Kick does less damage
-              knockback = 1.5; // But more knockback
+              hitboxOffset = new THREE.Vector3(0, 1, -1.5);
+              hitboxSize = new THREE.Vector3(1.5, 1.5, 1.5);
+              damage = this.data.attackDamage;
+              knockback = 0.8;
               break;
-            case 'spinAttack':
-              hitboxDelay = 500;
-              hitboxOffset = new THREE.Vector3(0, 1, 0);
-              hitboxSize = new THREE.Vector3(2.5, 1, 2.5); // Wider area
-              damage = Math.floor(this.data.attackDamage * 1.2); // More damage for spin attack
-              break;
-            case 'jumpAttack':
-              hitboxDelay = 700; // Longer delay for jump attack
-              hitboxOffset = new THREE.Vector3(0, 0.5, -2);
-              hitboxSize = new THREE.Vector3(1.8, 1, 1.8);
-              damage = Math.floor(this.data.attackDamage * 1.5); // Jump attack does more damage
-              break;
-            case 'comboAttack':
-              // For combo attack, adjust the hitbox to be slightly in front since the enemy moves
-              hitboxOffset = new THREE.Vector3(0, 1, -5);
-              hitboxSize = new THREE.Vector3(2, 1, 5); // Longer hitbox to account for increased movement
-              hitboxDelay = 500; // Increased delay to match with further movement
-              break;
+            // Other attack types can be added here
           }
 
           setTimeout(() => {
@@ -1094,7 +1112,197 @@ class EnemyEntity {
     } else {
       // Still in cooldown, reduce timer
       this.attackCooldown -= delta;
+
+      // Always face the target during cooldown
+      this.faceTarget();
+
+      // When cooldown is complete, transition back to chase
+      if (this.attackCooldown <= 0 && this.currentState === 'ATTACK') {
+        console.log('Attack cooldown complete, returning to CHASE state');
+        this.setState('CHASE');
+
+        // Force run animation to ensure visual feedback of state change
+        setTimeout(() => {
+          if (this.currentState === 'CHASE') {
+            this.playAnimation('run');
+          }
+        }, 50);
+      }
     }
+  }
+
+  /**
+   * Perform the flex-dash-swipe combo attack
+   * Sequence: 1. Flex animation, 2. Dash to player, 3. Swipe attack
+   * @param {Function} onComboComplete - Optional callback when combo is complete
+   */
+  performFlexDashSwipeCombo(onComboComplete) {
+    if (!this.targetEntity || !this.animations.flex || !this.animations.swipe) {
+      console.warn("Can't perform flex-dash-swipe combo, missing animations");
+      this.isAttacking = false;
+      if (onComboComplete) onComboComplete();
+      return;
+    }
+
+    // Step 1: Play flex animation
+    this.playAnimation('flex', 0.2, 2.0); // Fast crossfade, high priority
+
+    // Set up a sequence of actions
+    // After flex animation completes, dash to player and then swipe
+    const flexAction = this.animations.flex.action;
+
+    // Create a handler for flex completion
+    const flexCompletionHandler = (e) => {
+      if (e.action === flexAction) {
+        console.log('Flex animation completed, starting dash');
+
+        // Remove the listener to avoid memory leaks
+        flexAction
+          .getMixer()
+          .removeEventListener('finished', flexCompletionHandler);
+
+        // Step 2: Dash towards player
+        this.performDashToTarget(() => {
+          // Step 3: After dash completes, perform swipe attack
+          console.log('Dash completed, performing swipe attack');
+
+          // Set current attack type for hitbox creation
+          this.currentAttackType = 'swipe';
+
+          // Play swipe animation
+          this.playAnimation('swipe', 0.1, 1.5); // Very quick crossfade, high priority
+
+          // Create an enhanced swipe hitbox after appropriate delay
+          if (this.combatManager) {
+            setTimeout(() => {
+              if (this.currentState === 'ATTACK' && this.isAttacking) {
+                this.combatManager.createHitbox(
+                  this.model,
+                  new THREE.Vector3(0, 1, -2), // In front of enemy
+                  new THREE.Vector3(3, 1.8, 2.5), // Larger size for combo attack
+                  Math.floor(this.data.attackDamage * 1.5), // 50% more damage for combo
+                  0.25, // Slightly longer duration
+                  {
+                    owner: this,
+                    knockback: 1.5, // More knockback for the combo attack
+                    preserveAnimation: true,
+                  }
+                );
+                console.log(
+                  'Created enhanced swipe hitbox after flex-dash combo'
+                );
+              }
+            }, 350); // Slightly quicker hitbox timing for combo
+          }
+
+          // Set up completion handler for the swipe
+          const swipeAction = this.animations.swipe.action;
+          const swipeCompletionHandler = (e) => {
+            if (e.action === swipeAction) {
+              console.log('Combo attack sequence completed');
+              this.isAttacking = false;
+              this.attackCooldown = this.data.attackCooldown * 1.75; // Longer cooldown after combo
+
+              // Remove the listener
+              swipeAction
+                .getMixer()
+                .removeEventListener('finished', swipeCompletionHandler);
+
+              // Return to normal velocity after combo completes
+              console.log('Returning to normal velocity after combo');
+
+              // Execute callback if provided
+              if (onComboComplete) onComboComplete();
+            }
+          };
+
+          // Add listener for swipe completion
+          swipeAction
+            .getMixer()
+            .addEventListener('finished', swipeCompletionHandler);
+        });
+      }
+    };
+
+    // Add the event listener for flex completion
+    flexAction.getMixer().addEventListener('finished', flexCompletionHandler);
+  }
+
+  /**
+   * Perform a dash toward the target, then execute a callback when complete
+   * @param {Function} onDashComplete - Callback to execute when dash is complete
+   */
+  performDashToTarget(onDashComplete) {
+    if (!this.targetEntity) {
+      if (onDashComplete) onDashComplete();
+      return;
+    }
+
+    // Get direction to player
+    const targetPosition = this.targetEntity.model.position.clone();
+    const direction = new THREE.Vector3()
+      .subVectors(targetPosition, this.model.position)
+      .normalize();
+
+    // Calculate distance to target
+    const distance = this.model.position.distanceTo(targetPosition);
+
+    // Calculate dash distance (leave some space to not overshoot)
+    const dashDistance = Math.max(0, distance - this.data.attackRange / 2);
+
+    // Play running animation during dash
+    this.playAnimation('run', 0.1, 1.0);
+
+    // Use dashVelocity for faster movement
+    const originalVelocity = this.data.velocity;
+    const dashVelocity = this.data.dashVelocity;
+
+    // Determine dash duration based on distance and speed
+    const dashDuration = dashDistance / dashVelocity;
+
+    console.log(
+      `Starting dash: distance=${dashDistance.toFixed(
+        2
+      )}, duration=${dashDuration.toFixed(2)}s`
+    );
+
+    // Start the dash with animation
+    const startTime = performance.now();
+    const initialPosition = this.model.position.clone();
+
+    // Create the dash animation function
+    const performDashStep = () => {
+      const elapsed = (performance.now() - startTime) / 1000; // Convert to seconds
+      const progress = Math.min(elapsed / dashDuration, 1.0);
+
+      // If dash is complete
+      if (progress >= 1.0) {
+        // Clear the animation frame
+        if (this.dashAnimationFrame) {
+          cancelAnimationFrame(this.dashAnimationFrame);
+          this.dashAnimationFrame = null;
+        }
+
+        // Execute completion callback
+        if (onDashComplete) onDashComplete();
+
+        return;
+      }
+
+      // Calculate new position based on progress
+      const newPosition = new THREE.Vector3().copy(initialPosition);
+      newPosition.x += direction.x * dashDistance * progress;
+      newPosition.z += direction.z * dashDistance * progress;
+
+      // Update enemy position
+      this.model.position.copy(newPosition);
+
+      // Continue dash on next frame
+      this.dashAnimationFrame = requestAnimationFrame(performDashStep);
+    };
+
+    // Start the dash animation
+    this.dashAnimationFrame = requestAnimationFrame(performDashStep);
   }
 
   /**
@@ -1268,6 +1476,168 @@ class EnemyEntity {
         'Sound manager not available, cannot play sound:',
         soundFileName
       );
+    }
+  }
+
+  /**
+   * Perform run away sequence and then execute callback
+   * @param {Function} onComplete - Callback function to execute when run away is complete
+   */
+  performRunAway(onComplete) {
+    if (!this.targetEntity) {
+      this.isAttacking = false; // Reset attacking flag if no target
+      if (onComplete) onComplete();
+      return;
+    }
+
+    console.log('Starting run-away sequence');
+
+    // Get direction AWAY from player (reverse of towards direction)
+    const targetPosition = this.targetEntity.model.position.clone();
+    const directionAway = new THREE.Vector3()
+      .subVectors(this.model.position, targetPosition)
+      .normalize();
+
+    // Calculate the run away distance (15 units)
+    const runAwayDistance = 15;
+    const runAwayDestination = new THREE.Vector3().copy(this.model.position);
+    runAwayDestination.x += directionAway.x * runAwayDistance;
+    runAwayDestination.z += directionAway.z * runAwayDistance;
+
+    console.log(`Running away ${runAwayDistance} units from player`);
+
+    // Play run animation
+    this.playAnimation('run', 0.2, 1.0);
+
+    // Determine run duration based on regular velocity
+    const runAwayDuration = runAwayDistance / this.data.velocity;
+
+    // Start the run away animation
+    const startTime = performance.now();
+    const initialPosition = this.model.position.clone();
+
+    // Store the animation frame reference for cleanup
+    this.runAwayAnimationFrame = null;
+
+    // Create the run away animation function
+    const performRunAwayStep = () => {
+      const elapsed = (performance.now() - startTime) / 1000; // Convert to seconds
+      const progress = Math.min(elapsed / runAwayDuration, 1.0);
+
+      // If run away is complete
+      if (progress >= 1.0) {
+        // Clear the animation frame
+        if (this.runAwayAnimationFrame) {
+          cancelAnimationFrame(this.runAwayAnimationFrame);
+          this.runAwayAnimationFrame = null;
+        }
+
+        // Once we've run away, rotate to face player
+        this.faceTarget();
+
+        console.log('Run away complete');
+
+        // Execute the callback
+        if (onComplete) onComplete();
+
+        return;
+      }
+
+      // Calculate new position based on progress
+      const newPosition = new THREE.Vector3().copy(initialPosition);
+      newPosition.x += directionAway.x * runAwayDistance * progress;
+      newPosition.z += directionAway.z * runAwayDistance * progress;
+
+      // Update enemy position
+      this.model.position.copy(newPosition);
+
+      // Look away from player during run
+      this.model.rotation.y = Math.atan2(directionAway.x, directionAway.z);
+
+      // Continue animation on next frame
+      this.runAwayAnimationFrame = requestAnimationFrame(performRunAwayStep);
+    };
+
+    // Start the run away animation
+    this.runAwayAnimationFrame = requestAnimationFrame(performRunAwayStep);
+  }
+
+  setupAnimationCallbacks() {
+    // Set up callbacks for all attack animations
+    const attackTypes = ['punch', 'swipe', 'roar', 'flex'];
+
+    // Create a bound callback to handle animation completion
+    this.onAttackFinished = (e) => {
+      // Check which attack animation has finished
+      for (const attackType of attackTypes) {
+        if (
+          this.animations[attackType] &&
+          this.animations[attackType].action &&
+          e.action === this.animations[attackType].action
+        ) {
+          console.log(`Enemy ${attackType} animation finished`);
+
+          // Skip additional logic for roar and flex since they're handled separately
+          if (attackType === 'roar' || attackType === 'flex') {
+            // Still need to reset attacking state
+            this.isAttacking = false;
+            continue;
+          }
+
+          this.isAttacking = false;
+          this.attackCooldown = this.data.attackCooldown;
+
+          // Face the target after animation completes
+          if (this.targetEntity) {
+            this.faceTarget();
+          }
+
+          // Return to idle animation
+          if (this.currentState === 'ATTACK') {
+            this.playAnimation('idle');
+
+            // Transition back to CHASE after attack completes
+            setTimeout(() => {
+              if (this.currentState === 'ATTACK') {
+                console.log(
+                  `${attackType} attack complete, returning to CHASE state`
+                );
+                this.setState('CHASE');
+
+                // Force run animation to ensure visual feedback of state change
+                setTimeout(() => {
+                  if (this.currentState === 'CHASE') {
+                    this.playAnimation('run');
+                  }
+                }, 50);
+              }
+            }, 250); // Small delay before chasing again
+          }
+          break;
+        }
+      }
+    };
+
+    // Add listeners for each attack animation
+    for (const attackType of attackTypes) {
+      if (this.animations[attackType] && this.animations[attackType].action) {
+        const attackAction = this.animations[attackType].action;
+
+        // Remove any existing listeners to avoid duplicates
+        attackAction
+          .getMixer()
+          .removeEventListener('finished', this.onAttackFinished);
+
+        // Add the event listener to the mixer
+        attackAction
+          .getMixer()
+          .addEventListener('finished', this.onAttackFinished);
+
+        // Set up non-looping for attack animations with clampWhenFinished
+        attackAction.loop = THREE.LoopOnce;
+        attackAction.clampWhenFinished = true;
+        attackAction.repetitions = 1; // Ensure it plays exactly once
+      }
     }
   }
 }
