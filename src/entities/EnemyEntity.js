@@ -18,7 +18,7 @@ class EnemyEntity {
       name: 'Adult Warwulf',
       isHostile: false,
       detectionRadius: 20,
-      attackRange: 4,
+      attackRange: 6,
       attackDamage: 40,
       attackCooldown: 1,
       velocity: 5,
