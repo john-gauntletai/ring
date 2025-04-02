@@ -105,7 +105,7 @@ function generateLight(scene) {
   scene.add(dirLight);
 
   // Secondary fill light to balance shadows (from opposite direction)
-  const fillLight = new THREE.DirectionalLight(0xd0e6ff, 0.3); // Increased from 0.3 to 0.5
+  const fillLight = new THREE.DirectionalLight(0xd0e6ff, 0.4); // Increased from 0.3 to 0.5
   fillLight.position.set(-30, 30, -20);
   scene.add(fillLight);
 
@@ -131,7 +131,7 @@ function generateLight(scene) {
   scene.userData.enemyLight = enemyLight;
 
   // Add a ground-reflecting light to brighten the terrain
-  const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.3); // Increased from 0.35 to 0.4
+  const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.35); // Increased from 0.35 to 0.4
   scene.add(groundLight);
 }
 
@@ -165,7 +165,7 @@ async function initGame() {
   renderer.outputColorSpace = THREE.SRGBColorSpace; // Updated from outputEncoding
   if (isMobileDevice) {
     renderer.toneMapping = THREE.LinearToneMapping;
-    renderer.toneMappingExposure = 1; // Reduced to make the scene darker overall
+    renderer.toneMappingExposure = 1.2; // Reduced to make the scene darker overall
   } else {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.5; // Reduced to make the scene darker overall
