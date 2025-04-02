@@ -158,6 +158,17 @@
     border: 2px solid rgba(255, 255, 255, 0.3); /* Slight border for contrast */
   }
 
+  /* Position joysticks closer to edges in landscape mode */
+  #left-joystick {
+    left: 15%; /* Was 10% - moved slightly away from edge */
+    bottom: 25%; /* Raised from 20% to 25% for better thumb reach */
+  }
+
+  #right-joystick {
+    right: 15%; /* Was 10% - moved slightly away from edge */
+    bottom: 25%; /* Raised from 20% to 25% for better thumb reach */
+  }
+
   /* Override any conflicting styles from other media queries */
   #slash-btn,
   #kick-btn,
@@ -185,6 +196,17 @@
     height: 50px;
     font-size: 10px;
   }
+
+  /* Keep joysticks at middle distance for very small height screens */
+  #left-joystick {
+    left: 13%;
+    bottom: 28%;
+  }
+
+  #right-joystick {
+    right: 13%;
+    bottom: 28%;
+  }
 }
 
 /* Adjustments for wider screens in landscape */
@@ -198,5 +220,16 @@
     width: 65px;
     height: 65px;
     font-size: 12px;
+  }
+
+  /* For wider screens, position joysticks slightly inward */
+  #left-joystick {
+    left: 12%;
+    bottom: 30%;
+  }
+
+  #right-joystick {
+    right: 12%;
+    bottom: 30%;
   }
 }

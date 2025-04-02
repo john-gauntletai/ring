@@ -13,10 +13,12 @@ class MobileControls {
     this.cameraJoystick = null;
     this.actionButtons = [];
     this.initialized = false;
+    this.isLandscape = window.innerWidth > window.innerHeight;
 
     // Only initialize on mobile devices
     if (this.isMobile) {
       this.init();
+      this.setupOrientationListener();
     }
   }
 
@@ -32,6 +34,46 @@ class MobileControls {
         navigator.userAgent
       )
     );
+  }
+
+  /**
+   * Set up listener for orientation changes
+   */
+  setupOrientationListener() {
+    window.addEventListener('resize', () => {
+      const wasLandscape = this.isLandscape;
+      this.isLandscape = window.innerWidth > window.innerHeight;
+
+      // Only rebuild joysticks if orientation changed
+      if (wasLandscape !== this.isLandscape) {
+        console.log(
+          `Orientation changed to ${
+            this.isLandscape ? 'landscape' : 'portrait'
+          }`
+        );
+        this.rebuildJoysticks();
+      }
+    });
+  }
+
+  /**
+   * Rebuild joysticks based on current orientation
+   */
+  rebuildJoysticks() {
+    // Destroy existing joysticks
+    if (this.moveJoystick) {
+      this.moveJoystick.destroy();
+    }
+
+    if (this.cameraJoystick) {
+      this.cameraJoystick.destroy();
+    }
+
+    // Clear joysticks array
+    this.joysticks = [];
+
+    // Recreate joysticks with appropriate positioning
+    this.createJoysticks();
   }
 
   /**
@@ -84,11 +126,19 @@ class MobileControls {
    * Create joysticks using nipplejs
    */
   createJoysticks() {
+    // Determine position based on orientation
+    const leftPosition = this.isLandscape
+      ? { left: '15%', bottom: '25%' }
+      : { left: '50%', bottom: '50%' };
+    const rightPosition = this.isLandscape
+      ? { right: '15%', bottom: '25%' }
+      : { right: '50%', bottom: '50%' };
+
     // Create movement joystick (left)
     this.moveJoystick = nipplejs.create({
       zone: this.leftZone,
       mode: 'static',
-      position: { left: '50%', bottom: '50%' },
+      position: leftPosition,
       color: 'rgba(100, 100, 100, 0.8)',
       size: 140,
       restOpacity: 0.9,
@@ -102,7 +152,7 @@ class MobileControls {
     this.cameraJoystick = nipplejs.create({
       zone: this.rightZone,
       mode: 'static',
-      position: { right: '50%', bottom: '50%' },
+      position: rightPosition,
       color: 'rgba(100, 100, 100, 0.8)',
       size: 140,
       restOpacity: 0.9,

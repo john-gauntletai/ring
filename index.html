@@ -700,7 +700,41 @@
 
 			100% {
 				transform: translateX(5px) scale(1);
-				border-radius: 60% 40% 30% 70% / 50% 60% 40% 50%;
+				border-radius: 60% 40% 30% 70% / 40% 40% 60% 60%;
+			}
+		}
+
+		/* Add responsive design for landscape orientation */
+		@media (orientation: landscape) {
+			.game-title {
+				font-size: 5rem;
+				/* Reduced from 8rem */
+				margin-bottom: 4rem;
+				/* Reduced from 8rem */
+				transform: translateY(-3vh);
+				/* Less upward shift than default -5vh */
+			}
+
+			.press-any-key {
+				transform: translateY(-10vh);
+				/* Move the text 10vh higher */
+				margin-top: -6vh;
+				/* Additional negative margin to pull it higher */
+			}
+		}
+
+		/* Adjust for smaller height screens in landscape */
+		@media (orientation: landscape) and (max-height: 500px) {
+			.game-title {
+				font-size: 4rem;
+				/* Even smaller title for very short height */
+				margin-bottom: 3rem;
+			}
+
+			.press-any-key {
+				transform: translateY(-4vh);
+				/* Less shift on extremely small heights */
+				margin-top: -4vh;
 			}
 		}
 
