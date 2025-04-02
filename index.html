@@ -787,71 +787,84 @@
 		/* Permanent Controls Panel Styles */
 		#controls-panel {
 			position: fixed;
-			top: 10px;
-			right: 10px;
-			background-color: rgba(0, 0, 0, 0.7);
-			border: 2px solid #a17f4b;
-			border-radius: 8px;
-			padding: 10px;
+			top: 15px;
+			right: 15px;
+			background-color: rgba(0, 0, 0, 0.75);
+			border: 1px solid #a17f4b;
+			border-radius: 6px;
+			padding: 6px 8px;
 			color: #c4b08c;
 			text-align: center;
-			width: 200px;
-			box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+			width: 140px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.5), 0 0 5px rgba(196, 176, 140, 0.2);
 			z-index: 998;
 			display: none;
 			/* Hidden by default, shown after start screen */
-			transition: opacity 0.3s ease;
+			transition: all 0.3s ease;
+			animation: controlsPanelAppear 0.8s ease-in-out, controlsPanelGlow 3s infinite alternate;
 		}
 
 		#controls-panel h3 {
-			font-size: 1.2rem;
-			margin: 0 0 8px 0;
+			font-size: 0.9rem;
+			margin: 0 0 6px 0;
 			text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 			letter-spacing: 0.05rem;
+			font-weight: bold;
 		}
 
 		.controls-table {
 			width: 100%;
 			border-collapse: collapse;
-			font-size: 0.8rem;
+			font-size: 0.75rem;
+			border-spacing: 0;
+			margin: 0;
 		}
 
 		.controls-table td {
-			padding: 3px 0;
+			padding: 2px 2px;
 			text-align: left;
-		}
-
-		.controls-table td:first-child {
-			width: 40%;
-			font-weight: bold;
-			background-color: rgba(196, 176, 140, 0.2);
-			border: 1px solid #a17f4b;
-			border-radius: 4px;
-			padding: 3px 5px;
-			text-align: center;
+			line-height: 1.2;
 		}
 
 		.controls-toggle {
 			position: absolute;
-			top: 8px;
-			right: 8px;
-			width: 20px;
-			height: 20px;
+			top: 6px;
+			right: 6px;
+			width: 18px;
+			height: 18px;
 			background: none;
 			border: none;
 			color: #c4b08c;
-			font-size: 16px;
+			font-size: 14px;
 			cursor: pointer;
 			padding: 0;
 			line-height: 1;
 		}
 
 		.minimized-controls {
-			width: 32px;
-			height: 32px;
-			padding: 5px;
-			background-color: rgba(0, 0, 0, 0.7);
-			border-radius: 4px;
+			position: fixed;
+			top: 15px;
+			right: 15px;
+			width: 26px;
+			height: 26px;
+			background-color: rgba(0, 0, 0, 0.75);
+			border: 1px solid #a17f4b;
+			border-radius: 6px;
+			color: #c4b08c;
+			text-align: center;
+			line-height: 26px;
+			cursor: pointer;
+			z-index: 998;
+			display: none;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+			transition: all 0.2s ease;
+		}
+
+		#minimized-controls:hover {
+			background-color: rgba(20, 15, 10, 0.85);
+			color: #d0bb9a;
+			box-shadow: 0 0 12px rgba(0, 0, 0, 0.6), 0 0 5px rgba(196, 176, 140, 0.3);
+			transform: scale(1.05);
 		}
 
 		/* Controls Explanation Styles (for start screen only) */
@@ -902,6 +915,28 @@
 
 		#controls-panel {
 			animation: fadeInControls 0.5s ease-in-out;
+		}
+
+		@keyframes controlsPanelAppear {
+			0% {
+				opacity: 0;
+				transform: translateY(-20px);
+			}
+
+			100% {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		@keyframes controlsPanelGlow {
+			0% {
+				box-shadow: 0 0 10px rgba(0, 0, 0, 0.5), 0 0 3px rgba(196, 176, 140, 0.15);
+			}
+
+			100% {
+				box-shadow: 0 0 12px rgba(0, 0, 0, 0.5), 0 0 6px rgba(196, 176, 140, 0.3);
+			}
 		}
 	</style>
 </head>
@@ -1003,61 +1038,52 @@
 					<div class="control-key">L</div>
 					<div class="control-desc">Lock On Enemy</div>
 				</div>
-				<div class="control-group">
-					<div class="control-key">O</div>
-					<div class="control-desc">Roll</div>
-				</div>
-				<div class="control-group">
-					<div class="control-key">P</div>
-					<div class="control-desc">Power Up</div>
-				</div>
-				<div class="control-group">
-					<div class="control-key">B</div>
-					<div class="control-desc">Block</div>
-				</div>
 			</div>
 		</div>
 	</div>
 
 	<!-- Permanent Controls Panel (only for non-mobile) -->
 	<div id="controls-panel">
-		<button class="controls-toggle" title="Toggle Controls Panel">–</button>
-		<h3>CONTROLS</h3>
+		<div style="font-weight: bold; margin-bottom: 3px; font-size: 0.8rem;">CONTROLS</div>
 		<table class="controls-table">
 			<tr>
-				<td>WASD</td>
-				<td>Movement</td>
+				<td><span
+						style="background: rgba(196, 176, 140, 0.2); border: 1px solid #a17f4b; border-radius: 2px; padding: 0 2px;">WASD</span>
+				</td>
+				<td>Move</td>
 			</tr>
 			<tr>
-				<td>ARROWS</td>
+				<td><span
+						style="background: rgba(196, 176, 140, 0.2); border: 1px solid #a17f4b; border-radius: 2px; padding: 0 2px;">Arrows</span>
+				</td>
 				<td>Camera</td>
 			</tr>
 			<tr>
-				<td>U</td>
-				<td>Slash Attack</td>
+				<td><span
+						style="background: rgba(196, 176, 140, 0.2); border: 1px solid #a17f4b; border-radius: 2px; padding: 0 2px;">U</span>
+				</td>
+				<td>Slash</td>
 			</tr>
 			<tr>
-				<td>K</td>
+				<td><span
+						style="background: rgba(196, 176, 140, 0.2); border: 1px solid #a17f4b; border-radius: 2px; padding: 0 2px;">K</span>
+				</td>
 				<td>Kick</td>
 			</tr>
 			<tr>
-				<td>L</td>
-				<td>Lock On Enemy</td>
-			</tr>
-			<tr>
-				<td>O</td>
-				<td>Roll</td>
-			</tr>
-			<tr>
-				<td>P</td>
-				<td>Power Up</td>
-			</tr>
-			<tr>
-				<td>B</td>
-				<td>Block</td>
+				<td><span
+						style="background: rgba(196, 176, 140, 0.2); border: 1px solid #a17f4b; border-radius: 2px; padding: 0 2px;">L</span>
+				</td>
+				<td>Lock-on</td>
 			</tr>
 		</table>
+		<div id="controls-toggle"
+			style="position: absolute; right: 4px; top: 4px; cursor: pointer; font-size: 0.7rem; width: 16px; height: 16px; line-height: 16px;">
+			&minus;</div>
 	</div>
+	<div id="minimized-controls"
+		style="position: fixed; top: 15px; right: 15px; width: 26px; height: 26px; background-color: rgba(0, 0, 0, 0.75); border: 1px solid #a17f4b; border-radius: 6px; color: #c4b08c; text-align: center; line-height: 26px; cursor: pointer; z-index: 998; display: none; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);">
+		?</div>
 
 	<script type="module" src="/src/main.js"></script>
 
@@ -1125,35 +1151,8 @@
 				checkForSoundManager();
 			}
 
-			// Immediately start the game
-			function startGameImmediately() {
-				console.log(`Selected character: ${selectedCharacter}`);
-				// Start the ambient wind sound
-				startAmbientWind();
-
-				// Show location overlay
-				locationOverlay.style.display = 'flex';
-				// Trigger a reflow before setting opacity for the transition to work
-				locationOverlay.offsetHeight;
-				// Make the overlay visible with transition
-				locationOverlay.style.opacity = '1';
-
-				// Play the new area sound when the location overlay appears
-				playNewAreaSound();
-
-				// Hide the overlay after 5 seconds
-				setTimeout(() => {
-					locationOverlay.style.opacity = '0';
-					// Wait for the fade-out transition to complete before hiding the element
-					setTimeout(() => {
-						locationOverlay.style.display = 'none';
-						// Here you would continue with the actual game initialization
-					}, 2000); // 2 seconds for fade-out transition
-				}, 3000); // Display for 3 seconds before starting fade-out
-			}
-
-			// Start the game immediately when the page loads
-			startGameImmediately();
+			// Don't start the game automatically - it will be started from main.js when revealGame is called
+			// startGameImmediately(); 
 
 			/*
 			// All the old event listeners and functions are commented out

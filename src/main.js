@@ -50,32 +50,23 @@ function detectMobile() {
 
 // Setup controls panel toggle functionality
 function setupControlsPanel() {
-  let minimized = false;
+  if (!isMobileDevice) {
+    const minimizedControls = document.getElementById('minimized-controls');
+    const controlsToggle = document.getElementById('controls-toggle');
 
-  // Only show controls panel for non-mobile devices
-  if (!isMobileDevice && controlsPanel && controlsToggle) {
-    // Show the panel once the game starts
-    window.addEventListener('gameStarted', function () {
-      controlsPanel.style.display = 'block';
+    // Initialize controls panel after start screen is dismissed
+    controlsPanel.style.display = 'block';
+
+    // Handle toggle click
+    controlsToggle.addEventListener('click', () => {
+      controlsPanel.style.display = 'none';
+      minimizedControls.style.display = 'block';
     });
 
-    // Toggle controls panel visibility
-    controlsToggle.addEventListener('click', function () {
-      if (minimized) {
-        // Expand panel
-        controlsPanel.classList.remove('minimized-controls');
-        document.querySelector('.controls-table').style.display = 'table';
-        document.querySelector('#controls-panel h3').style.display = 'block';
-        controlsToggle.textContent = '–';
-        minimized = false;
-      } else {
-        // Minimize panel
-        controlsPanel.classList.add('minimized-controls');
-        document.querySelector('.controls-table').style.display = 'none';
-        document.querySelector('#controls-panel h3').style.display = 'none';
-        controlsToggle.textContent = '+';
-        minimized = true;
-      }
+    // Handle minimized controls click
+    minimizedControls.addEventListener('click', () => {
+      minimizedControls.style.display = 'none';
+      controlsPanel.style.display = 'block';
     });
   }
 }
@@ -364,6 +355,11 @@ async function initGame() {
 
   // Return a function to reveal game (will be called when start button is clicked)
   return function revealGame() {
+    // Make sure the controls panel is shown for non-mobile devices
+    if (!isMobileDevice && controlsPanel) {
+      controlsPanel.style.display = 'block';
+    }
+
     // If the location overlay exists, show it now
     const locationOverlay = document.getElementById('location-overlay');
     if (locationOverlay) {
@@ -397,6 +393,9 @@ async function initGame() {
         }, 2000); // 2 seconds for fade-out transition
       }, 3000); // Display for 3 seconds before starting fade-out
     }
+
+    // Setup controls panel
+    setupControlsPanel();
   };
 }
 
@@ -442,6 +441,11 @@ function initStartScreen(revealGameFunc) {
   function startGame() {
     // Hide the start screen
     startScreen.style.display = 'none';
+
+    // Show controls panel for non-mobile devices
+    if (!isMobileDevice && controlsPanel) {
+      controlsPanel.style.display = 'block';
+    }
 
     // Call the reveal function to show the location overlay and proceed with the game
     if (revealGameFunc) {
