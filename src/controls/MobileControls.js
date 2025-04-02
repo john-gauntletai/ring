@@ -89,9 +89,9 @@ class MobileControls {
       zone: this.leftZone,
       mode: 'static',
       position: { left: '50%', bottom: '50%' },
-      color: 'rgba(255, 255, 255, 0.5)',
-      size: 100,
-      restOpacity: 0.4,
+      color: 'rgba(100, 100, 100, 0.8)',
+      size: 140,
+      restOpacity: 0.9,
       fadeTime: 250,
       lockX: false,
       lockY: false,
@@ -103,9 +103,9 @@ class MobileControls {
       zone: this.rightZone,
       mode: 'static',
       position: { right: '50%', bottom: '50%' },
-      color: 'rgba(255, 255, 255, 0.5)',
-      size: 100,
-      restOpacity: 0.4,
+      color: 'rgba(100, 100, 100, 0.8)',
+      size: 140,
+      restOpacity: 0.9,
       fadeTime: 250,
       lockX: false,
       lockY: false,
@@ -133,42 +133,41 @@ class MobileControls {
 
       // Set keys based on direction
       const angle = data.angle.degree;
+      const force = Math.min(data.force, 1);
 
-      // Forward / Backward (W/S)
-      if (angle > 45 && angle < 135) {
-        KEYS['d'] = true; // Right
-      } else if (angle > 225 && angle < 315) {
+      // Visual feedback - change color based on force
+      if (this.moveJoystick.ui && this.moveJoystick.ui.front) {
+        // Change color intensity based on force
+        const r = Math.round(100 + force * 155);
+        const g = Math.round(100 + force * 155);
+        const b = Math.round(150 + force * 105);
+        this.moveJoystick.ui.front.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.9)`;
+      }
+
+      // Get direction vector from nipplejs data
+      const directionX = Math.cos(data.angle.radian);
+      const directionY = Math.sin(data.angle.radian);
+
+      // Map direction vector to WASD keys
+      // W = up (negative Y)
+      // A = left (negative X)
+      // S = down (positive Y)
+      // D = right (positive X)
+
+      // Check Y axis (up/down)
+      // Note: In nipplejs, Y is inverted from our desired mapping
+      // Up/forward is positive Y in nipplejs but we want it to be W
+      if (directionY > 0.25) {
+        KEYS['w'] = true; // Forward
+      } else if (directionY < -0.25) {
+        KEYS['s'] = true; // Backward
+      }
+
+      // Check X axis (left/right)
+      if (directionX < -0.25) {
         KEYS['a'] = true; // Left
-      }
-
-      if (angle > 315 || angle < 45) {
-        KEYS['w'] = true; // Up
-      } else if (angle > 135 && angle < 225) {
-        KEYS['s'] = true; // Down
-      }
-
-      // Diagonal movement
-      if ((angle > 0 && angle < 45) || (angle > 315 && angle < 360)) {
-        KEYS['w'] = true; // Up-right
-        KEYS['d'] = true;
-      } else if (angle > 45 && angle < 90) {
-        KEYS['d'] = true; // Right-up
-        KEYS['w'] = true;
-      } else if (angle > 90 && angle < 135) {
-        KEYS['d'] = true; // Right-down
-        KEYS['s'] = true;
-      } else if (angle > 135 && angle < 180) {
-        KEYS['s'] = true; // Down-right
-        KEYS['d'] = true;
-      } else if (angle > 180 && angle < 225) {
-        KEYS['s'] = true; // Down-left
-        KEYS['a'] = true;
-      } else if (angle > 225 && angle < 270) {
-        KEYS['a'] = true; // Left-down
-        KEYS['s'] = true;
-      } else if (angle > 270 && angle < 315) {
-        KEYS['a'] = true; // Left-up
-        KEYS['w'] = true;
+      } else if (directionX > 0.25) {
+        KEYS['d'] = true; // Right
       }
     });
 
@@ -178,6 +177,12 @@ class MobileControls {
       KEYS['a'] = false;
       KEYS['s'] = false;
       KEYS['d'] = false;
+
+      // Reset joystick color
+      if (this.moveJoystick.ui && this.moveJoystick.ui.front) {
+        this.moveJoystick.ui.front.style.backgroundColor =
+          'rgba(200, 200, 200, 0.9)';
+      }
     });
 
     // Camera joystick events (Arrow keys)
@@ -190,42 +195,41 @@ class MobileControls {
 
       // Set keys based on direction
       const angle = data.angle.degree;
+      const force = Math.min(data.force, 1);
 
-      // Main directions
-      if (angle > 45 && angle < 135) {
-        KEYS['arrowright'] = true; // Right
-      } else if (angle > 225 && angle < 315) {
-        KEYS['arrowleft'] = true; // Left
+      // Visual feedback - change color based on force
+      if (this.cameraJoystick.ui && this.cameraJoystick.ui.front) {
+        // Change color intensity based on force
+        const r = Math.round(100 + force * 155);
+        const g = Math.round(100 + force * 155);
+        const b = Math.round(150 + force * 105);
+        this.cameraJoystick.ui.front.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.9)`;
       }
 
-      if (angle > 315 || angle < 45) {
+      // Get direction vector from nipplejs data
+      const directionX = Math.cos(data.angle.radian);
+      const directionY = Math.sin(data.angle.radian);
+
+      // Map direction vector to arrow keys
+      // ArrowUp = up (negative Y)
+      // ArrowLeft = left (negative X)
+      // ArrowDown = down (positive Y)
+      // ArrowRight = right (positive X)
+
+      // Check Y axis (up/down)
+      // Note: In nipplejs, Y is inverted from our desired mapping
+      // Up is positive Y in nipplejs but we want it to be arrowUp
+      if (directionY > 0.25) {
         KEYS['arrowup'] = true; // Up
-      } else if (angle > 135 && angle < 225) {
+      } else if (directionY < -0.25) {
         KEYS['arrowdown'] = true; // Down
       }
 
-      // Diagonal camera movement
-      if ((angle > 0 && angle < 45) || (angle > 315 && angle < 360)) {
-        KEYS['arrowup'] = true; // Up-right
-        KEYS['arrowright'] = true;
-      } else if (angle > 45 && angle < 90) {
-        KEYS['arrowright'] = true; // Right-up
-        KEYS['arrowup'] = true;
-      } else if (angle > 90 && angle < 135) {
-        KEYS['arrowright'] = true; // Right-down
-        KEYS['arrowdown'] = true;
-      } else if (angle > 135 && angle < 180) {
-        KEYS['arrowdown'] = true; // Down-right
-        KEYS['arrowright'] = true;
-      } else if (angle > 180 && angle < 225) {
-        KEYS['arrowdown'] = true; // Down-left
-        KEYS['arrowleft'] = true;
-      } else if (angle > 225 && angle < 270) {
-        KEYS['arrowleft'] = true; // Left-down
-        KEYS['arrowdown'] = true;
-      } else if (angle > 270 && angle < 315) {
-        KEYS['arrowleft'] = true; // Left-up
-        KEYS['arrowup'] = true;
+      // Check X axis (left/right)
+      if (directionX < -0.25) {
+        KEYS['arrowleft'] = true; // Left
+      } else if (directionX > 0.25) {
+        KEYS['arrowright'] = true; // Right
       }
     });
 
@@ -235,6 +239,12 @@ class MobileControls {
       KEYS['arrowleft'] = false;
       KEYS['arrowdown'] = false;
       KEYS['arrowright'] = false;
+
+      // Reset joystick color
+      if (this.cameraJoystick.ui && this.cameraJoystick.ui.front) {
+        this.cameraJoystick.ui.front.style.backgroundColor =
+          'rgba(200, 200, 200, 0.9)';
+      }
     });
   }
 
@@ -242,11 +252,48 @@ class MobileControls {
    * Create action buttons for mobile
    */
   createActionButtons() {
-    // Button configurations
+    // Button configurations with corresponding actions
     const buttons = [
-      { id: 'slash-btn', text: 'SLASH', key: 'u' },
-      { id: 'kick-btn', text: 'KICK', key: 'k' },
-      { id: 'lock-btn', text: 'LOCK', key: 'l' },
+      {
+        id: 'slash-btn',
+        text: 'SLASH',
+        key: 'u',
+        action: () => {
+          if (window.PLAYER && typeof window.PLAYER.slash === 'function') {
+            window.PLAYER.slash();
+          }
+        },
+      },
+      {
+        id: 'kick-btn',
+        text: 'KICK',
+        key: 'k',
+        action: () => {
+          if (window.PLAYER && typeof window.PLAYER.kick === 'function') {
+            window.PLAYER.kick();
+          }
+        },
+      },
+      {
+        id: 'lock-btn',
+        text: 'LOCK',
+        key: 'l',
+        action: () => {
+          if (
+            window.PLAYER &&
+            typeof window.PLAYER.toggleLockOn === 'function'
+          ) {
+            // If ENEMY is available, toggle lock on it, otherwise just toggle lock
+            if (window.ENEMY && window.PLAYER.lockOnEntity === window.ENEMY) {
+              window.PLAYER.toggleLockOn();
+            } else if (window.ENEMY) {
+              window.PLAYER.toggleLockOn(window.ENEMY);
+            } else {
+              window.PLAYER.toggleLockOn();
+            }
+          }
+        },
+      },
     ];
 
     // Create each button
@@ -259,11 +306,22 @@ class MobileControls {
       button.addEventListener('touchstart', (e) => {
         e.preventDefault(); // Prevent default touch behavior
         KEYS[btnConfig.key] = true;
+
+        // Directly call the player action
+        if (btnConfig.action) {
+          btnConfig.action();
+        }
+
+        // Visual feedback
+        button.style.transform = 'scale(0.95)';
       });
 
       button.addEventListener('touchend', (e) => {
         e.preventDefault();
         KEYS[btnConfig.key] = false;
+
+        // Reset visual feedback
+        button.style.transform = 'scale(1)';
       });
 
       this.buttonContainer.appendChild(button);
