@@ -66,10 +66,10 @@ export const loadModel = async (filePath, scene, LOADING_MANAGER) => {
 
   const loader = new GLTFLoader(LOADING_MANAGER);
   const dracoLoader = new DRACOLoader();
-  // dracoLoader.setDecoderPath('/assets/draco/');
-  dracoLoader.setDecoderPath(
-    'https://www.gstatic.com/draco/versioned/decoders/1.5.6/'
-  );
+  dracoLoader.setDecoderPath('/assets/draco/');
+  // dracoLoader.setDecoderPath(
+  //   'https://www.gstatic.com/draco/versioned/decoders/1.5.6/'
+  // );
   dracoLoader.setDecoderConfig({ type: 'js' });
 
   loader.setDRACOLoader(dracoLoader);
