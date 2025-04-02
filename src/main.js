@@ -16,6 +16,7 @@ import CombatManager from './combat/CombatManager.js';
 import BossUI from './components/BossUI.js';
 import PlayerUI from './components/PlayerUI.js';
 import SoundManager from './_lib/SoundManager.js';
+import MobileControls from './controls/MobileControls.js';
 import { TERRAIN_SIZE } from './entities/_constants.js';
 
 window.GAME_STARTED = true;
@@ -23,6 +24,9 @@ window.GAME_STARTED = true;
 // Initialize global sound manager
 const soundManager = new SoundManager();
 window.SOUND_MANAGER = soundManager;
+
+// Initialize mobile controls if on a mobile device
+let mobileControls;
 
 const LOADING_MANAGER = new THREE.LoadingManager();
 
@@ -212,6 +216,7 @@ async function init() {
   const playerUI = new PlayerUI();
   window.PLAYER_UI = playerUI;
 
+  // Set up keyboard controls for desktop
   window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     KEYS[key] = true;
@@ -245,6 +250,10 @@ async function init() {
     const key = event.key.toLowerCase();
     KEYS[key] = false;
   });
+
+  // Initialize mobile controls after everything else is set up
+  mobileControls = new MobileControls();
+  window.MOBILE_CONTROLS = mobileControls;
 
   addResizeEventListeners(CAMERA.camera, renderer);
 
