@@ -1062,6 +1062,15 @@ class EnemyEntity {
         this.currentAttackType = validAttacks[attackIndex];
         console.log(`Enemy using ${this.currentAttackType} attack`);
 
+        // Play the appropriate sound effect based on attack type
+        if (this.soundManager) {
+          if (this.currentAttackType === 'punch') {
+            this.soundManager.playSound('mutantPunch', { volume: 0.5 });
+          } else if (this.currentAttackType === 'swipe') {
+            this.soundManager.playSound('mutantSwipe', { volume: 0.5 });
+          }
+        }
+
         // Position the enemy at the appropriate attack range before playing animation
         if (distance > this.data.attackRange * 0.75) {
           // Get direction to player
@@ -1207,6 +1216,11 @@ class EnemyEntity {
           // Play swipe animation
           this.playAnimation('swipe', 0.1, 1.5); // Very quick crossfade, high priority
 
+          // Play the swipe sound effect
+          if (this.soundManager) {
+            this.soundManager.playSound('mutantSwipe', { volume: 0.6 });
+          }
+
           // Create an enhanced swipe hitbox after appropriate delay
           if (this.combatManager) {
             setTimeout(() => {
@@ -1251,7 +1265,7 @@ class EnemyEntity {
             }
           };
 
-          // Add listener for swipe completion
+          // Add the swipe completion listener
           swipeAction
             .getMixer()
             .addEventListener('finished', swipeCompletionHandler);

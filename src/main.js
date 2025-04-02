@@ -181,8 +181,6 @@ async function initGame() {
   const [player, enemy] = await Promise.all([
     loadModel('/assets/models/pieter levels.glb', scene, LOADING_MANAGER),
     // loadModel('/assets/models/austen2.glb', scene, LOADING_MANAGER),
-    // loadModel('/assets/models/new archer.glb', scene, LOADING_MANAGER),
-    // loadModel('/assets/models/pieter.glb', scene, LOADING_MANAGER),
     loadMutantModel(scene, LOADING_MANAGER),
   ]);
 

@@ -29,9 +29,13 @@ class SoundManager {
     this.preloadSound('spinAttackSound', '/assets/sounds/spinAttackSound.MP3');
     this.preloadSound('kickSound', '/assets/sounds/kickSound.MP3');
     this.preloadSound('austen-ha', '/assets/sounds/austen-ha.mp3');
+    this.preloadSound('mutantPunch', '/assets/sounds/mutantPunch.MP3');
+    this.preloadSound('mutantSwipe', '/assets/sounds/mutantSwipe.MP3');
 
-    // Preload ambient sounds
-    this.preloadAmbientSounds();
+    this.preloadSound('dragonRoar', '/assets/sounds/dragon roar.mp3');
+    this.preloadSound('bossBattleMusic', '/assets/sounds/bossBattleMusic.mp3');
+    this.preloadSound('victory', '/assets/sounds/victory.mp3');
+    this.preloadSound('ambientWind', '/assets/sounds/windBlowing.mp3');
 
     // Define sound sets for different surfaces
     this.surfaceSounds = {
@@ -51,16 +55,6 @@ class SoundManager {
 
     // Set up event listeners for combat sounds
     this.setupCombatSoundEvents();
-  }
-
-  /**
-   * Preload ambient sounds used throughout the game
-   */
-  preloadAmbientSounds() {
-    // Preload the ambient wind sound
-    this.preloadSound('ambientWind', '/assets/sounds/windBlowing.mp3');
-
-    // Add other ambient sounds as needed
   }
 
   preloadSound(id, url) {
