@@ -172,11 +172,11 @@ async function initGame() {
   }
   document.body.appendChild(renderer.domElement);
   // Add Stats (FPS meter)
-  stats = new Stats();
-  stats.domElement.style.position = 'absolute';
-  stats.domElement.style.top = '0px';
-  stats.domElement.style.right = '0px';
-  document.body.appendChild(stats.domElement);
+  // stats = new Stats();
+  // stats.domElement.style.position = 'absolute';
+  // stats.domElement.style.top = '0px';
+  // stats.domElement.style.right = '0px';
+  // document.body.appendChild(stats.domElement);
 
   // Set up scene lighting and environment
   generateLight(scene);
