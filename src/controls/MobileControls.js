@@ -294,6 +294,16 @@ class MobileControls {
           }
         },
       },
+      {
+        id: 'heal-btn',
+        text: 'HEAL',
+        key: 'p',
+        action: () => {
+          if (window.PLAYER && typeof window.PLAYER.powerUp === 'function') {
+            window.PLAYER.powerUp();
+          }
+        },
+      },
     ];
 
     // Create each button

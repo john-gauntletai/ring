@@ -888,9 +888,6 @@ class PlayerEntity {
       // Not blocking, play impact animation and appropriate sound for attack type
       this.fadeToAction(this.animations.impact2.action, false);
       if (this.soundManager) {
-        // Always play the player's "ow" sound
-        this.soundManager.playSound('ow', { volume: 0.4 });
-
         // Also play the appropriate attack sound
         if (options && options.attackType === 'kick') {
           // Play kick sound for kick attacks

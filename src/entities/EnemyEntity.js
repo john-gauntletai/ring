@@ -21,7 +21,7 @@ class EnemyEntity {
       attackRange: 4,
       attackDamage: 40,
       attackCooldown: 1,
-      velocity: 6,
+      velocity: 10,
       dashVelocity: 10,
     };
 
