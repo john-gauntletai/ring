@@ -85,11 +85,11 @@ async function generateHDR(scene) {
 
 function generateLight(scene) {
   // Ambient Light: Increased intensity for better visibility
-  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.8); // Increased from 0.8 to 1.0
+  const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.6); // Increased from 0.8 to 1.0
   scene.add(ambientLight);
 
   // Directional Light: Increase intensity and adjust position
-  const dirLight = new THREE.DirectionalLight(0xffeecc, 2); // Increased from 2.0 to 2.5
+  const dirLight = new THREE.DirectionalLight(0xffeecc, 1.5); // Increased from 2.0 to 2.5
   dirLight.position.set(50, 50, 20); // Adjusted position for better player illumination
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 4096;
@@ -131,7 +131,7 @@ function generateLight(scene) {
   scene.userData.enemyLight = enemyLight;
 
   // Add a ground-reflecting light to brighten the terrain
-  const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.35); // Increased from 0.35 to 0.4
+  const groundLight = new THREE.HemisphereLight(0xffffff, 0x5c4b2d, 0.3); // Increased from 0.35 to 0.4
   scene.add(groundLight);
 }
 
