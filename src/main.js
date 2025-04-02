@@ -37,7 +37,7 @@ window.SOUND_MANAGER = soundManager;
 // Initialize mobile controls if on a mobile device
 let mobileControls;
 let isMobileDevice = false;
-
+let stats;
 // Setup controls panel toggle functionality
 function setupControlsPanel() {
   if (!isMobileDevice) {
@@ -153,11 +153,11 @@ async function initGame() {
   renderer.toneMappingExposure = 1; // Reduced to make the scene darker overall
   document.body.appendChild(renderer.domElement);
   // Add Stats (FPS meter)
-  // const stats = new Stats();
-  // stats.domElement.style.position = 'absolute';
-  // stats.domElement.style.top = '0px';
-  // stats.domElement.style.right = '0px';
-  // document.body.appendChild(stats.domElement);
+  stats = new Stats();
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.top = '0px';
+  stats.domElement.style.right = '0px';
+  document.body.appendChild(stats.domElement);
 
   // Set up scene lighting and environment
   generateLight(scene);
@@ -287,7 +287,9 @@ async function initGame() {
   let logTimer = 0;
 
   function animate() {
-    // stats.begin();
+    if (stats) {
+      stats.begin();
+    }
 
     const delta = clock.getDelta();
     logTimer += delta;
@@ -320,14 +322,16 @@ async function initGame() {
       scene.userData.enemyLight.position.y += 6; // Position light above enemy (slightly higher than player light)
     }
 
-    // const shouldLog = logTimer > 10.0;
-    const shouldLog = false;
+    const shouldLog = logTimer > 10.0;
+    // const shouldLog = false;
     if (shouldLog) {
       logTimer = 0;
     }
     grass.update(delta, CAMERA.camera, shouldLog);
     renderer.render(scene, CAMERA.camera);
-    // stats.end();
+    if (stats) {
+      stats.end();
+    }
   }
 
   renderer.setAnimationLoop(animate);
