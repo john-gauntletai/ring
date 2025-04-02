@@ -139,7 +139,7 @@ async function initGame() {
     '/assets/skybox/nx.png',
   ]);
 
-  texture.encoding = THREE.sRGBEncoding;
+  // texture.encoding = THREE.sRGBEncoding;
   scene.background = texture;
 
   // Set up renderer before generating terrain to ensure proper shader setup
@@ -149,7 +149,6 @@ async function initGame() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace; // Updated from outputEncoding
-  renderer.toneMapping = THREE.LinearToneMapping; // Recommended for HDR
   renderer.toneMappingExposure = 1; // Reduced to make the scene darker overall
   document.body.appendChild(renderer.domElement);
   // Add Stats (FPS meter)
