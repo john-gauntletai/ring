@@ -19,7 +19,15 @@ import SoundManager from './_lib/SoundManager.js';
 import MobileControls from './controls/MobileControls.js';
 import { TERRAIN_SIZE } from './entities/_constants.js';
 
-window.GAME_STARTED = true;
+window.GAME_STARTED = false; // Set to false initially
+
+// Get start screen elements
+const startScreen = document.getElementById('start-screen');
+const pressAnyKey = document.querySelector('.press-any-key');
+const startButton = document.querySelector('.start-button');
+const controlsExplanation = document.getElementById('controls-explanation');
+const controlsPanel = document.getElementById('controls-panel');
+const controlsToggle = document.querySelector('.controls-toggle');
 
 // Initialize global sound manager
 const soundManager = new SoundManager();
@@ -27,6 +35,50 @@ window.SOUND_MANAGER = soundManager;
 
 // Initialize mobile controls if on a mobile device
 let mobileControls;
+let isMobileDevice = false;
+
+// Function to detect mobile devices
+function detectMobile() {
+  return (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    )
+  );
+}
+
+// Setup controls panel toggle functionality
+function setupControlsPanel() {
+  let minimized = false;
+
+  // Only show controls panel for non-mobile devices
+  if (!isMobileDevice && controlsPanel && controlsToggle) {
+    // Show the panel once the game starts
+    window.addEventListener('gameStarted', function () {
+      controlsPanel.style.display = 'block';
+    });
+
+    // Toggle controls panel visibility
+    controlsToggle.addEventListener('click', function () {
+      if (minimized) {
+        // Expand panel
+        controlsPanel.classList.remove('minimized-controls');
+        document.querySelector('.controls-table').style.display = 'table';
+        document.querySelector('#controls-panel h3').style.display = 'block';
+        controlsToggle.textContent = '–';
+        minimized = false;
+      } else {
+        // Minimize panel
+        controlsPanel.classList.add('minimized-controls');
+        document.querySelector('.controls-table').style.display = 'none';
+        document.querySelector('#controls-panel h3').style.display = 'none';
+        controlsToggle.textContent = '+';
+        minimized = true;
+      }
+    });
+  }
+}
 
 const LOADING_MANAGER = new THREE.LoadingManager();
 
@@ -91,7 +143,8 @@ function generateLight(scene) {
   scene.add(groundLight);
 }
 
-async function init() {
+// Game initialization
+async function initGame() {
   // Create scene
   const scene = new THREE.Scene();
 
@@ -117,15 +170,13 @@ async function init() {
   renderer.outputColorSpace = THREE.SRGBColorSpace; // Updated from outputEncoding
   renderer.toneMapping = THREE.LinearToneMapping; // Recommended for HDR
   renderer.toneMappingExposure = 1; // Reduced to make the scene darker overall
-
-  // Add Stats (FPS meter)
-  const stats = new Stats();
-  stats.domElement.style.position = 'absolute';
-  stats.domElement.style.top = '0px';
-  stats.domElement.style.right = '0px';
-  document.body.appendChild(stats.domElement);
-
   document.body.appendChild(renderer.domElement);
+  // Add Stats (FPS meter)
+  // const stats = new Stats();
+  // stats.domElement.style.position = 'absolute';
+  // stats.domElement.style.top = '0px';
+  // stats.domElement.style.right = '0px';
+  // document.body.appendChild(stats.domElement);
 
   // Set up scene lighting and environment
   generateLight(scene);
@@ -261,7 +312,7 @@ async function init() {
   let logTimer = 0;
 
   function animate() {
-    stats.begin();
+    // stats.begin();
 
     const delta = clock.getDelta();
     logTimer += delta;
@@ -300,10 +351,116 @@ async function init() {
     }
     grass.update(delta, CAMERA.camera, true);
     renderer.render(scene, CAMERA.camera);
-    stats.end();
+    // stats.end();
   }
 
   renderer.setAnimationLoop(animate);
+
+  // Game has been started in the background
+  window.GAME_STARTED = true;
+
+  // Dispatch custom event to notify that game has started (behind the start screen)
+  window.dispatchEvent(new Event('gameStarted'));
+
+  // Return a function to reveal game (will be called when start button is clicked)
+  return function revealGame() {
+    // If the location overlay exists, show it now
+    const locationOverlay = document.getElementById('location-overlay');
+    if (locationOverlay) {
+      locationOverlay.style.display = 'flex';
+      // Trigger a reflow before setting opacity for the transition to work
+      locationOverlay.offsetHeight;
+      // Make the overlay visible with transition
+      locationOverlay.style.opacity = '1';
+
+      // Play the new area sound
+      if (soundManager) {
+        soundManager.preloadSound('newArea', '/assets/sounds/newArea.mp3');
+        soundManager.playSound('newArea', { volume: 0.2 });
+
+        // Start ambient wind sound
+        if (!soundManager.sounds['ambientWind']) {
+          soundManager.preloadSound(
+            'ambientWind',
+            '/assets/sounds/windBlowing.mp3'
+          );
+        }
+        soundManager.startLoop('ambientWind', { volume: 1.0 });
+      }
+
+      // Hide the overlay after 5 seconds
+      setTimeout(() => {
+        locationOverlay.style.opacity = '0';
+        // Wait for the fade-out transition to complete before hiding the element
+        setTimeout(() => {
+          locationOverlay.style.display = 'none';
+        }, 2000); // 2 seconds for fade-out transition
+      }, 3000); // Display for 3 seconds before starting fade-out
+    }
+  };
 }
 
-window.addEventListener('DOMContentLoaded', init);
+// Handle the start screen functionality
+function initStartScreen(revealGameFunc) {
+  // Check if device is mobile
+  isMobileDevice = detectMobile();
+
+  // Setup controls panel functionality
+  setupControlsPanel();
+
+  let firstKeyPressed = false;
+
+  // Event listener for key press
+  document.addEventListener('keydown', function (event) {
+    if (startScreen.style.display !== 'none') {
+      if (!firstKeyPressed) {
+        // First key press
+        firstKeyPressed = true;
+        pressAnyKey.style.display = 'none';
+        startButton.style.display = 'block';
+      } else if (event.key === 'Enter') {
+        // Enter key after first key press - start the game
+        startGame();
+      }
+    }
+  });
+
+  // Event listener for mouse/touch click
+  document.addEventListener('click', function (event) {
+    if (startScreen.style.display !== 'none' && !firstKeyPressed) {
+      // First click
+      firstKeyPressed = true;
+      pressAnyKey.style.display = 'none';
+      startButton.style.display = 'block';
+    }
+  });
+
+  // Start button click handler
+  startButton.addEventListener('click', startGame);
+
+  // Function to start the game
+  function startGame() {
+    // Hide the start screen
+    startScreen.style.display = 'none';
+
+    // Call the reveal function to show the location overlay and proceed with the game
+    if (revealGameFunc) {
+      revealGameFunc();
+    }
+  }
+}
+
+// Initialize everything when the DOM is loaded
+window.addEventListener('DOMContentLoaded', async function () {
+  // Initialize the game immediately (running behind start screen)
+  const revealGame = await initGame();
+
+  // Then set up the start screen on top of the running game
+  if (startScreen) {
+    startButton.style.display = 'none'; // Hide the start button initially
+    initStartScreen(revealGame);
+  } else {
+    // If start screen is not found, just reveal the game
+    revealGame();
+  }
+});

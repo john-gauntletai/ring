@@ -23,13 +23,17 @@
 			left: 0;
 			width: 100%;
 			height: 100%;
-			background-color: rgba(0, 0, 0, 0.5);
-			z-index: 1000;
+			background-color: rgba(0, 0, 0, 0.7);
+			/* Semi-transparent background */
+			z-index: 1500;
+			/* Increased z-index to be on top of everything */
 			display: flex;
 			flex-direction: column;
 			justify-content: center;
 			align-items: center;
 			color: #fff;
+			pointer-events: auto;
+			/* Ensure it captures mouse events */
 		}
 
 		#background-video {
@@ -779,6 +783,126 @@
 			padding: 0.5rem 0;
 			line-height: 1;
 		}
+
+		/* Permanent Controls Panel Styles */
+		#controls-panel {
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			background-color: rgba(0, 0, 0, 0.7);
+			border: 2px solid #a17f4b;
+			border-radius: 8px;
+			padding: 10px;
+			color: #c4b08c;
+			text-align: center;
+			width: 200px;
+			box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+			z-index: 998;
+			display: none;
+			/* Hidden by default, shown after start screen */
+			transition: opacity 0.3s ease;
+		}
+
+		#controls-panel h3 {
+			font-size: 1.2rem;
+			margin: 0 0 8px 0;
+			text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+			letter-spacing: 0.05rem;
+		}
+
+		.controls-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 0.8rem;
+		}
+
+		.controls-table td {
+			padding: 3px 0;
+			text-align: left;
+		}
+
+		.controls-table td:first-child {
+			width: 40%;
+			font-weight: bold;
+			background-color: rgba(196, 176, 140, 0.2);
+			border: 1px solid #a17f4b;
+			border-radius: 4px;
+			padding: 3px 5px;
+			text-align: center;
+		}
+
+		.controls-toggle {
+			position: absolute;
+			top: 8px;
+			right: 8px;
+			width: 20px;
+			height: 20px;
+			background: none;
+			border: none;
+			color: #c4b08c;
+			font-size: 16px;
+			cursor: pointer;
+			padding: 0;
+			line-height: 1;
+		}
+
+		.minimized-controls {
+			width: 32px;
+			height: 32px;
+			padding: 5px;
+			background-color: rgba(0, 0, 0, 0.7);
+			border-radius: 4px;
+		}
+
+		/* Controls Explanation Styles (for start screen only) */
+		#controls-explanation {
+			position: absolute;
+			top: 55%;
+			left: 50%;
+			transform: translateX(-50%);
+			background-color: rgba(0, 0, 0, 0.7);
+			border: 2px solid #a17f4b;
+			border-radius: 8px;
+			padding: 20px 30px;
+			color: #c4b08c;
+			text-align: center;
+			width: 400px;
+			max-width: 90%;
+			box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+			z-index: 1001;
+			animation: fadeIn 0.5s ease-in-out;
+			display: none;
+			/* Keep this hidden as we're using the permanent panel instead */
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateX(-50%) translateY(10px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateX(-50%) translateY(0);
+			}
+		}
+
+		/* Animation for showing controls panel */
+		@keyframes fadeInControls {
+			from {
+				opacity: 0;
+				transform: translateY(-10px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		#controls-panel {
+			animation: fadeInControls 0.5s ease-in-out;
+		}
 	</style>
 </head>
 
@@ -841,6 +965,98 @@
 		<div class="enemy-felled-container">
 			<div class="enemy-felled-text">ENEMY FELLED</div>
 		</div>
+	</div>
+
+	<!-- Start Screen -->
+	<div id="start-screen">
+		<h1 class="game-title">
+			<span class="game-title-burnt">THE LAST EMBER</span>
+			<span class="game-title-cracks">THE LAST EMBER</span>
+			<span class="game-title-age">THE LAST EMBER</span>
+			<span class="game-title-shine">THE LAST EMBER</span>
+			THE LAST EMBER
+		</h1>
+		<div class="press-any-key">PRESS ANY KEY TO CONTINUE</div>
+		<button class="start-button">START GAME</button>
+
+		<!-- Controls explanation - only shown for non-mobile users after pressing a key -->
+		<div id="controls-explanation" style="display: none;">
+			<h2>CONTROLS</h2>
+			<div class="controls-grid">
+				<div class="control-group">
+					<div class="control-key">WASD</div>
+					<div class="control-desc">Movement</div>
+				</div>
+				<div class="control-group">
+					<div class="control-key">ARROWS</div>
+					<div class="control-desc">Camera</div>
+				</div>
+				<div class="control-group">
+					<div class="control-key">U</div>
+					<div class="control-desc">Slash Attack</div>
+				</div>
+				<div class="control-group">
+					<div class="control-key">K</div>
+					<div class="control-desc">Kick</div>
+				</div>
+				<div class="control-group">
+					<div class="control-key">L</div>
+					<div class="control-desc">Lock On Enemy</div>
+				</div>
+				<div class="control-group">
+					<div class="control-key">O</div>
+					<div class="control-desc">Roll</div>
+				</div>
+				<div class="control-group">
+					<div class="control-key">P</div>
+					<div class="control-desc">Power Up</div>
+				</div>
+				<div class="control-group">
+					<div class="control-key">B</div>
+					<div class="control-desc">Block</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Permanent Controls Panel (only for non-mobile) -->
+	<div id="controls-panel">
+		<button class="controls-toggle" title="Toggle Controls Panel">–</button>
+		<h3>CONTROLS</h3>
+		<table class="controls-table">
+			<tr>
+				<td>WASD</td>
+				<td>Movement</td>
+			</tr>
+			<tr>
+				<td>ARROWS</td>
+				<td>Camera</td>
+			</tr>
+			<tr>
+				<td>U</td>
+				<td>Slash Attack</td>
+			</tr>
+			<tr>
+				<td>K</td>
+				<td>Kick</td>
+			</tr>
+			<tr>
+				<td>L</td>
+				<td>Lock On Enemy</td>
+			</tr>
+			<tr>
+				<td>O</td>
+				<td>Roll</td>
+			</tr>
+			<tr>
+				<td>P</td>
+				<td>Power Up</td>
+			</tr>
+			<tr>
+				<td>B</td>
+				<td>Block</td>
+			</tr>
+		</table>
 	</div>
 
 	<script type="module" src="/src/main.js"></script>
