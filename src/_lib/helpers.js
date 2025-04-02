@@ -144,7 +144,7 @@ export const loadMutantModel = async (scene, LOADING_MANAGER) => {
   const death = await loader.loadAsync('death.fbx');
   _OnLoad('death', death);
 
-  model.scale.setScalar(0.0225);
+  model.scale.setScalar(0.02);
 
   scene.add(model);
 

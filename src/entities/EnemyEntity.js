@@ -398,7 +398,7 @@ class EnemyEntity {
         if (oldState === 'IDLE') {
           // Play roar animation if available
           if (this.animations.roar && this.animations.roar.action) {
-            this.playAnimation('roar', 0.3, 2.0); // High priority to ensure it plays
+            this.playAnimation('roar', 0.5, 2.0); // Higher crossfade duration, high priority
 
             // After roar animation completes, transition to chase state
             const roarAction = this.animations.roar.action;
@@ -549,7 +549,7 @@ class EnemyEntity {
    * @param {number} crossFadeDuration - Duration of crossfade in seconds
    * @param {number} priority - Higher priority animations interrupt lower ones
    */
-  playAnimation(name, crossFadeDuration = 0.3, priority = 0) {
+  playAnimation(name, crossFadeDuration = 0.5, priority = 0) {
     if (!this.animations || !this.animations[name]) {
       console.warn(`Animation '${name}' not found for Golden Knight`);
       return;
@@ -731,7 +731,7 @@ class EnemyEntity {
       setTimeout(() => {
         if (this.currentState === 'STAGGERED') {
           // Play run animation before transitioning back to CHASE
-          this.playAnimation('run', 0.3);
+          this.playAnimation('run', 0.5);
           this.setState('CHASE');
         }
       }, 1000);
@@ -1189,7 +1189,7 @@ class EnemyEntity {
     }
 
     // Step 1: Play flex animation
-    this.playAnimation('flex', 0.2, 2.0); // Fast crossfade, high priority
+    this.playAnimation('flex', 0.5, 2.0); // Increased crossfade, high priority
 
     // Set up a sequence of actions
     // After flex animation completes, dash to player and then swipe
@@ -1214,7 +1214,7 @@ class EnemyEntity {
           this.currentAttackType = 'swipe';
 
           // Play swipe animation
-          this.playAnimation('swipe', 0.1, 1.5); // Very quick crossfade, high priority
+          this.playAnimation('swipe', 0.2, 1.5); // Keep fast crossfade for action attacks
 
           // Play the swipe sound effect
           if (this.soundManager) {
@@ -1300,7 +1300,7 @@ class EnemyEntity {
     const dashDistance = Math.max(0, distance - this.data.attackRange / 2);
 
     // Play running animation during dash
-    this.playAnimation('run', 0.1, 1.0);
+    this.playAnimation('run', 0.5, 1.0);
 
     // Use dashVelocity for faster movement
     const originalVelocity = this.data.velocity;
@@ -1556,7 +1556,7 @@ class EnemyEntity {
     console.log(`Running away ${runAwayDistance} units from player`);
 
     // Play run animation
-    this.playAnimation('run', 0.2, 1.0);
+    this.playAnimation('run', 0.5, 1.0);
 
     // Determine run duration based on regular velocity
     const runAwayDuration = runAwayDistance / this.data.velocity;
@@ -1643,7 +1643,7 @@ class EnemyEntity {
 
           // Return to idle animation
           if (this.currentState === 'ATTACK') {
-            this.playAnimation('idle');
+            this.playAnimation('idle', 0.5);
 
             // Transition back to CHASE after attack completes
             setTimeout(() => {
@@ -1656,7 +1656,7 @@ class EnemyEntity {
                 // Force run animation to ensure visual feedback of state change
                 setTimeout(() => {
                   if (this.currentState === 'CHASE') {
-                    this.playAnimation('run');
+                    this.playAnimation('run', 0.5);
                   }
                 }, 50);
               }
