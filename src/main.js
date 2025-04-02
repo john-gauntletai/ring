@@ -19,7 +19,7 @@ import PlayerUI from './components/PlayerUI.js';
 import SoundManager from './_lib/SoundManager.js';
 import MobileControls from './controls/MobileControls.js';
 import { TERRAIN_SIZE } from './entities/_constants.js';
-
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 window.GAME_STARTED = false; // Set to false initially
 
 // Get start screen elements
@@ -36,7 +36,7 @@ window.SOUND_MANAGER = soundManager;
 
 // Initialize mobile controls if on a mobile device
 let mobileControls;
-let isMobileDevice = false;
+let isMobileDevice = detectMobile();
 let stats;
 // Setup controls panel toggle functionality
 function setupControlsPanel() {
@@ -75,6 +75,14 @@ LOADING_MANAGER.onError = (url) => {
   console.error(url);
 };
 
+async function generateHDR(scene) {
+  const hdriLoader = new RGBELoader();
+  const texture = await hdriLoader.loadAsync('/assets/hdr/kingdom-sky.hdr');
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  scene.background = texture;
+  scene.environment = texture;
+}
+
 function generateLight(scene) {
   // Ambient Light: Increased intensity for better visibility
   const ambientLight = new THREE.AmbientLight(0xf5f9ff, 0.8); // Increased from 0.8 to 1.0
@@ -105,8 +113,9 @@ function generateLight(scene) {
   const playerLight = new THREE.PointLight(0xffffff, 0.8, 20);
   playerLight.position.set(0, 5, 0);
   playerLight.castShadow = false;
-  scene.add(playerLight);
-
+  if (isMobileDevice) {
+    scene.add(playerLight);
+  }
   // Store the player light in scene's userData for later repositioning
   scene.userData.playerLight = playerLight;
 
@@ -114,7 +123,9 @@ function generateLight(scene) {
   const enemyLight = new THREE.PointLight(0xffcc88, 1.0, 25);
   enemyLight.position.set(0, 5, 0);
   enemyLight.castShadow = false;
-  scene.add(enemyLight);
+  if (isMobileDevice) {
+    scene.add(enemyLight);
+  }
 
   // // // Store the enemy light in scene's userData for later repositioning
   scene.userData.enemyLight = enemyLight;
@@ -129,18 +140,21 @@ async function initGame() {
   // Create scene
   const scene = new THREE.Scene();
 
-  const loader = new THREE.CubeTextureLoader();
-  const texture = loader.load([
-    '/assets/skybox/nz.png',
-    '/assets/skybox/pz.png',
-    '/assets/skybox/py.png',
-    '/assets/skybox/ny.png',
-    '/assets/skybox/px.png',
-    '/assets/skybox/nx.png',
-  ]);
+  if (isMobileDevice) {
+    const loader = new THREE.CubeTextureLoader();
+    const texture = loader.load([
+      '/assets/skybox/nz.png',
+      '/assets/skybox/pz.png',
+      '/assets/skybox/py.png',
+      '/assets/skybox/ny.png',
+      '/assets/skybox/px.png',
+      '/assets/skybox/nx.png',
+    ]);
 
-  // texture.encoding = THREE.sRGBEncoding;
-  scene.background = texture;
+    scene.background = texture;
+  } else {
+    await generateHDR(scene);
+  }
 
   // Set up renderer before generating terrain to ensure proper shader setup
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -149,7 +163,13 @@ async function initGame() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace; // Updated from outputEncoding
-  renderer.toneMappingExposure = 1; // Reduced to make the scene darker overall
+  if (isMobileDevice) {
+    renderer.toneMapping = THREE.LinearToneMapping;
+    renderer.toneMappingExposure = 1; // Reduced to make the scene darker overall
+  } else {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.5; // Reduced to make the scene darker overall
+  }
   document.body.appendChild(renderer.domElement);
   // Add Stats (FPS meter)
   stats = new Stats();
@@ -313,13 +333,13 @@ async function initGame() {
     }
 
     // Update player light position to follow player
-    if (scene.userData.playerLight) {
+    if (scene.userData.playerLight && isMobileDevice) {
       scene.userData.playerLight.position.copy(PLAYER.model.position);
       scene.userData.playerLight.position.y += 5; // Position light above player
     }
 
     // Update enemy light position to follow enemy
-    if (scene.userData.enemyLight && ENEMY) {
+    if (scene.userData.enemyLight && ENEMY && isMobileDevice) {
       scene.userData.enemyLight.position.copy(ENEMY.model.position);
       scene.userData.enemyLight.position.y += 6; // Position light above enemy (slightly higher than player light)
     }
@@ -392,9 +412,6 @@ async function initGame() {
 
 // Handle the start screen functionality
 function initStartScreen(revealGameFunc) {
-  // Check if device is mobile
-  isMobileDevice = detectMobile();
-
   // Setup controls panel functionality
   setupControlsPanel();
 
