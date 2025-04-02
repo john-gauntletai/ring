@@ -657,6 +657,22 @@ class EnemyEntity {
       `Enemy took ${damage} damage. Health: ${this.data.health}/${this.data.maxHealth}`
     );
 
+    // Play sword slash sound if the attacker is the player
+    if (
+      this.soundManager &&
+      options.attacker &&
+      options.attacker === window.PLAYER
+    ) {
+      // Choose the appropriate sound based on attack type
+      if (options.attackType === 'kick') {
+        // Keep kick sound different
+        this.soundManager.playSound('kickSound', { volume: 0.5 });
+      } else {
+        // For all other attacks, play a random sword slash sound
+        this.soundManager.playRandomSwordSlash({ volume: 0.5 });
+      }
+    }
+
     // Update boss health UI
     document.dispatchEvent(
       new CustomEvent('boss_health_changed', {
@@ -1067,14 +1083,14 @@ class EnemyEntity {
             case 'swipe':
               hitboxDelay = 400;
               hitboxOffset = new THREE.Vector3(0, 1, -2);
-              hitboxSize = new THREE.Vector3(2.5, 1.5, 2);
+              hitboxSize = new THREE.Vector3(3.5, 2.0, 3.0); // Increased from 2.5, 1.5, 2 for wider and taller hitbox
               damage = Math.floor(this.data.attackDamage * 1.2);
               knockback = 1.2;
               break;
             case 'punch':
               hitboxDelay = 300;
               hitboxOffset = new THREE.Vector3(0, 1, -1.5);
-              hitboxSize = new THREE.Vector3(1.5, 1.5, 1.5);
+              hitboxSize = new THREE.Vector3(2.5, 2.0, 2.0); // Increased from 1.5, 1.5, 1.5 for a larger punch area
               damage = this.data.attackDamage;
               knockback = 0.8;
               break;

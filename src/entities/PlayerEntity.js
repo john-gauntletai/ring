@@ -130,6 +130,17 @@ class PlayerEntity {
         this.lockOnEntity.model.remove(this.lockOnMarker);
       }
       this.lockOnMarker = null;
+
+      // Clean up animation data
+      this.lockOnPulseTime = null;
+      this.lockOnPulseDirection = null;
+    }
+
+    // Toggle lock-on if clicking the same entity
+    if (this.lockOnEntity === entity) {
+      this.lockOnEntity = null;
+      console.log('Lock-on disabled');
+      return;
     }
 
     this.lockOnEntity = entity;
@@ -139,7 +150,7 @@ class PlayerEntity {
       this.lockOnMarker = new THREE.Group();
 
       // Create black border sphere (just slightly larger than the white dot)
-      const borderGeometry = new THREE.SphereGeometry(0.025, 8, 8);
+      const borderGeometry = new THREE.SphereGeometry(0.25, 16, 16);
       const borderMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: false,
@@ -148,10 +159,11 @@ class PlayerEntity {
       const border = new THREE.Mesh(borderGeometry, borderMaterial);
 
       // Create white dot indicator
-      const dotGeometry = new THREE.SphereGeometry(0.018, 8, 8);
+      const dotGeometry = new THREE.SphereGeometry(0.18, 16, 16);
       const dotMaterial = new THREE.MeshBasicMaterial({
         color: 0xffffff,
-        transparent: false,
+        transparent: true,
+        opacity: 0.9,
         depthTest: false,
       });
       const dot = new THREE.Mesh(dotGeometry, dotMaterial);
@@ -161,10 +173,16 @@ class PlayerEntity {
       this.lockOnMarker.add(dot);
 
       // Position the marker on the entity's chest/body
-      this.lockOnMarker.position.set(0, 1.2, 0); // Center of chest/torso
+      this.lockOnMarker.position.set(0, 1.5, 0); // Center of chest/torso
 
       // Add the marker group to the target entity
       entity.model.add(this.lockOnMarker);
+
+      // Initialize pulsing animation data
+      this.lockOnPulseTime = 0;
+      this.lockOnPulseDirection = 1;
+      this.lockOnDot = dot;
+      this.lockOnBorder = border;
 
       console.log("Lock-on indicator with thin border added to entity's body");
     }
@@ -354,7 +372,7 @@ class PlayerEntity {
           hitboxSize, // Size
           this.attackPower, // Damage
           0.2, // Duration in seconds
-          { owner: this, knockback: 2 } // Additional options
+          { owner: this, knockback: 2, attackType: 'slash' } // Explicitly set attackType
         );
 
         console.log('Created player attack hitbox');
@@ -392,7 +410,7 @@ class PlayerEntity {
           hitboxSize, // Size
           this.attackPower * 1.5, // Higher damage
           0.3, // Duration in seconds
-          { owner: this, knockback: 4 } // More knockback
+          { owner: this, knockback: 4, attackType: 'slash2' } // Explicitly set attackType
         );
 
         console.log('Created player heavy attack hitbox');
@@ -487,7 +505,7 @@ class PlayerEntity {
           hitboxSize, // Size
           this.attackPower * 1.2, // Medium damage
           0.3, // Duration in seconds
-          { owner: this, knockback: 3 } // Medium knockback
+          { owner: this, knockback: 3, attackType: 'spinAttack' } // Explicitly set attackType
         );
 
         console.log('Created player spin attack hitbox');
@@ -825,12 +843,16 @@ class PlayerEntity {
       // Not blocking, play impact animation and appropriate sound for attack type
       this.fadeToAction(this.animations.impact2.action, false);
       if (this.soundManager) {
+        // Always play the player's "ow" sound
+        this.soundManager.playSound('ow', { volume: 0.4 });
+
+        // Also play the appropriate attack sound
         if (options && options.attackType === 'kick') {
           // Play kick sound for kick attacks
-          this.soundManager.playSound('kickSound', { volume: 0.4 });
+          this.soundManager.playSound('kickSound', { volume: 0.3 });
         } else {
-          // Play sword slash sound for other attacks
-          this.soundManager.playRandomSwordSlash({ volume: 0.4 });
+          // Play specific sword slash sound for other attacks
+          this.soundManager.playSound('swordSlash1', { volume: 0.4 });
         }
       }
       console.log('Player hit! Playing impact animation');
@@ -947,6 +969,9 @@ class PlayerEntity {
     if (this.rollCooldown > 0) {
       this.rollCooldown -= delta;
     }
+
+    // Update lock-on indicator animation
+    this.updateLockOnIndicator(delta);
 
     // Handle staggered state
     if (this.currentState === 'STAGGERED') {
@@ -1726,6 +1751,45 @@ class PlayerEntity {
     if (this.currentSurfaceType !== surfaceType) {
       this.currentSurfaceType = surfaceType;
       this.soundManager.setSurfaceType(surfaceType);
+    }
+  }
+
+  /**
+   * Update the lock-on indicator animation
+   * @param {number} delta - Time since last frame in seconds
+   */
+  updateLockOnIndicator(delta) {
+    // Skip if no lock-on marker or dot
+    if (
+      !this.lockOnMarker ||
+      !this.lockOnDot ||
+      this.lockOnPulseTime === undefined
+    ) {
+      return;
+    }
+
+    // Update pulse time
+    this.lockOnPulseTime += delta * this.lockOnPulseDirection;
+
+    // Reverse direction at bounds
+    if (this.lockOnPulseTime > 1) {
+      this.lockOnPulseTime = 1;
+      this.lockOnPulseDirection = -1;
+    } else if (this.lockOnPulseTime < 0) {
+      this.lockOnPulseTime = 0;
+      this.lockOnPulseDirection = 1;
+    }
+
+    // Calculate scale factor (between 0.9 and 1.1)
+    const scaleFactor = 0.9 + this.lockOnPulseTime * 0.2;
+
+    // Apply scale to the dot and border
+    this.lockOnDot.scale.set(scaleFactor, scaleFactor, scaleFactor);
+    this.lockOnBorder.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+    // Pulse opacity too (between 0.8 and 1)
+    if (this.lockOnDot.material) {
+      this.lockOnDot.material.opacity = 0.8 + this.lockOnPulseTime * 0.2;
     }
   }
 }
