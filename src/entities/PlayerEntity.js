@@ -164,7 +164,7 @@ class PlayerEntity {
       this.lockOnMarker = new THREE.Group();
 
       // Create black border sphere (just slightly larger than the white dot)
-      const borderGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+      const borderGeometry = new THREE.SphereGeometry(1, 16, 16);
       const borderMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: false,
@@ -173,7 +173,7 @@ class PlayerEntity {
       const border = new THREE.Mesh(borderGeometry, borderMaterial);
 
       // Create white dot indicator
-      const dotGeometry = new THREE.SphereGeometry(0.18, 16, 16);
+      const dotGeometry = new THREE.SphereGeometry(0.9, 16, 16);
       const dotMaterial = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
@@ -187,14 +187,12 @@ class PlayerEntity {
       this.lockOnMarker.add(dot);
 
       // Position the marker on the entity's chest/body
-      this.lockOnMarker.position.set(0, 1.5, 0); // Center of chest/torso
+      this.lockOnMarker.position.set(0, 75, 0); // Center of chest/torso
 
       // Add the marker group to the target entity
       entity.model.add(this.lockOnMarker);
 
-      // Initialize pulsing animation data
-      this.lockOnPulseTime = 0;
-      this.lockOnPulseDirection = 1;
+      // Store references to the meshes (without animation data)
       this.lockOnDot = dot;
       this.lockOnBorder = border;
 
@@ -1802,38 +1800,8 @@ class PlayerEntity {
    * @param {number} delta - Time since last frame in seconds
    */
   updateLockOnIndicator(delta) {
-    // Skip if no lock-on marker or dot
-    if (
-      !this.lockOnMarker ||
-      !this.lockOnDot ||
-      this.lockOnPulseTime === undefined
-    ) {
-      return;
-    }
-
-    // Update pulse time
-    this.lockOnPulseTime += delta * this.lockOnPulseDirection;
-
-    // Reverse direction at bounds
-    if (this.lockOnPulseTime > 1) {
-      this.lockOnPulseTime = 1;
-      this.lockOnPulseDirection = -1;
-    } else if (this.lockOnPulseTime < 0) {
-      this.lockOnPulseTime = 0;
-      this.lockOnPulseDirection = 1;
-    }
-
-    // Calculate scale factor (between 0.9 and 1.1)
-    const scaleFactor = 0.9 + this.lockOnPulseTime * 0.2;
-
-    // Apply scale to the dot and border
-    this.lockOnDot.scale.set(scaleFactor, scaleFactor, scaleFactor);
-    this.lockOnBorder.scale.set(scaleFactor, scaleFactor, scaleFactor);
-
-    // Pulse opacity too (between 0.8 and 1)
-    if (this.lockOnDot.material) {
-      this.lockOnDot.material.opacity = 0.8 + this.lockOnPulseTime * 0.2;
-    }
+    // Function kept for compatibility but no longer performs animation
+    return;
   }
 }
 
