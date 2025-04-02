@@ -164,7 +164,7 @@ class PlayerEntity {
       this.lockOnMarker = new THREE.Group();
 
       // Create black border sphere (just slightly larger than the white dot)
-      const borderGeometry = new THREE.SphereGeometry(1, 16, 16);
+      const borderGeometry = new THREE.SphereGeometry(0.01, 16, 16);
       const borderMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: false,
@@ -173,7 +173,7 @@ class PlayerEntity {
       const border = new THREE.Mesh(borderGeometry, borderMaterial);
 
       // Create white dot indicator
-      const dotGeometry = new THREE.SphereGeometry(0.9, 16, 16);
+      const dotGeometry = new THREE.SphereGeometry(0.012, 16, 16);
       const dotMaterial = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
@@ -187,7 +187,7 @@ class PlayerEntity {
       this.lockOnMarker.add(dot);
 
       // Position the marker on the entity's chest/body
-      this.lockOnMarker.position.set(0, 75, 0); // Center of chest/torso
+      this.lockOnMarker.position.set(0, 0.7, 0); // Center of chest/torso
 
       // Add the marker group to the target entity
       entity.model.add(this.lockOnMarker);

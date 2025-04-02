@@ -180,9 +180,12 @@ async function initGame() {
   // Load models
   const [player, enemy] = await Promise.all([
     loadModel('/assets/models/pieter-hair2.glb', scene, LOADING_MANAGER),
+    loadModel('/assets/models/mutant-out.glb', scene, LOADING_MANAGER),
     // loadModel('/assets/models/austen2.glb', scene, LOADING_MANAGER),
-    loadMutantModel(scene, LOADING_MANAGER),
+    // loadMutantModel(scene, LOADING_MANAGER),
   ]);
+
+  enemy.model.scale.setScalar(2);
 
   const PLAYER = new PlayerEntity(
     player.model,
