@@ -74,7 +74,6 @@ class EnemyEntity {
     this.model.position.set(0, 0, -30);
 
     this.markAsLoopOnce(this.animations.roar);
-    this.markAsLoopOnce(this.animations.flex);
     this.markAsLoopOnce(this.animations.death);
     this.markAsLoopOnce(this.animations.punch);
     this.markAsLoopOnce(this.animations.swipe);
@@ -607,7 +606,7 @@ class EnemyEntity {
     this.currentAction = newAction;
 
     // For attack animations, ensure they complete
-    if (['punch', 'swipe', 'roar', 'flex'].includes(name)) {
+    if (['punch', 'swipe', 'roar'].includes(name)) {
       newAction.enabled = true;
       newAction.clampWhenFinished = true;
       newAction.zeroSlopeAtEnd = false; // Ensures smooth end of animation
@@ -1176,185 +1175,6 @@ class EnemyEntity {
   }
 
   /**
-   * Perform the flex-dash-swipe combo attack
-   * Sequence: 1. Flex animation, 2. Dash to player, 3. Swipe attack
-   * @param {Function} onComboComplete - Optional callback when combo is complete
-   */
-  performFlexDashSwipeCombo(onComboComplete) {
-    if (!this.targetEntity || !this.animations.flex || !this.animations.swipe) {
-      console.warn("Can't perform flex-dash-swipe combo, missing animations");
-      this.isAttacking = false;
-      if (onComboComplete) onComboComplete();
-      return;
-    }
-
-    // Step 1: Play flex animation
-    this.playAnimation('flex', 0.5, 2.0); // Increased crossfade, high priority
-
-    // Set up a sequence of actions
-    // After flex animation completes, dash to player and then swipe
-    const flexAction = this.animations.flex.action;
-
-    // Create a handler for flex completion
-    const flexCompletionHandler = (e) => {
-      if (e.action === flexAction) {
-        console.log('Flex animation completed, starting dash');
-
-        // Remove the listener to avoid memory leaks
-        flexAction
-          .getMixer()
-          .removeEventListener('finished', flexCompletionHandler);
-
-        // Step 2: Dash towards player
-        this.performDashToTarget(() => {
-          // Step 3: After dash completes, perform swipe attack
-          console.log('Dash completed, performing swipe attack');
-
-          // Set current attack type for hitbox creation
-          this.currentAttackType = 'swipe';
-
-          // Play swipe animation
-          this.playAnimation('swipe', 0.2, 1.5); // Keep fast crossfade for action attacks
-
-          // Play the swipe sound effect
-          if (this.soundManager) {
-            this.soundManager.playSound('mutantSwipe', { volume: 0.6 });
-          }
-
-          // Create an enhanced swipe hitbox after appropriate delay
-          if (this.combatManager) {
-            setTimeout(() => {
-              if (this.currentState === 'ATTACK' && this.isAttacking) {
-                this.combatManager.createHitbox(
-                  this.model,
-                  new THREE.Vector3(0, 1, -3.5), // Further in front (from -2)
-                  new THREE.Vector3(2.5, 1.8, 3.0), // More focused in front direction
-                  Math.floor(this.data.attackDamage * 1.5), // 50% more damage for combo
-                  0.25, // Slightly longer duration
-                  {
-                    owner: this,
-                    knockback: 1.5, // More knockback for the combo attack
-                    preserveAnimation: true,
-                  }
-                );
-                console.log(
-                  'Created enhanced swipe hitbox after flex-dash combo'
-                );
-              }
-            }, 350); // Slightly quicker hitbox timing for combo
-          }
-
-          // Set up completion handler for the swipe
-          const swipeAction = this.animations.swipe.action;
-          const swipeCompletionHandler = (e) => {
-            if (e.action === swipeAction) {
-              console.log('Combo attack sequence completed');
-              this.isAttacking = false;
-              this.attackCooldown = this.data.attackCooldown * 1.75; // Longer cooldown after combo
-
-              // Remove the listener
-              swipeAction
-                .getMixer()
-                .removeEventListener('finished', swipeCompletionHandler);
-
-              // Return to normal velocity after combo completes
-              console.log('Returning to normal velocity after combo');
-
-              // Execute callback if provided
-              if (onComboComplete) onComboComplete();
-            }
-          };
-
-          // Add the swipe completion listener
-          swipeAction
-            .getMixer()
-            .addEventListener('finished', swipeCompletionHandler);
-        });
-      }
-    };
-
-    // Add the event listener for flex completion
-    flexAction.getMixer().addEventListener('finished', flexCompletionHandler);
-  }
-
-  /**
-   * Perform a dash toward the target, then execute a callback when complete
-   * @param {Function} onDashComplete - Callback to execute when dash is complete
-   */
-  performDashToTarget(onDashComplete) {
-    if (!this.targetEntity) {
-      if (onDashComplete) onDashComplete();
-      return;
-    }
-
-    // Get direction to player
-    const targetPosition = this.targetEntity.model.position.clone();
-    const direction = new THREE.Vector3()
-      .subVectors(targetPosition, this.model.position)
-      .normalize();
-
-    // Calculate distance to target
-    const distance = this.model.position.distanceTo(targetPosition);
-
-    // Calculate dash distance (leave some space to not overshoot)
-    const dashDistance = Math.max(0, distance - this.data.attackRange / 2);
-
-    // Play running animation during dash
-    this.playAnimation('run', 0.5, 1.0);
-
-    // Use dashVelocity for faster movement
-    const originalVelocity = this.data.velocity;
-    const dashVelocity = this.data.dashVelocity;
-
-    // Determine dash duration based on distance and speed
-    const dashDuration = dashDistance / dashVelocity;
-
-    console.log(
-      `Starting dash: distance=${dashDistance.toFixed(
-        2
-      )}, duration=${dashDuration.toFixed(2)}s`
-    );
-
-    // Start the dash with animation
-    const startTime = performance.now();
-    const initialPosition = this.model.position.clone();
-
-    // Create the dash animation function
-    const performDashStep = () => {
-      const elapsed = (performance.now() - startTime) / 1000; // Convert to seconds
-      const progress = Math.min(elapsed / dashDuration, 1.0);
-
-      // If dash is complete
-      if (progress >= 1.0) {
-        // Clear the animation frame
-        if (this.dashAnimationFrame) {
-          cancelAnimationFrame(this.dashAnimationFrame);
-          this.dashAnimationFrame = null;
-        }
-
-        // Execute completion callback
-        if (onDashComplete) onDashComplete();
-
-        return;
-      }
-
-      // Calculate new position based on progress
-      const newPosition = new THREE.Vector3().copy(initialPosition);
-      newPosition.x += direction.x * dashDistance * progress;
-      newPosition.z += direction.z * dashDistance * progress;
-
-      // Update enemy position
-      this.model.position.copy(newPosition);
-
-      // Continue dash on next frame
-      this.dashAnimationFrame = requestAnimationFrame(performDashStep);
-    };
-
-    // Start the dash animation
-    this.dashAnimationFrame = requestAnimationFrame(performDashStep);
-  }
-
-  /**
    * Play the dragon roar sound
    */
   playDragonRoarSound() {
@@ -1613,7 +1433,7 @@ class EnemyEntity {
 
   setupAnimationCallbacks() {
     // Set up callbacks for all attack animations
-    const attackTypes = ['punch', 'swipe', 'roar', 'flex'];
+    const attackTypes = ['punch', 'swipe', 'roar'];
 
     // Create a bound callback to handle animation completion
     this.onAttackFinished = (e) => {
@@ -1626,8 +1446,8 @@ class EnemyEntity {
         ) {
           console.log(`Enemy ${attackType} animation finished`);
 
-          // Skip additional logic for roar and flex since they're handled separately
-          if (attackType === 'roar' || attackType === 'flex') {
+          // Skip additional logic for roar since they're handled separately
+          if (attackType === 'roar') {
             // Still need to reset attacking state
             this.isAttacking = false;
             continue;

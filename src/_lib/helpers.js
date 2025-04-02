@@ -127,16 +127,10 @@ export const loadMutantModel = async (scene, LOADING_MANAGER) => {
   loader.setPath('/assets/models/mutant/animations/');
   const idle = await loader.loadAsync('idle.fbx');
   _OnLoad('idle', idle);
-  const flex = await loader.loadAsync('flex.fbx');
-  _OnLoad('flex', flex);
   const punch = await loader.loadAsync('punch.fbx');
   _OnLoad('punch', punch);
   const run = await loader.loadAsync('run.fbx');
   _OnLoad('run', run);
-  const leftTurn = await loader.loadAsync('leftTurn.fbx');
-  _OnLoad('leftTurn', leftTurn);
-  const rightTurn = await loader.loadAsync('rightTurn.fbx');
-  _OnLoad('rightTurn', rightTurn);
   const swipe = await loader.loadAsync('swipe.fbx');
   _OnLoad('swipe', swipe);
   const roar = await loader.loadAsync('roar.fbx');
