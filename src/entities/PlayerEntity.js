@@ -67,6 +67,9 @@ class PlayerEntity {
     this.staggerTime = 0;
     this.attackCooldown = 0;
 
+    // Healing spell properties
+    this.healingSpellsRemaining = 2;
+
     // Collision properties
     this.collisionRadius = 0.7; // Player collision radius (reduced from 0.8)
     this.enemyEntities = []; // Will store references to enemies
@@ -117,6 +120,17 @@ class PlayerEntity {
         e.action === this.animations.impact2.action
       ) {
         this.onAttackComplete();
+
+        // Apply healing if it was a power-up animation
+        if (e.action === this.animations.powerUp.action) {
+          // Add 50 health points but don't exceed max health
+          this.health = Math.min(this.maxHealth, this.health + 50);
+          this.updatePlayerUI();
+          console.log(
+            'Healing spell complete. Health restored to:',
+            this.health
+          );
+        }
       } else if (e.action === this.animations.roll.action) {
         this.onRollComplete();
       }
@@ -772,12 +786,30 @@ class PlayerEntity {
     }
   }
 
-  // Perform a power-up animation
+  // Perform a power-up animation (healing spell)
   powerUp() {
     // Don't allow power-up if attacking, rolling, staggered, or dead
     if (this.isUnableToAttack()) {
       return;
     }
+
+    // Check if player has healing spells left
+    if (this.healingSpellsRemaining <= 0) {
+      console.log('No healing spells remaining!');
+      return;
+    }
+
+    // Decrement healing spell counter
+    this.healingSpellsRemaining--;
+
+    // Dispatch event to update UI
+    document.dispatchEvent(
+      new CustomEvent('healing_spells_changed', {
+        detail: {
+          remaining: this.healingSpellsRemaining,
+        },
+      })
+    );
 
     this.isAttacking = true;
     this.attackAnimationComplete = false;
@@ -804,7 +836,20 @@ class PlayerEntity {
       this.stopPowerUpParticles();
     }, 1500); // Reduced from 2000ms to 1500ms to make the effect shorter
 
-    console.log('Player powering up!');
+    console.log(
+      'Player using healing spell! Spells remaining:',
+      this.healingSpellsRemaining
+    );
+  }
+
+  // Check if player has healing spells left
+  hasHealingSpellsRemaining() {
+    return this.healingSpellsRemaining > 0;
+  }
+
+  // Get number of healing spells remaining
+  getHealingSpellsRemaining() {
+    return this.healingSpellsRemaining;
   }
 
   // Take damage from an attack

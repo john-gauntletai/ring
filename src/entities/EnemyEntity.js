@@ -19,7 +19,7 @@ class EnemyEntity {
       isHostile: false,
       detectionRadius: 20,
       attackRange: 4,
-      attackDamage: 50,
+      attackDamage: 40,
       attackCooldown: 1,
       velocity: 6,
       dashVelocity: 10,
