@@ -186,10 +186,6 @@ async function initGame() {
     loadMutantModel(scene, LOADING_MANAGER),
   ]);
 
-  if (enemy) {
-    console.log('enemy animations', enemy.animations);
-  }
-
   const PLAYER = new PlayerEntity(
     player.model,
     player.animations,
@@ -326,11 +322,12 @@ async function initGame() {
       scene.userData.enemyLight.position.y += 6; // Position light above enemy (slightly higher than player light)
     }
 
-    const shouldLog = logTimer > 10.0;
+    // const shouldLog = logTimer > 10.0;
+    const shouldLog = false;
     if (shouldLog) {
       logTimer = 0;
     }
-    grass.update(delta, CAMERA.camera, true);
+    grass.update(delta, CAMERA.camera, shouldLog);
     renderer.render(scene, CAMERA.camera);
     // stats.end();
   }

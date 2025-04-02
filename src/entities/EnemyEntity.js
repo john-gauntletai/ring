@@ -65,7 +65,6 @@ class EnemyEntity {
    */
 
   markAsLoopOnce(animation) {
-    console.log(animation);
     animation.action.loop = THREE.LoopOnce;
     animation.action.clampWhenFinished = true;
   }

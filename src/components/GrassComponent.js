@@ -138,7 +138,6 @@ class GrassComponent {
       alphaTest: 0.0,
       depthWrite: true,
       depthTest: true,
-      flatShading: false, // Use smooth shading for better appearance
     });
 
     return material;
