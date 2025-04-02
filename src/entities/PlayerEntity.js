@@ -867,6 +867,7 @@ class PlayerEntity {
     if (this.health <= 0) {
       this.health = 0;
       this.die();
+      this.updatePlayerUI();
       return;
     }
 

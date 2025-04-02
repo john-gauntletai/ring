@@ -751,37 +751,148 @@
 			left: 0;
 			width: 100%;
 			height: 100%;
-			background-color: transparent;
-			z-index: 997;
+			background-color: rgba(0, 0, 0, 0.5);
 			display: none;
-			justify-content: center;
-			align-items: center;
 			opacity: 0;
+			z-index: 1000;
 			transition: opacity 1.5s ease;
 		}
 
 		.enemy-felled-container {
-			position: relative;
-			width: 50%;
-			padding: 15px 0;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			padding: 30px;
+			background-color: rgba(0, 0, 0, 0.7);
+			border-radius: 5px;
 			text-align: center;
-			background-color: rgba(0, 0, 0, 0.5);
-			/* Create fade effect on left and right edges */
-			mask-image: linear-gradient(to right, transparent 0%, white 15%, white 85%, transparent 100%);
-			-webkit-mask-image: linear-gradient(to right, transparent 0%, white 15%, white 85%, transparent 100%);
+			-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+			mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
 		}
 
 		.enemy-felled-text {
-			font-family: 'Cormorant Garamond', serif;
-			font-size: 3.5rem;
-			font-weight: 400;
-			letter-spacing: 0.1rem;
-			color: #fff;
+			font-family: 'Times New Roman', serif;
+			font-size: 64px;
+			color: white;
+			text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+		}
+
+		/* You Died Overlay Styles */
+		#you-died-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.7);
+			display: none;
+			opacity: 0;
+			z-index: 1000;
+			transition: opacity 1.5s ease;
+		}
+
+		.you-died-container {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			padding: 30px;
+			background-color: rgba(0, 0, 0, 0.4);
+			border-radius: 5px;
 			text-align: center;
-			text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-			margin: 0;
-			padding: 0.5rem 0;
-			line-height: 1;
+			-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+			mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+		}
+
+		.you-died-text {
+			font-family: 'Times New Roman', serif;
+			font-size: 72px;
+			color: #a20000;
+			text-shadow: 0 0 10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.7);
+			animation: pulse 2s infinite;
+		}
+
+		@keyframes pulse {
+			0% {
+				transform: scale(1);
+				opacity: 1;
+			}
+
+			50% {
+				transform: scale(1.05);
+				opacity: 0.9;
+			}
+
+			100% {
+				transform: scale(1);
+				opacity: 1;
+			}
+		}
+
+		/* Retry Modal Styles */
+		#retry-modal {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.8);
+			display: none;
+			opacity: 0;
+			z-index: 1001;
+			transition: opacity 1s ease;
+		}
+
+		.retry-modal-content {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 400px;
+			max-width: 90%;
+			padding: 30px;
+			background-color: rgba(0, 0, 0, 0.8);
+			border: 2px solid #917c4f;
+			border-radius: 10px;
+			text-align: center;
+			box-shadow: 0 0 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(141, 113, 63, 0.3);
+		}
+
+		.retry-modal-content h2 {
+			font-family: 'Times New Roman', serif;
+			font-size: 28px;
+			color: #d0bb9a;
+			margin-bottom: 15px;
+			text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+		}
+
+		.retry-modal-content p {
+			font-size: 16px;
+			color: #a59274;
+			margin-bottom: 25px;
+			font-style: italic;
+		}
+
+		#retry-button {
+			background: linear-gradient(to bottom, #a38c5a 0%, #7a6743 100%);
+			color: #eedfbf;
+			border: 1px solid #b59d61;
+			padding: 12px 30px;
+			font-size: 18px;
+			border-radius: 6px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+			outline: none;
+			font-family: "Times New Roman", serif;
+			letter-spacing: 1px;
+		}
+
+		#retry-button:hover {
+			background: linear-gradient(to bottom, #b09b64 0%, #8a754d 100%);
+			transform: translateY(-2px);
+			box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
 		}
 
 		/* Permanent Controls Panel Styles */
@@ -999,6 +1110,22 @@
 	<div id="enemy-felled-overlay">
 		<div class="enemy-felled-container">
 			<div class="enemy-felled-text">ENEMY FELLED</div>
+		</div>
+	</div>
+
+	<!-- You Died Overlay -->
+	<div id="you-died-overlay">
+		<div class="you-died-container">
+			<div class="you-died-text">YOU DIED</div>
+		</div>
+	</div>
+
+	<!-- Retry Modal -->
+	<div id="retry-modal">
+		<div class="retry-modal-content">
+			<h2>Defeat Awaits The Unprepared</h2>
+			<p>But a warrior's spirit never truly fades...</p>
+			<button id="retry-button">TRY AGAIN</button>
 		</div>
 	</div>
 
@@ -1340,6 +1467,46 @@
 				}
 			}
 			*/
+
+			// Get the you died overlay and retry modal elements
+			const youDiedOverlay = document.getElementById('you-died-overlay');
+			const retryModal = document.getElementById('retry-modal');
+			const retryButton = document.getElementById('retry-button');
+
+			// Handle player death event
+			document.addEventListener('player_died', () => {
+				console.log('Player died event received');
+
+				// Show the "YOU DIED" overlay
+				youDiedOverlay.style.display = 'flex';
+				// Trigger a reflow before setting opacity for the transition to work
+				youDiedOverlay.offsetHeight;
+				// Make the overlay visible with transition
+				youDiedOverlay.style.opacity = '1';
+
+				// After 3 seconds, fade out the YOU DIED overlay
+				setTimeout(() => {
+					youDiedOverlay.style.opacity = '0';
+
+					// Wait for the fade-out transition to complete
+					setTimeout(() => {
+						youDiedOverlay.style.display = 'none';
+
+						// Show the retry modal
+						retryModal.style.display = 'flex';
+						// Trigger a reflow before setting opacity for the transition to work
+						retryModal.offsetHeight;
+						// Make the retry modal visible with transition
+						retryModal.style.opacity = '1';
+					}, 1500); // 1.5 seconds for fade-out transition
+				}, 3000); // 3 seconds display time
+			});
+
+			// Handle retry button click
+			retryButton.addEventListener('click', () => {
+				// Reload the page
+				window.location.reload();
+			});
 		});
 	</script>
 	<a target="_blank" href="https://jam.pieter.com"

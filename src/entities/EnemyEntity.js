@@ -364,6 +364,9 @@ class EnemyEntity {
       // Trigger the boss UI to show health bar
       this.triggerBossUI();
 
+      // Start the boss battle music immediately
+      this.startBossBattleMusic();
+
       // Transition to aware state first
       this.setState('AWARE');
     }
@@ -438,8 +441,8 @@ class EnemyEntity {
             }, 2000); // 2 seconds delay
           }
         } else {
-          // Start boss battle music
-          this.startBossBattleMusic();
+          // No need to start boss battle music here, it's already started in becomeHostile
+          // We'll keep this block to handle any other transitions to AWARE state that don't come from becomeHostile
         }
         break;
 
@@ -451,7 +454,11 @@ class EnemyEntity {
    * Start playing the boss battle music
    */
   startBossBattleMusic() {
-    if (this.soundManager && !this.isBossMusicPlaying) {
+    if (
+      this.soundManager &&
+      !this.isBossMusicPlaying &&
+      !this.isBossMusicPreparing
+    ) {
       // Preload the boss battle music if it wasn't already
       if (!this.soundManager.sounds['bossBattleMusic']) {
         this.soundManager.preloadSound(
@@ -460,18 +467,31 @@ class EnemyEntity {
         );
       }
 
-      console.log('Preparing boss battle music, starting in 3 seconds...');
+      console.log('Starting boss battle music...');
 
       // Set a flag to prevent multiple timeouts
       this.isBossMusicPreparing = true;
 
-      // Wait 3 seconds before starting the boss battle music
+      // Wait 1 second before starting the boss battle music (reduced from 3 seconds)
       setTimeout(() => {
-        // Start the boss battle music loop
+        // Start with lower volume and gradually increase for a fade-in effect
         this.soundManager.startLoop('bossBattleMusic', { volume: 0.05 });
         this.isBossMusicPlaying = true;
-        this.isBossMusicPreparing = false;
-        console.log('Started boss battle music after delay');
+
+        // Fade in the volume over 2 seconds
+        setTimeout(() => {
+          if (this.soundManager.activeLoops['bossBattleMusic']) {
+            this.soundManager.activeLoops['bossBattleMusic'].volume = 0.1;
+          }
+
+          setTimeout(() => {
+            if (this.soundManager.activeLoops['bossBattleMusic']) {
+              this.soundManager.activeLoops['bossBattleMusic'].volume = 0.15;
+            }
+            this.isBossMusicPreparing = false;
+            console.log('Boss battle music now playing at full volume');
+          }, 1000);
+        }, 1000);
 
         // Add a listener for player death to stop the music
         this.playerDeathListener = (event) => {
@@ -482,7 +502,7 @@ class EnemyEntity {
 
         // Listen for the player_died event that would be dispatched by the player entity
         document.addEventListener('player_died', this.playerDeathListener);
-      }, 3000); // 3-second delay
+      }, 1000); // 1-second delay (reduced from 3 seconds)
     }
   }
 
@@ -1073,8 +1093,8 @@ class EnemyEntity {
         if (this.combatManager) {
           // Different hitbox configurations based on attack type
           let hitboxDelay = 400; // Default delay
-          let hitboxOffset = new THREE.Vector3(0, 1, -1.5); // Default position
-          let hitboxSize = new THREE.Vector3(1.5, 1.5, 1.5); // Default size
+          let hitboxOffset = new THREE.Vector3(0, 1, -2.5); // Moved further forward (from -1.5)
+          let hitboxSize = new THREE.Vector3(1.5, 1.5, 2.0); // Extended forward rather than wider
           let damage = this.data.attackDamage;
           let knockback = 1;
 
@@ -1082,15 +1102,15 @@ class EnemyEntity {
           switch (this.currentAttackType) {
             case 'swipe':
               hitboxDelay = 400;
-              hitboxOffset = new THREE.Vector3(0, 1, -2);
-              hitboxSize = new THREE.Vector3(3.5, 2.0, 3.0); // Increased from 2.5, 1.5, 2 for wider and taller hitbox
+              hitboxOffset = new THREE.Vector3(0, 1, -3.0); // Moved further forward (from -2)
+              hitboxSize = new THREE.Vector3(3.0, 2.0, 2.5); // More focused in front direction
               damage = Math.floor(this.data.attackDamage * 1.2);
               knockback = 1.2;
               break;
             case 'punch':
               hitboxDelay = 300;
-              hitboxOffset = new THREE.Vector3(0, 1, -1.5);
-              hitboxSize = new THREE.Vector3(2.5, 2.0, 2.0); // Increased from 1.5, 1.5, 1.5 for a larger punch area
+              hitboxOffset = new THREE.Vector3(0, 1, -2.5); // Moved further forward (from -1.5)
+              hitboxSize = new THREE.Vector3(2.0, 2.0, 2.5); // More focused in front direction
               damage = this.data.attackDamage;
               knockback = 0.8;
               break;
@@ -1194,8 +1214,8 @@ class EnemyEntity {
               if (this.currentState === 'ATTACK' && this.isAttacking) {
                 this.combatManager.createHitbox(
                   this.model,
-                  new THREE.Vector3(0, 1, -2), // In front of enemy
-                  new THREE.Vector3(3, 1.8, 2.5), // Larger size for combo attack
+                  new THREE.Vector3(0, 1, -3.5), // Further in front (from -2)
+                  new THREE.Vector3(2.5, 1.8, 3.0), // More focused in front direction
                   Math.floor(this.data.attackDamage * 1.5), // 50% more damage for combo
                   0.25, // Slightly longer duration
                   {

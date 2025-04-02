@@ -262,7 +262,7 @@ class PlayerUI {
       border-radius: 100% 0 0 0;
       opacity: 0.9;
     `;
-    
+
     // Create health bar container with a subtle pattern
     this.healthBarContainer = document.createElement('div');
     this.healthBarContainer.className = 'player-health-bar-container';
@@ -306,7 +306,7 @@ class PlayerUI {
     // Add elements to DOM
     this.healthBarContainer.appendChild(this.healthBar);
     this.healthBarContainer.appendChild(this.damageOverlay);
-    
+
     this.frameContainer.appendChild(this.topFrame);
     this.frameContainer.appendChild(this.bottomFrame);
     this.frameContainer.appendChild(this.leftFrame);
@@ -319,10 +319,10 @@ class PlayerUI {
     this.frameContainer.appendChild(this.topRightCorner);
     this.frameContainer.appendChild(this.bottomLeftCorner);
     this.frameContainer.appendChild(this.bottomRightCorner);
-    
+
     this.healthBarWrapper.appendChild(this.healthBarContainer);
     this.healthBarWrapper.appendChild(this.frameContainer);
-    
+
     this.container.appendChild(this.nameElement);
     this.container.appendChild(this.healthBarWrapper);
     document.body.appendChild(this.container);
@@ -333,7 +333,7 @@ class PlayerUI {
     // Player data
     this.playerData = {
       health: 100,
-      maxHealth: 100
+      maxHealth: 100,
     };
 
     // Set initial health
@@ -359,7 +359,10 @@ class PlayerUI {
    */
   setupEventListeners() {
     // Listen for player health change events
-    document.addEventListener('player_health_changed', this.handleHealthChanged.bind(this));
+    document.addEventListener(
+      'player_health_changed',
+      this.handleHealthChanged.bind(this)
+    );
   }
 
   /**
@@ -368,7 +371,7 @@ class PlayerUI {
    */
   handleHealthChanged(event) {
     const { health, maxHealth } = event.detail;
-    
+
     this.playerData.health = health;
     this.playerData.maxHealth = maxHealth || this.playerData.maxHealth;
     this.updateHealthBar(health, this.playerData.maxHealth);
@@ -388,31 +391,61 @@ class PlayerUI {
    * @param {number} maxHealth - Maximum health
    */
   updateHealthBar(health, maxHealth) {
-    const oldHealthPercentage = this.playerData.previousHealth ? 
-      Math.max(0, Math.min(100, (this.playerData.previousHealth / maxHealth) * 100)) : 
-      Math.max(0, Math.min(100, (health / maxHealth) * 100));
-    
-    const healthPercentage = Math.max(0, Math.min(100, (health / maxHealth) * 100));
-    
+    const oldHealthPercentage = this.playerData.previousHealth
+      ? Math.max(
+          0,
+          Math.min(100, (this.playerData.previousHealth / maxHealth) * 100)
+        )
+      : Math.max(0, Math.min(100, (health / maxHealth) * 100));
+
+    // If player is dead, force health to zero
+    if (health <= 0) {
+      health = 0;
+
+      // Change health bar color to indicate death
+      this.healthBar.style.background =
+        'linear-gradient(to right, #2a2a2a, #444444)';
+      this.healthBar.style.width = '0%';
+
+      // Add subtle pulsing red glow to the health container to indicate death
+      this.healthBarContainer.style.boxShadow =
+        'inset 0 0 15px rgba(80, 0, 0, 0.7)';
+
+      // Store current health for future comparison
+      this.playerData.previousHealth = health;
+      return; // Exit early - no animations needed for death state
+    } else {
+      // Reset to normal color if not dead
+      this.healthBar.style.background =
+        'linear-gradient(to right, #004d00, #006500)';
+      this.healthBarContainer.style.boxShadow =
+        'inset 0 0 15px rgba(0, 0, 0, 0.7)';
+    }
+
+    const healthPercentage = Math.max(
+      0,
+      Math.min(100, (health / maxHealth) * 100)
+    );
+
     // Store current health for future comparison
     this.playerData.previousHealth = health;
-    
+
     // Determine if damage was taken
     const damageTaken = oldHealthPercentage > healthPercentage;
-    
+
     if (damageTaken) {
       // Calculate the size of damage preview (yellow bar)
       const damageWidth = oldHealthPercentage - healthPercentage;
-      
+
       // Set damage overlay (yellow) to show the amount of damage taken
       this.damageOverlay.style.backgroundColor = '#f7d06a'; // Pale yellow
       this.damageOverlay.style.opacity = '0.8';
       this.damageOverlay.style.width = `${damageWidth}%`;
       this.damageOverlay.style.left = `${healthPercentage}%`;
-      
+
       // Update health bar immediately
       this.healthBar.style.width = `${healthPercentage}%`;
-      
+
       // Animate the damage overlay to shrink horizontally
       setTimeout(() => {
         this.damageOverlay.style.width = `${damageWidth * 0.75}%`;
@@ -445,7 +478,7 @@ class PlayerUI {
     this.playerData.health = health;
     this.updateHealthBar(health, this.playerData.maxHealth);
   }
-  
+
   /**
    * Show the player UI
    */
@@ -459,7 +492,7 @@ class PlayerUI {
   hide() {
     this.container.style.opacity = '0';
   }
-  
+
   /**
    * Update the UI (called every frame)
    */
@@ -468,4 +501,4 @@ class PlayerUI {
   }
 }
 
-export default PlayerUI; 
+export default PlayerUI;
