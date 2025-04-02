@@ -154,3 +154,13 @@ export const loadMutantModel = async (scene, LOADING_MANAGER) => {
     mixer,
   };
 };
+
+export const detectMobile = () => {
+  return (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    )
+  );
+};

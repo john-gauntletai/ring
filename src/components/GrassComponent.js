@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { TERRAIN_SIZE } from '../entities/_constants.js';
+import { detectMobile } from '../_lib/helpers.js';
 
 // Constants for grass configuration
-const NUM_GRASS = 22 * 22; // Reduced blade count per patch for better performance
+const NUM_GRASS = detectMobile() ? 20 * 20 : 40 * 40; // Reduced blade count per patch for better performance
 const GRASS_SEGMENTS_LOW = 1; // Low LOD segments
 const GRASS_SEGMENTS_HIGH = 4; // Reduced high LOD segments for better performance
 const GRASS_VERTICES_LOW = (GRASS_SEGMENTS_LOW + 1) * 2;

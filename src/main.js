@@ -5,6 +5,7 @@ import {
   loadMutantModel,
   addResizeEventListeners,
   applyEnvMapToModel,
+  detectMobile,
 } from './_lib/helpers.js';
 import PlayerEntity from './entities/PlayerEntity.js';
 import EnemyEntity from './entities/EnemyEntity.js';
@@ -36,17 +37,6 @@ window.SOUND_MANAGER = soundManager;
 // Initialize mobile controls if on a mobile device
 let mobileControls;
 let isMobileDevice = false;
-
-// Function to detect mobile devices
-function detectMobile() {
-  return (
-    'ontouchstart' in window ||
-    navigator.maxTouchPoints > 0 ||
-    /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    )
-  );
-}
 
 // Setup controls panel toggle functionality
 function setupControlsPanel() {
