@@ -518,6 +518,29 @@
 				color: #c4b08c;
 			}
 			
+			.character-box.disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+			
+			.character-box.disabled:hover {
+				transform: none;
+				border-color: #a17f4b;
+				box-shadow: none;
+			}
+			
+			.coming-soon {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				font-size: 1.2rem;
+				color: #ff6b6b;
+				font-weight: bold;
+				text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+				z-index: 10;
+			}
+			
 			.select-character-button {
 				padding: 0.8rem 3rem;
 				font-size: 1.2rem;
@@ -746,9 +769,10 @@
 					<img src="/assets/images/austen.png" alt="Austen" class="character-image">
 					<div class="character-name">Austen</div>
 				</div>
-				<div class="character-box" data-character="archer">
+				<div class="character-box disabled" data-character="archer">
 					<img src="/assets/images/archer.png" alt="Archer" class="character-image">
 					<div class="character-name">Archer</div>
+					<div class="coming-soon">COMING SOON</div>
 				</div>
 			</div>
 			<button class="select-character-button" disabled>SELECT CHARACTER</button>
@@ -885,6 +909,11 @@
 				// Character selection
 				characterBoxes.forEach(box => {
 					box.addEventListener('click', () => {
+						// Don't allow selection of disabled characters
+						if (box.classList.contains('disabled')) {
+							return;
+						}
+						
 						// Remove selected class from all boxes
 						characterBoxes.forEach(b => b.classList.remove('selected'));
 						
